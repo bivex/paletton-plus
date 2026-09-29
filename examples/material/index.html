@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Material Design 3 – Palette Usage Example</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="../../js/lib/jquery.min.js"></script>
+  <script src="material.js"></script>
+</head>
+<body>
+
+  <!-- M3 Top App Bar -->
+  <header class="m3-top-app-bar shadow-sm">
+    <div class="flex items-center gap-3">
+      <img src="../../img/logo.png" alt="Logo" class="rounded-full" width="32" height="32">
+      <div>
+        <div class="font-bold text-base">Material Design 3</div>
+        <div class="text-xs text-on-surface-variant">Material You Dynamic Color Engine</div>
+      </div>
+    </div>
+
+    <!-- Navigation Pills -->
+    <div class="m3-nav-pill-group">
+      <div class="m3-nav-pill active">Dynamic Roles</div>
+      <div class="m3-nav-pill">Tonal Scales</div>
+      <div class="m3-nav-pill">Components</div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Theme Switcher -->
+      <button id="btn-theme-toggle" class="m3-btn m3-btn-tonal" style="height: 36px; padding: 0 16px; font-size: 13px;" title="Toggle theme">
+        <span id="theme-icon">🌙</span> <span id="theme-label">Dark Mode</span>
+      </button>
+
+      <!-- Extended FAB -->
+      <button class="m3-fab m3-fab-sm">
+        <span>✦</span> <span>Seed Palette</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- M3 Dynamic Tonal Harmonies (Primary, Secondary, Tertiary Tonal Strips) -->
+  <div class="m3-card m3-card-elevated mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <h3 class="font-bold text-base m-0">Dynamic Tonal Palettes</h3>
+        <span class="text-xs text-on-surface-variant">Algorithmic luminance scales derived from Paletton color wheel</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="m3-chip selected">Tones 10 → 99</span>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-3">
+      <!-- Primary Tonal Strip -->
+      <div>
+        <div class="flex justify-between text-xs mb-1">
+          <span class="font-semibold" style="color: var(--md-sys-color-primary)">Primary Tonal Palette</span>
+          <span class="text-on-surface-variant" id="pri-seed-label">Tone 40 (Key Color)</span>
+        </div>
+        <div class="tonal-strip-container" id="pri-strip"></div>
+      </div>
+
+      <!-- Secondary Tonal Strip -->
+      <div>
+        <div class="flex justify-between text-xs mb-1">
+          <span class="font-semibold" style="color: var(--md-sys-color-secondary)">Secondary Tonal Palette</span>
+          <span class="text-on-surface-variant" id="sec-seed-label">Support & Fill</span>
+        </div>
+        <div class="tonal-strip-container" id="sec-strip"></div>
+      </div>
+
+      <!-- Tertiary Tonal Strip (Complement / Accent) -->
+      <div>
+        <div class="flex justify-between text-xs mb-1">
+          <span class="font-semibold" style="color: var(--md-sys-color-tertiary)">Tertiary Tonal Palette (Harmonic Accent)</span>
+          <span class="text-on-surface-variant" id="ter-seed-label">Balancing Tone</span>
+        </div>
+        <div class="tonal-strip-container" id="ter-strip"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core Color Roles Grid (Primary, Secondary, Tertiary Containers) -->
+  <div class="grid grid-cols-3 gap-3 mb-4">
+    <!-- Primary Role Card -->
+    <div class="m3-card" style="background-color: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container);">
+      <div class="flex justify-between items-center mb-2">
+        <span class="font-bold text-sm">Primary Container</span>
+        <span class="text-xs px-2 py-0.5 rounded-full font-bold" style="background: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary);">Main</span>
+      </div>
+      <p class="text-xs mb-3" style="opacity: 0.85;">High-emphasis components like the FAB, filled buttons, active state highlights and key branding surfaces.</p>
+      <div class="flex gap-2">
+        <button class="m3-btn m3-btn-filled" style="height: 32px; padding: 0 16px; font-size: 12px;">Primary</button>
+        <span class="font-mono text-xs flex items-center font-semibold" id="pri-hex-val">#...</span>
+      </div>
+    </div>
+
+    <!-- Secondary Role Card -->
+    <div class="m3-card" style="background-color: var(--md-sys-color-secondary-container); color: var(--md-sys-color-on-secondary-container);">
+      <div class="flex justify-between items-center mb-2">
+        <span class="font-bold text-sm">Secondary Container</span>
+        <span class="text-xs px-2 py-0.5 rounded-full font-bold" style="background: var(--md-sys-color-secondary); color: var(--md-sys-color-on-secondary);">Support</span>
+      </div>
+      <p class="text-xs mb-3" style="opacity: 0.85;">Subtle supporting accents for filter chips, segmented buttons, badges, and secondary action cards.</p>
+      <div class="flex gap-2">
+        <button class="m3-btn m3-btn-tonal" style="height: 32px; padding: 0 16px; font-size: 12px;">Secondary</button>
+        <span class="font-mono text-xs flex items-center font-semibold" id="sec-hex-val">#...</span>
+      </div>
+    </div>
+
+    <!-- Tertiary Role Card -->
+    <div class="m3-card" style="background-color: var(--md-sys-color-tertiary-container); color: var(--md-sys-color-on-tertiary-container);">
+      <div class="flex justify-between items-center mb-2">
+        <span class="font-bold text-sm">Tertiary Container</span>
+        <span class="text-xs px-2 py-0.5 rounded-full font-bold" style="background: var(--md-sys-color-tertiary); color: var(--md-sys-color-on-tertiary);">Accent</span>
+      </div>
+      <p class="text-xs mb-3" style="opacity: 0.85;">Contrasting balance role derived from complement or secondary hue, adding visual interest and expressive nuance.</p>
+      <div class="flex gap-2">
+        <button class="m3-btn m3-btn-tertiary" style="height: 32px; padding: 0 16px; font-size: 12px;">Tertiary</button>
+        <span class="font-mono text-xs flex items-center font-semibold" id="ter-hex-val">#...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Component Sandbox -->
+  <div class="grid grid-cols-2 gap-4">
+    <!-- Left Column: Buttons & Chips & Cards -->
+    <div class="m3-card m3-card-outlined flex flex-col gap-3">
+      <div class="flex items-center justify-between border-b pb-2">
+        <h4 class="font-bold text-sm m-0">Buttons & Chips</h4>
+        <span class="text-xs text-on-surface-variant">Material 3 Tokens</span>
+      </div>
+
+      <!-- Button Row -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button class="m3-btn m3-btn-filled">Filled</button>
+        <button class="m3-btn m3-btn-tonal">Tonal</button>
+        <button class="m3-btn m3-btn-outlined">Outlined</button>
+        <button class="m3-btn m3-btn-tertiary">Tertiary</button>
+      </div>
+
+      <!-- Chips -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="m3-chip selected">✓ Filter Selected</span>
+        <span class="m3-chip">★ Suggestion</span>
+        <span class="m3-chip">⚙ Settings</span>
+      </div>
+
+      <!-- Surface Container Elevation Cards -->
+      <div class="grid grid-cols-2 gap-2 mt-1">
+        <div class="m3-card m3-card-filled p-3">
+          <div class="font-bold text-xs mb-1">Surface High</div>
+          <div class="text-xs text-on-surface-variant">Tonal elevation without harsh drop shadows</div>
+        </div>
+        <div class="m3-card m3-card-outlined p-3">
+          <div class="font-bold text-xs mb-1">Outline Border</div>
+          <div class="text-xs text-on-surface-variant">Subtle delimiter token (`outline-variant`)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Interactive Inputs & Controls -->
+    <div class="m3-card m3-card-elevated flex flex-col gap-3">
+      <div class="flex items-center justify-between border-b pb-2">
+        <h4 class="font-bold text-sm m-0">Form Controls & Elevation</h4>
+        <span class="text-xs text-on-surface-variant">Dynamic M3 Inputs</span>
+      </div>
+
+      <!-- M3 Outlined Text Field -->
+      <div class="m3-text-field mt-2">
+        <label>Scheme Label</label>
+        <input type="text" value="Material You Tonal Harmony">
+      </div>
+
+      <!-- Slider -->
+      <div>
+        <div class="flex justify-between text-xs mb-1">
+          <span class="font-medium">Elevation Tone Level</span>
+          <span class="font-semibold text-primary" id="slider-val">75%</span>
+        </div>
+        <input type="range" class="m3-slider" min="0" max="100" value="75" id="elevation-slider">
+      </div>
+
+      <!-- Switch & Status -->
+      <div class="flex items-center justify-between p-2 rounded-lg" style="background-color: var(--md-sys-color-surface-container);">
+        <div>
+          <div class="text-sm font-semibold">Dynamic Theme Adaptation</div>
+          <div class="text-xs text-on-surface-variant">Automatic high-contrast text binding</div>
+        </div>
+        <label class="m3-switch">
+          <input type="checkbox" checked id="switch-dynamic">
+          <span class="m3-switch-track">
+            <span class="m3-switch-thumb"></span>
+          </span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

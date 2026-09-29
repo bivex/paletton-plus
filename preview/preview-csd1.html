@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Preview - CSD1</title>
+
+	<link rel="stylesheet" type="text/css" href="../css/jqui/jquery-ui-1.10.4.custom.css">
+	<link rel="stylesheet" type="text/css" href="./common.css">
+	<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+	<script type="text/javascript" src="../js/lib/jquery-ui-1.10.4.custom.min.js"></script>
+
+	<style type="text/css">
+
+html, body { overflow:visible }
+body {
+	margin: 0;
+	padding: 0;
+	background: transparent;
+	font-family: helvetica, arial, sans-serif;
+	}
+
+.preview-cover {
+	position: relative;
+	width: 360px; height: 360px;
+	margin: 10px auto;
+	}
+.preview-cover .ttl {
+	position: absolute; z-index: 3;
+	top: 15px;
+	font-size: 12px;
+	}
+.preview-cover .ttl1 {
+	left: 20px;
+	color: #000;
+	}
+.preview-cover .ttl2 {
+	right: 20px;
+	color: #fff;
+	text-align: right;
+	}
+
+.preview-frame {
+	position: absolute; z-index: 3;
+	left: 20px; right: 20px;
+	top: 85px; bottom: 40px;
+	border-top: 1px solid #fff;
+	border-left: 3px solid #fff;
+	border-bottom: 1px solid #000;
+	border-right: 3px solid #000;
+	}
+
+
+.preview-box-h {
+	position: absolute;
+	left: 0; top: 0;
+	width: 100%; height: 80px;
+	}
+.preview-box-h.preview-box-pri { height: 120px }
+.preview-box-h.preview-box-sec1 { top: 120px }
+.preview-box-h.preview-box-sec2 { top: 200px }
+.preview-box-h.preview-box-compl { top: 280px }
+
+
+.preview-box-v {
+	position: absolute; z-index: 2;
+	left: 0; top: 60px;
+	width: 50px; height: 280px;
+	}
+.preview-box-v.preview-box-pri { left: 120px }
+.preview-box-v.preview-box-sec1 { left: 190px }
+.preview-box-v.preview-box-sec2 { left: 260px }
+.preview-box-v.preview-box-compl { left: 50px }
+
+.no-compl .preview-box-compl.over,
+.no-secs .preview-box-sec1.over,
+.no-secs .preview-box-sec2.over { display: none }
+
+.preview-var {
+	position: absolute;
+	top: 110px; left: 15px;
+	width: 20px; height: 20px;
+	}
+.preview-var2 { top: 150px }
+.preview-var3 { top: 190px }
+.preview-var4 { top: 230px }
+
+	</style>
+</head>
+<body>
+	<div class="preview-cover bgcol bgcol-pri-0">
+
+		<div class="ttl ttl1">Qui tacet consentire videtur</div>
+		<div class="ttl ttl2">Qui tacet consentire videtur</div>
+		
+<!-- 		<div class="preview-frame"></div> -->
+
+		<div class="preview-box-h preview-box-pri bgcol bgcol-pri-0"></div>
+		<div class="preview-box-v preview-box-pri bgcol bgcol-pri-0">
+			<div class="preview-var preview-var1 bgcol bgcol-pri-1"></div>
+			<div class="preview-var preview-var2 bgcol bgcol-pri-2"></div>
+			<div class="preview-var preview-var3 bgcol bgcol-pri-3"></div>
+			<div class="preview-var preview-var4 bgcol bgcol-pri-4"></div>
+		</div>
+
+
+
+		<div class="preview-box-h preview-box-sec1 bgcol bgcol-pri-1"></div>
+		<div class="preview-box-v preview-box-sec1 bgcol bgcol-pri-1"></div>
+		<div class="preview-box-h preview-box-sec1 over bgcol bgcol-sec1-0"></div>
+		<div class="preview-box-v preview-box-sec1 over bgcol bgcol-sec1-0">
+			<div class="preview-var preview-var1 bgcol bgcol-sec1-1"></div>
+			<div class="preview-var preview-var2 bgcol bgcol-sec1-2"></div>
+			<div class="preview-var preview-var3 bgcol bgcol-sec1-3"></div>
+			<div class="preview-var preview-var4 bgcol bgcol-sec1-4"></div>
+		</div>
+
+		<div class="preview-box-h preview-box-sec2 bgcol bgcol-pri-2"></div>
+		<div class="preview-box-v preview-box-sec2 bgcol bgcol-pri-2"></div>
+		<div class="preview-box-h preview-box-sec2 over bgcol bgcol-sec2-0"></div>
+		<div class="preview-box-v preview-box-sec2 over bgcol bgcol-sec2-0">
+			<div class="preview-var preview-var1 bgcol bgcol-sec2-1"></div>
+			<div class="preview-var preview-var2 bgcol bgcol-sec2-2"></div>
+			<div class="preview-var preview-var3 bgcol bgcol-sec2-3"></div>
+			<div class="preview-var preview-var4 bgcol bgcol-sec2-4"></div>
+		</div>
+
+		<div class="preview-box-h preview-box-compl bgcol bgcol-pri-4"></div>
+		<div class="preview-box-v preview-box-compl bgcol bgcol-pri-4"></div>
+		<div class="preview-box-h preview-box-compl over bgcol bgcol-compl-0"></div>
+		<div class="preview-box-v preview-box-compl over bgcol bgcol-compl-0">
+			<div class="preview-var preview-var1 bgcol bgcol-compl-1"></div>
+			<div class="preview-var preview-var2 bgcol bgcol-compl-2"></div>
+			<div class="preview-var preview-var3 bgcol bgcol-compl-3"></div>
+			<div class="preview-var preview-var4 bgcol bgcol-compl-4"></div>
+		</div>
+
+	</div>
+
+<script type="text/javascript" src="init.js"></script>
+
+</body>
+</html>

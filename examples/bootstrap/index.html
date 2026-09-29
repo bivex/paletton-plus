@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bootstrap 5 – Palette Usage Example</title>
+    <link rel="stylesheet" href="bootstrap.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="../../js/lib/jquery.min.js"></script>
+    <script src="bootstrap.js"></script>
+</head>
+<body class="p-3">
+
+<div class="container-fluid">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg rounded-3 mb-3 px-3 shadow-sm custom-navbar">
+        <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="#">
+            <img src="../../img/logo.png" alt="Logo" width="28" height="28" class="d-inline-block align-text-top rounded-circle">
+            <span>Bootstrap 5</span>
+        </a>
+        <div class="d-flex align-items-center ms-auto gap-2">
+            <ul class="nav nav-pills me-2 d-none d-md-flex">
+                <li class="nav-item"><a class="nav-link active" href="#">Overview</a></li>
+                <li class="nav-item"><a class="nav-link" href="#">Components</a></li>
+                <li class="nav-item"><a class="nav-link" href="#">Tokens</a></li>
+            </ul>
+            <button id="btn-theme-toggle" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" title="Toggle theme">
+                <span id="theme-icon">🌙</span> <span id="theme-label" class="d-none d-sm-inline">Dark</span>
+            </button>
+            <button class="btn btn-sm btn-primary px-3 fw-semibold">Action</button>
+        </div>
+    </nav>
+
+    <!-- Hero / Highlight Banner -->
+    <div class="hero-banner p-4 p-md-4 mb-4 rounded-3 text-white shadow-sm position-relative overflow-hidden">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <div class="badge hero-badge mb-2 px-2.5 py-1.5 fw-medium text-uppercase">Theme System</div>
+                <h2 class="display-6 fw-bold mb-2">Color Scheme in Bootstrap 5</h2>
+                <p class="lead mb-3 fs-6 opacity-90">Every component dynamically binds to your Paletton scheme: Primary, Secondary, Complementary, and adaptive tonal shades.</p>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-light fw-semibold text-primary px-3 shadow-sm">Explore Kit</button>
+                    <button class="btn btn-outline-light px-3">Live Preview</button>
+                </div>
+            </div>
+            <div class="col-lg-4 d-none d-lg-block text-end">
+                <div class="palette-swatches d-flex justify-content-end gap-2">
+                    <div class="swatch swatch-pri" title="Primary"><span>Pri</span></div>
+                    <div class="swatch swatch-sec1" title="Secondary 1"><span>Sec1</span></div>
+                    <div class="swatch swatch-sec2" title="Secondary 2"><span>Sec2</span></div>
+                    <div class="swatch swatch-compl" title="Complement"><span>Cmpl</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Showcase -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="alert alert-primary d-flex align-items-center mb-0 shadow-sm" role="alert">
+                <span class="me-2 fs-5">✦</span>
+                <div>
+                    <strong>Primary Alert:</strong> Live color scheme synced via CSS Custom Properties.
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="alert alert-accent d-flex align-items-center mb-0 shadow-sm" role="alert">
+                <span class="me-2 fs-5">★</span>
+                <div>
+                    <strong>Accent Alert:</strong> Harmony shade selected from complement hue.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards Section -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm custom-card border-top-pri">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="card-title fw-bold mb-0">Primary Theme</h5>
+                        <span class="badge bg-primary">Primary</span>
+                    </div>
+                    <p class="card-text text-muted small">Main brand accent used for prominent calls to action, active navigation, and key interactions.</p>
+                    <div class="progress mb-3" style="height: 8px;">
+                        <div class="progress-bar bg-primary" role="progressbar" style="width: 75%"></div>
+                    </div>
+                    <button class="btn btn-sm btn-primary w-100 fw-medium">Primary Button</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm custom-card border-top-sec1">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="card-title fw-bold mb-0">Secondary Accent</h5>
+                        <span class="badge bg-secondary">Secondary</span>
+                    </div>
+                    <p class="card-text text-muted small">Supporting tone for secondary elements, badges, chips, and muted status indicators.</p>
+                    <div class="progress mb-3" style="height: 8px;">
+                        <div class="progress-bar bg-secondary" role="progressbar" style="width: 50%"></div>
+                    </div>
+                    <button class="btn btn-sm btn-secondary w-100 fw-medium">Secondary Button</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm custom-card border-top-compl">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="card-title fw-bold mb-0">Complementary</h5>
+                        <span class="badge bg-accent">Accent</span>
+                    </div>
+                    <p class="card-text text-muted small">High-contrast accent to draw eyes to notifications, special offers, and primary highlights.</p>
+                    <div class="progress mb-3" style="height: 8px;">
+                        <div class="progress-bar bg-accent" role="progressbar" style="width: 90%"></div>
+                    </div>
+                    <button class="btn btn-sm btn-accent w-100 fw-medium text-white">Accent Button</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interactive Components & Form -->
+    <div class="row g-3 mb-4">
+        <!-- Form Controls -->
+        <div class="col-lg-6">
+            <div class="card p-3 shadow-sm h-100">
+                <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                    <span>⚙</span> Form Controls & Inputs
+                </h6>
+                <div class="row g-2 mb-2">
+                    <div class="col-sm-6">
+                        <label class="form-label small text-muted">Project Name</label>
+                        <input type="text" class="form-control form-control-sm" value="Palette System v4">
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label small text-muted">Design Mode</label>
+                        <select class="form-select form-select-sm">
+                            <option selected>Harmonic (Automatic)</option>
+                            <option>High Contrast</option>
+                            <option>Subtle Monotone</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Saturation Level</label>
+                    <input type="range" class="form-range" min="0" max="100" value="70">
+                </div>
+                <div class="d-flex gap-3 align-items-center">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="switch1" checked>
+                        <label class="form-check-label small" for="switch1">WCAG Compliance</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="chk1" checked>
+                        <label class="form-check-label small" for="chk1">Auto-sync Tokens</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buttons & UI Tokens -->
+        <div class="col-lg-6">
+            <div class="card p-3 shadow-sm h-100">
+                <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                    <span>❖</span> Buttons, Badges & Outline States
+                </h6>
+                <div class="d-flex gap-2 flex-wrap mb-3">
+                    <button class="btn btn-sm btn-primary">Primary</button>
+                    <button class="btn btn-sm btn-secondary">Secondary</button>
+                    <button class="btn btn-sm btn-accent text-white">Accent</button>
+                    <button class="btn btn-sm btn-outline-primary">Outline Pri</button>
+                    <button class="btn btn-sm btn-outline-secondary">Outline Sec</button>
+                    <button class="btn btn-sm btn-outline-accent">Outline Acc</button>
+                </div>
+                <div class="d-flex gap-2 flex-wrap mb-3">
+                    <span class="badge rounded-pill bg-primary">Primary Pill</span>
+                    <span class="badge rounded-pill bg-secondary">Secondary Pill</span>
+                    <span class="badge rounded-pill bg-accent">Accent Pill</span>
+                    <span class="badge rounded-pill bg-info text-dark">Info Shade</span>
+                </div>
+                <div class="stacked-progress rounded p-2 border">
+                    <div class="d-flex justify-content-between small text-muted mb-1">
+                        <span>Palette Utilization</span>
+                        <span class="fw-semibold">100%</span>
+                    </div>
+                    <div class="progress" style="height: 12px;">
+                        <div class="progress-bar bg-primary" style="width: 50%" title="Primary 50%"></div>
+                        <div class="progress-bar bg-secondary" style="width: 30%" title="Secondary 30%"></div>
+                        <div class="progress-bar bg-accent" style="width: 20%" title="Accent 20%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card shadow-sm mb-2 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Role</th>
+                        <th>Token Name</th>
+                        <th>Hex Value</th>
+                        <th>WCAG (on BG)</th>
+                        <th class="text-end pe-3">Preview</th>
+                    </tr>
+                </thead>
+                <tbody id="token-table-body">
+                    <!-- Populated by bootstrap.js -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

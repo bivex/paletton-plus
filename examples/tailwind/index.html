@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tailwind CSS & shadcn/ui – Palette Usage Example</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="../../js/lib/jquery.min.js"></script>
+  <script src="tailwind.js"></script>
+</head>
+<body>
+
+  <!-- Top Navbar / Header -->
+  <header class="flex items-center justify-between border-b pb-3 mb-4">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
+        <img src="../../img/logo.png" alt="Logo" class="rounded-md" width="26" height="26">
+        <span class="font-bold text-base tracking-tight">shadcn/ui</span>
+      </div>
+      <span class="text-muted">/</span>
+      <nav class="flex items-center gap-2 text-sm">
+        <span class="text-muted">Dashboard</span>
+        <span class="text-muted">/</span>
+        <span class="font-medium">Design Tokens</span>
+      </nav>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Search input / ⌘K command trigger -->
+      <div class="inline-flex items-center border rounded-md px-2.5 py-1 text-xs text-muted bg-card shadow-sm cursor-pointer">
+        <span class="mr-2">🔍 Search components…</span>
+        <kbd class="border rounded px-1.5 py-0.5 text-xs bg-muted font-mono">⌘K</kbd>
+      </div>
+
+      <!-- Theme Switcher -->
+      <button id="btn-theme-toggle" class="ui-btn ui-btn-outline ui-btn-sm" title="Toggle theme">
+        <span id="theme-icon">🌙</span> <span id="theme-label">Dark</span>
+      </button>
+
+      <!-- Primary Action -->
+      <button class="ui-btn ui-btn-primary ui-btn-sm">
+        <span>+</span> <span>New Palette</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Metric / Stat Cards Grid -->
+  <div class="grid grid-cols-3 gap-3 mb-4">
+    <!-- Card 1: Primary Metric -->
+    <div class="ui-card p-4">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-xs font-medium text-muted">Primary Brand Power</span>
+        <span class="ui-badge ui-badge-primary text-xs">Primary</span>
+      </div>
+      <div class="text-2xl font-bold mb-1" id="stat-pri-hex">#18181b</div>
+      <div class="flex items-center gap-1 text-xs text-muted">
+        <span class="text-primary font-semibold">↑ 98.4%</span>
+        <span>contrast compliance</span>
+      </div>
+      <div class="ui-progress mt-3">
+        <div class="ui-progress-value" style="width: 85%;"></div>
+      </div>
+    </div>
+
+    <!-- Card 2: Secondary Metric -->
+    <div class="ui-card p-4">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-xs font-medium text-muted">Secondary Accent</span>
+        <span class="ui-badge ui-badge-secondary text-xs">Secondary</span>
+      </div>
+      <div class="text-2xl font-bold mb-1" id="stat-sec-hex">#f4f4f5</div>
+      <div class="flex items-center gap-1 text-xs text-muted">
+        <span class="font-semibold text-secondary">Balanced tone</span>
+        <span>for sub-elements</span>
+      </div>
+      <div class="ui-progress mt-3">
+        <div class="ui-progress-value" id="prog-sec" style="width: 60%; background-color: var(--secondary-foreground);"></div>
+      </div>
+    </div>
+
+    <!-- Card 3: Complementary / Accent Metric -->
+    <div class="ui-card p-4">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-xs font-medium text-muted">Complementary Accent</span>
+        <span class="ui-badge ui-badge-accent text-xs">Accent</span>
+      </div>
+      <div class="text-2xl font-bold mb-1" id="stat-acc-hex">#e67e22</div>
+      <div class="flex items-center gap-1 text-xs text-muted">
+        <span class="text-accent font-semibold">Focal point</span>
+        <span>for conversion items</span>
+      </div>
+      <div class="ui-progress mt-3">
+        <div class="ui-progress-value" id="prog-acc" style="width: 92%; background-color: var(--accent);"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs Navigation -->
+  <div class="flex items-center justify-between mb-4">
+    <div class="ui-tabs-list">
+      <div class="ui-tab-trigger active">Overview</div>
+      <div class="ui-tab-trigger">Components</div>
+      <div class="ui-tab-trigger">Tokens</div>
+      <div class="ui-tab-trigger">Accessibility</div>
+    </div>
+    <div class="flex items-center gap-2 text-xs text-muted">
+      <span>Auto-synced with Paletton Color Engine</span>
+    </div>
+  </div>
+
+  <!-- Two Column Content Area -->
+  <div class="grid grid-cols-2 gap-4 mb-4">
+    <!-- Left Column: Component Showcase -->
+    <div class="ui-card p-4 flex flex-col gap-3">
+      <div class="flex items-center justify-between border-b pb-2">
+        <h3 class="font-semibold text-sm m-0">Buttons & Variants</h3>
+        <span class="text-xs text-muted">shadcn/ui Button</span>
+      </div>
+
+      <!-- Button Row -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button class="ui-btn ui-btn-primary">Primary</button>
+        <button class="ui-btn ui-btn-secondary">Secondary</button>
+        <button class="ui-btn ui-btn-outline">Outline</button>
+        <button class="ui-btn ui-btn-ghost">Ghost</button>
+        <button class="ui-btn ui-btn-accent">Accent</button>
+      </div>
+
+      <!-- Badges -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="ui-badge ui-badge-primary">Badge Primary</span>
+        <span class="ui-badge ui-badge-secondary">Secondary</span>
+        <span class="ui-badge ui-badge-outline">Outline Pill</span>
+        <span class="ui-badge ui-badge-accent">Accent Pill</span>
+      </div>
+
+      <!-- Callout / Alert Card -->
+      <div class="border rounded-md p-3 text-xs flex items-center gap-2" style="background-color: rgba(var(--primary-rgb), 0.06); border-color: rgba(var(--primary-rgb), 0.2);">
+        <span class="text-primary font-bold text-sm">✦</span>
+        <div>
+          <span class="font-semibold text-primary">Dynamic HSL/OKLCH Token System:</span>
+          <span class="text-muted">Changes made on the Paletton wheel stream instantly into CSS custom properties.</span>
+        </div>
+      </div>
+
+      <!-- Interactive Controls -->
+      <div class="grid grid-cols-2 gap-3 pt-1">
+        <div>
+          <label class="text-xs text-muted font-medium mb-1 block">Component Opacity</label>
+          <input type="range" class="ui-range mt-1" min="0" max="100" value="85">
+        </div>
+        <div class="flex items-center justify-between border rounded-md p-2">
+          <div>
+            <div class="text-xs font-medium">Dark Mode Sync</div>
+            <div class="text-xs text-muted">Auto tokens</div>
+          </div>
+          <label class="ui-switch">
+            <input type="checkbox" checked>
+            <span class="ui-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Design Tokens & Accessibility Table -->
+    <div class="ui-card p-4">
+      <div class="flex items-center justify-between border-b pb-2 mb-2">
+        <h3 class="font-semibold text-sm m-0">shadcn Token Mappings</h3>
+        <span class="text-xs text-muted">WCAG 2.1 Contrast</span>
+      </div>
+
+      <table class="ui-table">
+        <thead>
+          <tr>
+            <th>Token Name</th>
+            <th>Value</th>
+            <th>Contrast</th>
+            <th style="text-align: right;">Swatch</th>
+          </tr>
+        </thead>
+        <tbody id="token-table-body">
+          <!-- Populated dynamically by tailwind.js -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</body>
+</html>

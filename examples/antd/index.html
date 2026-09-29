@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ant Design – Palette Usage Example</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="../../js/lib/jquery.min.js"></script>
+  <script src="antd.js"></script>
+</head>
+<body>
+
+  <!-- AntD Top Navigation Header -->
+  <header class="ant-header flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <img src="../../img/logo.png" alt="Logo" class="rounded-sm" width="28" height="28">
+      <div>
+        <div class="font-bold text-sm leading-tight">Ant Design</div>
+        <div class="text-xs text-secondary">Enterprise UI Design System</div>
+      </div>
+      <div class="ant-menu-bar ml-3">
+        <div class="ant-menu-item selected">Dashboard</div>
+        <div class="ant-menu-item">Analytics</div>
+        <div class="ant-menu-item">Design Tokens</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Theme Switcher -->
+      <button id="btn-theme-toggle" class="ant-btn ant-btn-default ant-btn-sm" title="Toggle theme">
+        <span id="theme-icon">🌙</span> <span id="theme-label">Dark</span>
+      </button>
+
+      <!-- Primary Action -->
+      <button class="ant-btn ant-btn-primary ant-btn-sm">
+        <span>+</span> <span>Export Config</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Metric Statistics Cards -->
+  <div class="grid grid-cols-3 gap-3 mb-4">
+    <!-- Stat 1 -->
+    <div class="ant-card">
+      <div class="flex justify-between items-center text-xs text-secondary mb-1">
+        <span>Primary Token Flow</span>
+        <span class="ant-tag ant-tag-primary font-mono" id="stat-pri-tag">#...</span>
+      </div>
+      <div class="text-2xl font-bold mb-1" id="stat-pri-val">$148,290</div>
+      <div class="flex items-center justify-between text-xs text-secondary mb-2">
+        <span>Brand Saturation: <strong class="text-primary">+14.2%</strong></span>
+        <span>Goal: 100%</span>
+      </div>
+      <div class="ant-progress-line">
+        <div class="ant-progress-bg" style="width: 78%;"></div>
+      </div>
+    </div>
+
+    <!-- Stat 2 -->
+    <div class="ant-card">
+      <div class="flex justify-between items-center text-xs text-secondary mb-1">
+        <span>Secondary Harmony</span>
+        <span class="ant-tag ant-tag-success" id="stat-sec-tag">Active</span>
+      </div>
+      <div class="text-2xl font-bold mb-1" id="stat-sec-val">99.4%</div>
+      <div class="flex items-center justify-between text-xs text-secondary mb-2">
+        <span>WCAG Compliance: <strong style="color: var(--ant-color-secondary);">AAA Pass</strong></span>
+        <span>Zero contrast failure</span>
+      </div>
+      <div class="ant-progress-line">
+        <div class="ant-progress-bg" id="sec-prog" style="width: 95%; background-color: var(--ant-color-secondary);"></div>
+      </div>
+    </div>
+
+    <!-- Stat 3 -->
+    <div class="ant-card">
+      <div class="flex justify-between items-center text-xs text-secondary mb-1">
+        <span>Complement Accent</span>
+        <span class="ant-tag ant-tag-warning" id="stat-acc-tag">Focal Point</span>
+      </div>
+      <div class="text-2xl font-bold mb-1" id="stat-acc-val">12 Actions</div>
+      <div class="flex items-center justify-between text-xs text-secondary mb-2">
+        <span>Conversion Triggers</span>
+        <span>High Priority</span>
+      </div>
+      <div class="ant-progress-line">
+        <div class="ant-progress-bg" id="acc-prog" style="width: 65%; background-color: var(--ant-color-accent);"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content 2-Column Grid -->
+  <div class="grid grid-cols-2 gap-3 mb-4">
+    <!-- Left Column: Components Sandbox -->
+    <div class="ant-card flex flex-col gap-3">
+      <div class="flex items-center justify-between border-b pb-2">
+        <div class="font-semibold text-sm">Enterprise Components</div>
+        <div class="text-xs text-secondary">AntD ConfigProvider Tokens</div>
+      </div>
+
+      <!-- AntD Buttons -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button class="ant-btn ant-btn-primary">Primary</button>
+        <button class="ant-btn ant-btn-default">Default</button>
+        <button class="ant-btn ant-btn-dashed">Dashed</button>
+        <button class="ant-btn ant-btn-text">Text</button>
+      </div>
+
+      <!-- AntD Tags & Status Badges -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="ant-tag ant-tag-primary"><span class="ant-badge-status-dot primary"></span>Processing</span>
+        <span class="ant-tag ant-tag-success"><span class="ant-badge-status-dot success"></span>Success</span>
+        <span class="ant-tag ant-tag-warning"><span class="ant-badge-status-dot warning"></span>Warning</span>
+        <span class="ant-tag">Standard Tag</span>
+      </div>
+
+      <!-- AntD Steps -->
+      <div class="ant-steps mt-1">
+        <div class="ant-step finished">
+          <div class="ant-step-icon">✓</div>
+          <div>Color Set</div>
+        </div>
+        <div class="ant-step active">
+          <div class="ant-step-icon">2</div>
+          <div class="font-medium text-primary">Harmonies</div>
+        </div>
+        <div class="ant-step">
+          <div class="ant-step-icon">3</div>
+          <div class="text-secondary">Deploy</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Interactive Form Controls -->
+    <div class="ant-card flex flex-col gap-3">
+      <div class="flex items-center justify-between border-b pb-2">
+        <div class="font-semibold text-sm">Form Inputs & Elevation</div>
+        <div class="text-xs text-secondary">Theme Binding</div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-xs text-secondary mb-1 block">Project Scope</label>
+          <input type="text" class="ant-input" value="B2B Enterprise Cloud">
+        </div>
+        <div>
+          <label class="text-xs text-secondary mb-1 block">Config Target</label>
+          <select class="ant-input">
+            <option>Ant Design v5.x</option>
+            <option>ProComponents</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between p-2 rounded" style="background-color: var(--ant-color-bg-layout);">
+        <div>
+          <div class="text-xs font-semibold">Tonal Auto-Scale Binding</div>
+          <div class="text-xs text-secondary">Synchronize hover/active states</div>
+        </div>
+        <button class="ant-btn ant-btn-primary ant-btn-sm">Apply Tokens</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enterprise Data Table -->
+  <div class="ant-card p-0 overflow-hidden mb-2">
+    <table class="ant-table">
+      <thead>
+        <tr>
+          <th>Design Token</th>
+          <th>Semantic Role</th>
+          <th>Hex Code</th>
+          <th>WCAG 2.1 Ratio</th>
+          <th style="text-align: right;">Preview</th>
+        </tr>
+      </thead>
+      <tbody id="token-table-body">
+        <!-- Populated dynamically by antd.js -->
+      </tbody>
+    </table>
+    <div class="ant-pagination px-3 pb-3">
+      <span class="text-xs text-secondary mr-2">Total 6 Tokens</span>
+      <div class="ant-pagination-item">&lt;</div>
+      <div class="ant-pagination-item active">1</div>
+      <div class="ant-pagination-item">2</div>
+      <div class="ant-pagination-item">&gt;</div>
+    </div>
+  </div>
+
+</body>
+</html>

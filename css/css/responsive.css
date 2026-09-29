@@ -1,0 +1,510 @@
+@media screen and (max-width: 992px) {
+  #app {
+    width: 768px;
+    height: 1310px;
+  }
+
+  #header .logo {
+    width: 250px;
+    height: 70px;
+    background-image: url('../../img/logo.png');
+    background-size: 60px 60px;
+    background-repeat: no-repeat;
+    background-position: left center;
+  }
+
+  #header .likes {
+    /* TODO: now this is not work properly, need to clarification about it */
+    display: none;
+  }
+
+  #content #panebox-r {
+    left: 0;
+    top: 530px;
+  }
+
+  #content #panebox-l,
+  #content #panebox-r {
+    width: 100%;
+    height: 500px;
+  }
+
+  #content #panebox-l .pane-wheel .pane-tab,
+  #content #panebox-l .pane-presets .pane-tab {
+    width: 50%;
+  }
+
+  #content #panebox-l .pane-presets .pane-tab {
+    left: auto;
+    right: 0;
+  }
+
+  .control-wheel {
+    left: 50%;
+    margin-left: -200px;
+  }
+
+  .control-model-inline .info {
+    left: auto;
+    right: 0;
+  }
+
+  #footer {
+    bottom: 0;
+    top: 1400px;
+  }
+
+  .ui-menu:not(.control-menu),
+  .ui-dialog {
+    width: 100% !important;
+  }
+
+  #google-dfp-bottom {
+    top: 685px;
+  }
+}
+
+@media screen and (max-width: 790px) {
+  #app {
+    width: 100%;
+    height: 1380px;
+    top: 0;
+  }
+
+  #content #menu {
+    top: -40px;
+    z-index: 9;
+    left: 0;
+    right: auto;
+  }
+
+  .control-wheel {
+    margin-left: -100px;
+    top: 50%;
+    margin-top: -70px;
+  }
+
+  #content #menu .control-button {
+    margin-left: 0;
+    padding: 0 7px;
+    font-size: 11px;
+  }
+
+  #header .logo {
+    width: 250px;
+    height: 70px;
+    background-image: url('../../img/logo.png');
+    background-size: 60px 60px;
+    background-repeat: no-repeat;
+    background-position: left center;
+  }
+
+  .control-wheel .wheel-tile {
+    width: 100px;
+    height: 100px;
+    background-size: contain;
+  }
+
+  .control-wheel .wheel-tile.tile-2 {
+    left: 100px;
+  }
+
+  .control-wheel .wheel-tile.tile-3 {
+    top: 99px;
+  }
+
+  .control-wheel .wheel-tile.tile-4 {
+    left: 100px;
+    top: 99px;
+  }
+
+  .control-wheel .clickable {
+    background-size: 95.6%;
+  }
+
+  .control-wheel .infopane {
+    left: 50%;
+    margin-left: -60px;
+    top: 20px;
+  }
+
+  .control-wheel .wheel-bgcol {
+    top: 45px;
+    left: 45px;
+    width: 110px;
+    height: 110px;
+  }
+
+  #content #panebox-r .pane-palette .pane-content-palette-desc {
+    text-align: left;
+  }
+  #content #panebox-r .pane-palette .pane-content-palette-share {
+    top: -2px;
+    left: auto;
+    right: 0;
+  }
+
+  #content #panebox-r .pane-palette .pane-content-palette {
+    top: 20px;
+    width: 100%;
+    left: 0;
+  }
+
+  .control-palette.big table {
+    width: 100%;
+    max-width: 380px;
+  }
+
+  #content #panebox-r .pane-palette {
+    width: 380px;
+    left: 50%;
+    transform: translateX(-50%);
+    right: auto;
+  }
+}
+
+@media screen and (max-width: 670px) {
+  #header {
+    height: 130px;
+  }
+
+  #content #menu {
+    top: -20px;
+  }
+
+  #reklambox-bottom {
+    top: 130px;
+  }
+
+  #header .tbr {
+    height: 50px;
+  }
+
+  #header .promo {
+    left: 25px;
+    top: 25px;
+    right: auto;
+  }
+
+  #header .promo a:first-of-type {
+    margin-left: 0;
+  }
+
+  #header .logo {
+    top: 53px;
+  }
+}
+@media screen and (max-width: 480px) {
+ #content #panebox-r{
+   top: 800px;
+ }
+  #google-dfp-bottom{
+    height: 280px;
+  }
+  #footer {
+    top: 1480px;
+  }
+}
+@media screen and (max-width: 444px) {
+  .control-palette.big table {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  #content #panebox-r .pane-palette {
+    width: 280px;
+    left: 50%;
+    transform: translateX(-50%);
+    right: auto;
+  }
+
+  .mobile-menu {
+    z-index: 999;
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    background: #282828;
+    top: 20px;
+    right: 175px;
+  }
+
+  .ui-dialog-content.dlg-colorlist .cover,
+  .ui-dialog-content.dlg-examples .cover {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ui-dialog-content.dlg-colorlist .cover .list-content,
+  .ui-dialog-content.dlg-examples .cover .list-content {
+    margin-right: 0;
+    padding-right: 7px;
+  }
+
+  .ui-dialog-content.dlg-colorlist .cover .list-menu,
+  .ui-dialog-content.dlg-examples .cover .list-menu {
+    height: auto;
+    padding-bottom: 60px;
+    width: calc(100% - 180px);
+  }
+
+  .ui-dialog-content.dlg-colorlist .cover .list-tools,
+  .ui-dialog-content.dlg-examples .cover .list-tools {
+    top: 5px;
+    bottom: auto;
+  }
+
+  .ui-dialog-content.dlg-colorlist .cover .list-content,
+  .ui-dialog-content.dlg-colorlist .cover .list-content .table {
+    overflow: auto;
+  }
+}
+
+@media screen and (max-width: 430px) {
+  #content #panebox-l .pane-wheel .pane-content .btn-dist {
+    top: 135px;
+  }
+
+  #header .logo {
+    width: 180px;
+  }
+
+  .control-model-inline {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .control-model-inline .info {
+    top: 60px;
+  }
+
+  #reklambox-bottom .donate {
+    top: -50px;
+  }
+
+  #content #menu {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .control.control-button.undo,
+  .control.control-button.redo {
+    width: 50%;
+  }
+
+  .control.control-button.reset,
+  .control.control-button.randomize,
+  .control.control-button.about {
+    width: 33%;
+  }
+
+  .control.control-button.undo,
+  .control.control-button.redo,
+  .control.control-button.reset,
+  .control.control-button.randomize,
+  .control.control-button.about {
+    line-height: 1;
+  }
+
+  #content .pane .pane-content {
+    top: 30px;
+  }
+
+  #content #menu .control-button {
+    padding: 0;
+  }
+
+  #content #panebox-l .pane-presets {
+    top: 120px;
+  }
+
+  .control-presets {
+    height: 100%;
+    overflow: auto;
+  }
+
+  .control-presets ul {
+    width: 100%;
+    height: 100%;
+  }
+
+  #content #panebox-r .pane-preview .pane-tab,
+  #content #panebox-r .pane-examples .pane-tab,
+  #content #panebox-r .pane-colorlist .pane-tab {
+    width: 33%;
+    font-size: 10px;
+  }
+
+  #content #panebox-r .pane-examples .pane-tab {
+    left: 33%;
+  }
+
+  #content #panebox-r .pane-colorlist .pane-tab {
+    left: 66%;
+  }
+
+  #content #panebox-r .pane-preview .pane-convert-preview {
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 8px;
+    right: auto;
+  }
+
+  .ui-menu .ui-menu-item a {
+    padding: 3px 5px;
+    line-height: 1;
+  }
+
+  .ui-menu .ui-menu-item {
+    font-size: 12px;
+  }
+
+  #ui-id-7 {
+    left: 20px !important;
+  }
+}
+
+/* Responsive copy format bar and tonal strip */
+@media screen and (max-width: 960px) {
+  #content #panebox-r .pane-palette .pane-palette-copyfmt {
+    top: -2px;
+    left: auto;
+    right: 0;
+  }
+  #content #panebox-r .pane-palette .pane-tonal-strip-container {
+    top: 52px;
+    left: 0;
+    width: 100%;
+  }
+}
+
+/* Randomizer Dialog & Profiles UI */
+.ui-dialog.dlg-random {
+  max-width: 360px !important;
+}
+.control-random {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #ccc;
+  padding: 4px;
+}
+.control-random .rand-section-title {
+  clear: both;
+  padding: 10px 0 4px;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  color: #8899a6;
+  text-transform: uppercase;
+}
+.control-random .rand-btn-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+.control-random button.rand-btn-pill {
+  float: none !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 28px !important;
+  margin: 0 !important;
+  padding: 6px 8px !important;
+  flex: 1 1 calc(50% - 6px);
+  min-width: 130px;
+  background: #182836;
+  color: #8acaff;
+  border: 1px solid #233e54;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+.control-random button.rand-btn-pill:hover {
+  background: #24415c;
+  color: #ffffff;
+  border-color: #61b5ff;
+}
+.control-random button.rand-btn-pill.compact {
+  flex: 1 1 calc(33.3% - 6px);
+  min-width: 80px;
+  font-size: 10px;
+  padding: 5px 4px !important;
+}
+.control-random button.rand-btn-action {
+  float: none !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 38px !important;
+  margin: 0 0 6px 0 !important;
+  background: linear-gradient(135deg, #1b354e 0%, #204568 100%);
+  color: #7dd3fc;
+  border: 1px solid #38bdf8;
+  border-radius: 4px;
+  padding: 7px 10px !important;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  box-sizing: border-box;
+}
+.control-random button.rand-btn-action:hover {
+  background: linear-gradient(135deg, #254b70 0%, #2c5f8e 100%);
+  color: #ffffff;
+  border-color: #bae6fd;
+}
+.control-random button.rand-btn-action small {
+  display: block;
+  font-size: 9px;
+  opacity: 0.85;
+  font-weight: normal;
+  margin-top: 1px;
+}
+.control-random .rand-contrast-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #101c26;
+  border: 1px solid #1e3549;
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+.control-random .rand-contrast-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+  font-size: 10px;
+}
+.rand-fav-item {
+  transition: transform 0.1s ease, border-color 0.1s ease;
+}
+.rand-fav-item:hover {
+  border-color: #61b5ff !important;
+}
+
+.ui-dialog.dlg-favorites {
+  max-width: 440px !important;
+}
+
+.control-random .btn-0-1,
+.control-random .btn-1-1,
+.control-random .btn-0-0,
+.control-random .btn-1-0 {
+  float: left !important;
+  width: calc(50% - 4px) !important;
+  height: 36px !important;
+  margin: 2px !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  padding: 2px 4px !important;
+  box-sizing: border-box !important;
+}
+

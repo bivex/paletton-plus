@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Preview - UI Mockup</title>
+    <link rel="stylesheet" type="text/css" href="../css/jqui/jquery-ui-1.10.4.custom.css">
+    <link rel="stylesheet" type="text/css" href="./common.css">
+    <script type="text/javascript" src="../js/lib/jquery.min.js"></script>
+    <style>
+html, body { overflow-x: hidden; margin: 0; padding: 0 8px; background: transparent; box-sizing: border-box; }
+
+:root {
+    --pri:    #3b82f6;
+    --pri-dk: #1d4ed8;
+    --pri-lt: #93c5fd;
+    --sec:    #10b981;
+    --compl:  #f59e0b;
+    --surface:#1e2533;
+    --surf-lt:#2a3348;
+    --surf-vl:#111827;
+    --text:   #e2e8f0;
+    --text-mu:#94a3b8;
+    --brd:    rgba(255,255,255,.10);
+    --rad:    8px;
+    --shd:    0 4px 16px rgba(0,0,0,.35);
+}
+
+.mockup {
+    width: 100%;
+    max-width: 720px;
+    min-height: 400px;
+    background: var(--surface);
+    border-radius: 12px;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    margin: 6px auto;
+    box-shadow: var(--shd);
+    box-sizing: border-box;
+}
+
+/* ── Navbar ── */
+.nav {
+    display: flex;
+    align-items: center;
+    background: var(--surf-vl);
+    border-bottom: 1px solid var(--brd);
+    padding: 0 16px;
+    height: 44px;
+    gap: 8px;
+}
+.nav-brand {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--pri-lt);
+    flex: 1;
+}
+.nav-item {
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: var(--text-mu);
+    font-size: 12px;
+    cursor: pointer;
+}
+.nav-item.active {
+    background: var(--surf-lt);
+    color: var(--text);
+}
+.nav-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--pri);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    color: #fff;
+}
+
+/* ── Body layout ── */
+.body {
+    display: flex;
+    gap: 12px;
+    padding: 14px;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+    width: 130px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.side-item {
+    padding: 7px 10px;
+    border-radius: 6px;
+    color: var(--text-mu);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.side-item.active {
+    background: color-mix(in srgb, var(--pri) 18%, transparent);
+    color: var(--pri-lt);
+    border-left: 3px solid var(--pri);
+}
+.side-icon {
+    width: 14px; height: 14px;
+    border-radius: 3px;
+    background: currentColor;
+    opacity: .5;
+}
+.side-item.active .side-icon { opacity: 1; }
+
+/* ── Main content ── */
+.content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ── Stats row ── */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+.stat-card {
+    background: var(--surf-lt);
+    border: 1px solid var(--brd);
+    border-radius: var(--rad);
+    padding: 10px 12px;
+}
+.stat-card:first-child {
+    border-left: 3px solid var(--pri);
+}
+.stat-card:nth-child(2) {
+    border-left: 3px solid var(--sec);
+}
+.stat-card:nth-child(3) {
+    border-left: 3px solid var(--compl);
+}
+.stat-val {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+}
+.stat-lbl {
+    font-size: 10px;
+    color: var(--text-mu);
+    margin-top: 3px;
+}
+
+/* ── Card ── */
+.card {
+    background: var(--surf-lt);
+    border: 1px solid var(--brd);
+    border-radius: var(--rad);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+/* ── Form ── */
+.form-row { display: flex; gap: 6px; }
+.form-input {
+    flex: 1;
+    padding: 6px 10px;
+    background: var(--surface);
+    border: 1px solid var(--brd);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    outline: none;
+    font-family: inherit;
+}
+.form-input:focus {
+    border-color: var(--pri);
+}
+
+/* ── Buttons ── */
+.btn-row { display: flex; gap: 6px; align-items: center; }
+.btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    line-height: 1.4;
+}
+.btn-primary {
+    background: var(--pri);
+    color: #fff;
+}
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--brd);
+    color: var(--text-mu);
+}
+.btn-success {
+    background: var(--sec);
+    color: #fff;
+}
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+}
+.badge-warn {
+    background: color-mix(in srgb, var(--compl) 20%, transparent);
+    color: var(--compl);
+}
+.badge-ok {
+    background: color-mix(in srgb, var(--sec) 20%, transparent);
+    color: var(--sec);
+}
+
+/* ── Progress ── */
+.progress-lbl { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-mu); }
+.progress-bar { height: 4px; border-radius: 2px; background: var(--brd); margin-top: 4px; }
+.progress-fill { height: 100%; border-radius: 2px; background: var(--pri); width: 68%; }
+.progress-fill2 { height: 100%; border-radius: 2px; background: var(--sec); width: 42%; margin-top: 6px; }
+
+/* ── Table ── */
+.mini-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.mini-table th { color: var(--text-mu); text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--brd); font-weight: 500; }
+.mini-table td { padding: 5px 6px; color: var(--text); vertical-align: middle; }
+.mini-table tr:nth-child(even) td { background: rgba(255,255,255,.03); }
+.mini-table .dot {
+    display: inline-block; width: 6px; height: 6px;
+    border-radius: 50%; margin-right: 5px;
+    background: var(--pri);
+    vertical-align: middle;
+}
+.mini-table .dot.sec { background: var(--sec); }
+.mini-table .dot.warn { background: var(--compl); }
+
+/* Colorize bridge: standard bgcol classes (not used here — we use CSS vars) */
+    </style>
+</head>
+<body>
+<div class="mockup">
+    <!-- Navbar -->
+    <div class="nav">
+        <div class="nav-brand">● Palette</div>
+        <div class="nav-item active">Dashboard</div>
+        <div class="nav-item">Analytics</div>
+        <div class="nav-item">Settings</div>
+        <div class="nav-avatar bgcol-pri-0" title="" col-data="">UA</div>
+    </div>
+
+    <div class="body">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="side-item active"><div class="side-icon"></div> Overview</div>
+            <div class="side-item"><div class="side-icon"></div> Projects</div>
+            <div class="side-item"><div class="side-icon"></div> Team</div>
+            <div class="side-item"><div class="side-icon"></div> Reports</div>
+            <div class="side-item"><div class="side-icon"></div> Billing</div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Stats -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-val">2,847</div>
+                    <div class="stat-lbl">Users</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val">94%</div>
+                    <div class="stat-lbl">Uptime</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-val">$12k</div>
+                    <div class="stat-lbl">Revenue</div>
+                </div>
+            </div>
+
+            <!-- Form card -->
+            <div class="card">
+                <div class="card-title">New Project</div>
+                <div class="form-row">
+                    <input class="form-input" placeholder="Project name…" value="My Design System" readonly>
+                    <input class="form-input" placeholder="Tag…" value="v2.0" readonly style="width:64px;flex:none">
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary bgcol-pri-0" title="" col-data="">Create</button>
+                    <button class="btn btn-success bgcol-sec1-0" title="" col-data="">Save Draft</button>
+                    <button class="btn btn-outline">Cancel</button>
+                    <span class="badge badge-warn">Beta</span>
+                    <span class="badge badge-ok">Live</span>
+                </div>
+            </div>
+
+            <!-- Progress card -->
+            <div class="card">
+                <div class="card-title">Progress</div>
+                <div class="progress-lbl"><span>Primary Goal</span><span>68%</span></div>
+                <div class="progress-bar"><div class="progress-fill bgcol-pri-0" title="" col-data=""></div></div>
+                <div class="progress-lbl" style="margin-top:6px"><span>Secondary Goal</span><span>42%</span></div>
+                <div class="progress-bar"><div class="progress-fill2 bgcol-sec1-0" title="" col-data=""></div></div>
+            </div>
+
+            <!-- Mini table -->
+            <div class="card">
+                <table class="mini-table">
+                    <tr>
+                        <th>Name</th><th>Role</th><th>Status</th>
+                    </tr>
+                    <tr>
+                        <td><span class="dot"></span>Alice</td>
+                        <td>Designer</td>
+                        <td><span class="badge badge-ok">Active</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="dot sec"></span>Bob</td>
+                        <td>Developer</td>
+                        <td><span class="badge badge-ok">Active</span></td>
+                    </tr>
+                    <tr>
+                        <td><span class="dot warn"></span>Carol</td>
+                        <td>Manager</td>
+                        <td><span class="badge badge-warn">Away</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+
+// ── Colorize bridge ──
+// The app calls palette.colorize() which sets .bgcol-pri-0, .bgcol-sec1-0 etc
+// We intercept that and also update CSS variables for semantic colors.
+
+function hexToRgb(hex) {
+    hex = hex.replace(/^#?/, '');
+    if (hex.length === 3) hex = hex.split('').map(c=>c+c).join('');
+    var r = parseInt(hex.slice(0,2),16);
+    var g = parseInt(hex.slice(2,4),16);
+    var b = parseInt(hex.slice(4,6),16);
+    return {r,g,b};
+}
+
+// Perceived luminance
+function lum(r,g,b) {
+    var f = function(c) { c/=255; return c<0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4); };
+    return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b);
+}
+
+function lighten(hex, amount) {
+    var c = hexToRgb(hex);
+    return 'rgb('+Math.min(255,Math.round(c.r*(1+amount)))+','+Math.min(255,Math.round(c.g*(1+amount)))+','+Math.min(255,Math.round(c.b*(1+amount)))+')';
+}
+
+function darken(hex, amount) {
+    var c = hexToRgb(hex);
+    return 'rgb('+Math.round(c.r*(1-amount))+','+Math.round(c.g*(1-amount))+','+Math.round(c.b*(1-amount))+')';
+}
+
+function mixWithBlack(hex, t) {
+    var c = hexToRgb(hex);
+    return 'rgb('+Math.round(c.r*t)+','+Math.round(c.g*t)+','+Math.round(c.b*t)+')';
+}
+
+function contrastText(hex) {
+    var c = hexToRgb(hex);
+    return lum(c.r,c.g,c.b) > 0.18 ? '#1a1a1a' : '#f0f4f8';
+}
+
+function applyColors(priHex, sec1Hex, sec2Hex, complHex) {
+    var root = document.documentElement;
+    if (priHex) {
+        root.style.setProperty('--pri', '#'+priHex);
+        root.style.setProperty('--pri-dk', darken('#'+priHex, 0.2));
+        root.style.setProperty('--pri-lt', lighten('#'+priHex, 0.5));
+        // surface is a very dark version of primary
+        var c = hexToRgb(priHex);
+        var surfR = Math.round(c.r*0.08 + 10);
+        var surfG = Math.round(c.g*0.08 + 16);
+        var surfB = Math.round(c.b*0.08 + 22);
+        root.style.setProperty('--surface', 'rgb('+surfR+','+surfG+','+surfB+')');
+        root.style.setProperty('--surf-lt', 'rgb('+(surfR+12)+','+(surfG+12)+','+(surfB+16)+')');
+        root.style.setProperty('--surf-vl', 'rgb('+(surfR-4)+','+(surfG-4)+','+(surfB-4)+')');
+    }
+    if (sec1Hex) root.style.setProperty('--sec', '#'+sec1Hex);
+    if (complHex) root.style.setProperty('--compl', '#'+complHex);
+    else if (sec2Hex) root.style.setProperty('--compl', '#'+sec2Hex);
+
+    // Update button text colors for contrast
+    document.querySelectorAll('.btn-primary').forEach(function(el) {
+        if (priHex) el.style.color = contrastText(priHex);
+    });
+    document.querySelectorAll('.btn-success').forEach(function(el) {
+        if (sec1Hex) el.style.color = contrastText(sec1Hex);
+    });
+}
+
+// Watch for bgcol updates from Paletton colorize
+var lastPri = '', lastSec1 = '', lastCompl = '';
+function checkColors() {
+    var priEl = document.querySelector('.bgcol-pri-0');
+    var sec1El = document.querySelector('.bgcol-sec1-0');
+    var complEl = document.querySelector('.bgcol-compl-0');
+    var priHex = priEl ? priEl.getAttribute('col-data') : '';
+    var sec1Hex = sec1El ? sec1El.getAttribute('col-data') : '';
+    var complHex = complEl ? complEl.getAttribute('col-data') : '';
+    if (priHex && (priHex !== lastPri || sec1Hex !== lastSec1 || complHex !== lastCompl)) {
+        lastPri = priHex; lastSec1 = sec1Hex; lastCompl = complHex;
+        applyColors(priHex, sec1Hex, null, complHex);
+    }
+}
+
+// MutationObserver to react to style changes
+var observer = new MutationObserver(function() { checkColors(); });
+observer.observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['style'] });
+
+// Poll fallback
+setInterval(checkColors, 500);
+</script>
+<script type="text/javascript" src="./init.js"></script>
+</body>
+</html>

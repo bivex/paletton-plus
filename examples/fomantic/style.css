@@ -1,0 +1,217 @@
+/* Fomantic-UI Palette Showcase Styles */
+
+:root {
+    --fom-pri: #00b5ad;
+    --fom-pri-rgb: 0, 181, 173;
+    --fom-sec1: #2185d0;
+    --fom-sec1-rgb: 33, 133, 208;
+    --fom-sec2: #6435c9;
+    --fom-sec2-rgb: 100, 53, 201;
+    --fom-compl: #f2711c;
+    --fom-compl-rgb: 242, 113, 28;
+    --fom-bg: #f7f9fa;
+    --fom-text: #1b1c1d;
+    --fom-card-bg: #ffffff;
+}
+
+body.fomantic-body {
+    background-color: var(--fom-bg);
+    color: var(--fom-text);
+    padding: 1rem;
+    font-size: 13px;
+    transition: background-color 0.25s ease, color 0.25s ease;
+    min-height: 100vh;
+}
+
+body.dark-mode {
+    --fom-bg: #131518;
+    --fom-text: #e0e6ed;
+    --fom-card-bg: #1c1f24;
+}
+
+body.dark-mode .ui.segment {
+    background: #1c1f24;
+    color: #e0e6ed;
+    border-color: rgba(255,255,255,0.1);
+}
+
+body.dark-mode #btn-theme-toggle {
+    color: #e0e6ed !important;
+    border-color: rgba(255,255,255,0.3) !important;
+}
+
+body.dark-mode .ui.header {
+    color: #e0e6ed;
+}
+
+body.dark-mode .ui.header .sub.header {
+    color: #94a3b8;
+}
+
+body.dark-mode .ui.card {
+    background: #1c1f24;
+    border-color: rgba(255,255,255,0.1);
+}
+
+body.dark-mode .ui.card > .content > .header {
+    color: #e0e6ed;
+}
+
+body.dark-mode .ui.card > .content > .description {
+    color: #94a3b8;
+}
+
+body.dark-mode .ui.card > .extra {
+    border-top-color: rgba(255,255,255,0.1);
+}
+
+body.dark-mode .ui.steps .step {
+    background: #1c1f24;
+    color: #e0e6ed;
+}
+
+body.dark-mode .ui.steps .step .title {
+    color: #e0e6ed;
+}
+
+body.dark-mode .ui.table {
+    background: #1c1f24;
+    color: #e0e6ed;
+    border-color: rgba(255,255,255,0.1);
+}
+
+body.dark-mode .ui.table th {
+    background: #252a32;
+    color: #e0e6ed;
+}
+
+body.dark-mode .ui.table td {
+    border-top-color: rgba(255,255,255,0.08);
+}
+
+/* Fomantic Brand Title */
+.fom-brand-title {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.3px;
+}
+
+/* Dynamic Fomantic Theme Overrides */
+.ui.primary.button, .ui.primary.buttons .button {
+    background-color: var(--fom-pri) !important;
+    color: #ffffff !important;
+}
+
+.ui.secondary.button, .ui.secondary.buttons .button {
+    background-color: var(--fom-sec1) !important;
+    color: #ffffff !important;
+}
+
+.ui.positive.button, .ui.positive.buttons .button {
+    background-color: var(--fom-compl) !important;
+    color: #ffffff !important;
+}
+
+.ui.primary.label {
+    background-color: var(--fom-pri) !important;
+    border-color: var(--fom-pri) !important;
+    color: #ffffff !important;
+}
+
+.ui.secondary.label {
+    background-color: var(--fom-sec1) !important;
+    border-color: var(--fom-sec1) !important;
+    color: #ffffff !important;
+}
+
+.ui.positive.label {
+    background-color: var(--fom-compl) !important;
+    border-color: var(--fom-compl) !important;
+    color: #ffffff !important;
+}
+
+.custom-ribbon {
+    background-color: var(--fom-pri) !important;
+    border-color: var(--fom-pri) !important;
+    color: #ffffff !important;
+}
+
+.ui.menu .active.item {
+    border-bottom: 2px solid var(--fom-pri) !important;
+    color: var(--fom-pri) !important;
+    font-weight: 700 !important;
+}
+
+.ui.steps .active.step {
+    border-left: 3px solid var(--fom-pri) !important;
+}
+
+.ui.steps .active.step .title {
+    color: var(--fom-pri) !important;
+}
+
+.ui.progress.primary .bar {
+    background-color: var(--fom-pri) !important;
+}
+
+.ui.progress.secondary .bar {
+    background-color: var(--fom-sec1) !important;
+}
+
+.ui.progress.accent .bar {
+    background-color: var(--fom-compl) !important;
+}
+
+.custom-card-pri {
+    border-top: 3px solid var(--fom-pri) !important;
+}
+
+.custom-card-sec1 {
+    border-top: 3px solid var(--fom-sec1) !important;
+}
+
+.custom-card-compl {
+    border-top: 3px solid var(--fom-compl) !important;
+}
+
+.custom-pri-message {
+    background-color: rgba(var(--fom-pri-rgb), 0.1) !important;
+    border-left: 4px solid var(--fom-pri) !important;
+    box-shadow: none !important;
+}
+
+/* Swatches */
+.fom-swatch-group {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.fom-swatch {
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    border: 2px solid #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.fom-swatch.swatch-pri { background-color: var(--fom-pri); }
+.fom-swatch.swatch-sec1 { background-color: var(--fom-sec1); }
+.fom-swatch.swatch-sec2 { background-color: var(--fom-sec2); }
+.fom-swatch.swatch-compl { background-color: var(--fom-compl); }
+
+.fom-table-swatch {
+    display: inline-block;
+    width: 24px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.15);
+    vertical-align: middle;
+}

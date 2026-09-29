@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Preview - CSD3</title>
+
+	<link rel="stylesheet" type="text/css" href="../css/jqui/jquery-ui-1.10.4.custom.css">
+	<link rel="stylesheet" type="text/css" href="./common.css">
+	<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+	<script type="text/javascript" src="../js/lib/jquery-ui-1.10.4.custom.min.js"></script>
+
+	<style type="text/css">
+
+html, body { overflow:visible }
+body {
+	margin: 0;
+	padding: 0;
+	background: transparent;
+	}
+
+.preview-cover {
+	position: relative;
+	width: 360px; height: 360px;
+	margin: 10px auto;
+	}
+.preview-table {
+	border-collapse: collapse;
+	border-spacing: 0;
+	border: none;
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	}
+.preview-table td {
+	width: 25%;
+	height: auto;
+	padding: 0;
+	}
+.preview-table td.mid {
+	width: 50%;
+	}
+
+.preview-table tr.sec td,
+.preview-table tr.compl td {
+	height: 10%;
+	}
+
+.no-secs .preview-table tr.sec,
+.no-compl .preview-table tr.compl {
+	display: none;
+	}
+
+	</style>
+</head>
+<body>
+	<div class="preview-cover">
+		<table class="preview-table">
+			<tr>
+				<td class="bgcol bgcol-pri-1"></td>
+				<td class="bgcol bgcol-pri-0 mid" rowspan="2"></td>
+				<td class="bgcol bgcol-pri-3"></td>
+			</tr>
+			<tr>
+				<td class="bgcol bgcol-pri-2"></td>
+				<td class="bgcol bgcol-pri-4"></td>
+			</tr>
+			<tr class="sec">
+				<td class="bgcol bgcol-sec1-3"></td>
+				<td class="bgcol bgcol-sec1-0 mid" rowspan="2"></td>
+				<td class="bgcol bgcol-sec1-1"></td>
+			</tr>
+			<tr class="sec">
+				<td class="bgcol bgcol-sec1-4"></td>
+				<td class="bgcol bgcol-sec1-2"></td>
+			</tr>
+			<tr class="sec">
+				<td class="bgcol bgcol-sec2-3"></td>
+				<td class="bgcol bgcol-sec2-0 mid" rowspan="2"></td>
+				<td class="bgcol bgcol-sec2-1"></td>
+			</tr>
+			<tr class="sec">
+				<td class="bgcol bgcol-sec2-4"></td>
+				<td class="bgcol bgcol-sec2-2"></td>
+			</tr>
+			<tr class="compl">
+				<td class="bgcol bgcol-compl-3"></td>
+				<td class="bgcol bgcol-compl-0 mid" rowspan="2"></td>
+				<td class="bgcol bgcol-compl-1"></td>
+			</tr>
+			<tr class="compl">
+				<td class="bgcol bgcol-compl-4"></td>
+				<td class="bgcol bgcol-compl-2"></td>
+			</tr>
+		</table>
+	</div>
+
+<script type="text/javascript" src="init.js"></script>
+
+</body>
+</html>

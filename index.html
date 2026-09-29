@@ -1,0 +1,113 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+
+    <title>Color Scheme Designer</title>
+
+    <meta name="description" content="In love with colors. A designer tool for creating color combinations that work together well. Use the color wheel to create great color palettes.">
+    <meta name="keywords" content="color, scheme, wheel, color wheel, theory, color theory, colorwheel, design, designer, palette, colorize, colorset, RYB, RGB, web, colors, webcolors, safecolors, blind, blindness, simulation, protanopy, protanopia, deuteranopy, deuteranopia, tritanopy, tritanopia, daltonism, live, preview">
+
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+    <link rel="stylesheet" type="text/css" href="css/jqui/jquery-ui-1.10.4.custom.css">
+    <link rel="stylesheet" type="text/css" href="css/css/default2.min.css">
+    <link rel="stylesheet" type="text/css" href="css/css/responsive.css">
+    <style>
+        #header .logo {
+            width: auto;
+            padding-left: 72px;
+            line-height: 60px;
+            font-size: 24px;
+            font-weight: 700;
+            color: #888;
+            letter-spacing: -0.5px;
+            white-space: nowrap;
+            user-select: none;
+            cursor: default;
+        }
+    </style>
+
+    <script type="text/javascript">
+        // globals init
+        var browserInfo = {
+            isOpera: !!window.opera,
+            adBlockActive: false,
+            geo: {}
+        };
+        var GATrackLink = function(url,spot) {
+            console.log(url);
+        }
+    </script>
+</head>
+
+<body>
+
+<div id="preload">
+    <img src="img/wheel-over.png" width="0" height="0"/>
+</div>
+<div id="app">
+    <div id="header">
+
+        <div class="inner">
+            <div class="logo">Color Scheme Designer</div>
+            <div class="tbr">
+                <div class="lang"></div>
+            </div>
+        </div>
+
+    </div><!-- /header -->
+
+    <div id="content">
+
+        <!-- Onload tests -->
+
+        <div id="passivecontent">
+            <h1>Color Scheme Designer</h1>
+            <h4>In love with colors.</h4>
+            <p>
+                Color Scheme Designer is a tool designed for creating color combinations that work together well. It uses classical color theory with artistic RYB color wheel to design color palettes of one to four hues, each of five different shades. Various preview styles can be chosen to test and view the colors in combinations, many examples are available to see the palette used in web site design, UI design or in a randomly drawn picture. Tartan fabric preview is also available for those interested in textile and interior design.
+            </p>
+            <p>
+                This palette tool uses various color models to combine adjacent colors and/or complementary colors to the main hue. Select models from monochromatic to triad or tetrad color sets, with or without a complement (the opposite hue), enjoy even the free-style mode. Play with palette brightness and saturation, select from predefined presets, or create random palettes. The unique vision simulation filter emulates the palette as seen by people with various vision weakness, color blindness, various variants of daltonism (protanopy, deuteranopy, tritanopy, protanomaly, deuteranomaly, tritanomaly, dyschromatopsia or achromatopsia), as well as several gamma simulations (simulation of too bright display or too dark print), desaturation, grayscale conversion or webcolors (the legacy 216-color palette). The palette can be exported in many various formats (HTML, CSS, LESS, XML, text, PNG image, Photoshop ACO swatch palette or Gimp GPL palette format) to colorize your artwork. Check color contrast of all color pairs used in the palette and test if the color contrast fits WCAG requirements.
+            </p>
+        </div>
+
+        <div id="jstest">
+            No Javascript detected. Javascript is required for this application.
+        </div>
+        <script type="text/javascript">
+            var e = document.getElementById('passivecontent');
+            e.style.display = 'none';
+            e = document.getElementById('jstest');
+            e.innerHTML = '';
+            e.className = 'loading';
+        </script>
+        <div id="csstest" style="display:none"></div>
+
+        <!-- /tests -->
+
+    </div><!-- /content -->
+
+</div> <!-- /app -->
+
+<!--[if lt IE 9]>
+<script type="text/javascript">
+    browserInfo.isOldIE = true;
+</script>
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8/jquery.min.js"></script>
+<![endif]-->
+<!--[if (gte IE 9) | (!IE)]><!-->
+<script type="text/javascript" src="js/lib/jquery.min.js"></script>
+<script type="text/javascript" src="js/lib/jquery.observehashchange.js"></script>
+<script type="text/javascript" src="js/lib/jquery.cookie.js"></script>
+<!--<![endif]-->
+
+<!-- Load default language -->
+<script type="text/javascript" src="js/lang/en.js"></script>
+
+<script type="text/javascript" src="js/lib/require.js" data-main="js/app.compiled.js"></script>
+</body>
+</html>

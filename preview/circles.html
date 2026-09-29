@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Preview - Circles</title>
+	<style type="text/css">
+
+html, body { overflow:visible };
+body {
+	margin: 0;
+	padding: 0;
+	background: transparent;
+	}
+
+.preview-cover {
+	position: relative;
+	width: 360px; height: 360px;
+	margin: 10px auto;
+	}
+canvas {
+	width: 100%;
+	height: 100%;
+	}
+
+	</style>
+
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+	<script type="text/javascript">
+
+
+$(function(){
+
+	parent._Paletton.events.trigger('ui/example/loaded');
+	init();
+
+	});
+
+
+
+
+var $canvas, canvas, maxX, maxY,
+	inited = false,
+	objSet, reset,
+	PAL = top._Paletton.palette;
+
+function init(){
+	
+	$canvas = $('.preview-cover canvas');
+	maxX = $canvas.width(),
+	maxY = $canvas.height();
+
+	canvas = $canvas.get(0);
+	canvas.width = maxX;
+	canvas.height = maxY;
+
+	canvas = canvas.getContext('2d');
+
+	inited = true;
+	draw();
+	
+	}
+
+
+function colorize(){
+	draw();
+	}
+
+
+function draw(){
+	if (!inited) return;
+
+	canvas.clearRect(0,0,maxX,maxY);
+	
+	var col, grd, c, d, r2,
+		r = 180;
+
+	grd = canvas.createRadialGradient(r,r,5,r,r,r*0.5);
+	col = PAL.getColorCode('pri', 3, 'sorted', true);
+	grd.addColorStop(0,col);
+	col = PAL.getColorCode('pri', 0, 'sorted', true);
+	grd.addColorStop(1,col);
+
+	circleFill(r,r,r,grd);
+
+//	c = polar2xy(r,a+i*step);
+	d = 0.36;
+	r2 = r*0.3;
+	drawCol('pri', r*(1-d), r*(1-d), r2, 3*Math.PI/4);
+	if (PAL.hasSecs()) {
+		drawCol('sec1',	r*(1-d), r*(1+d),r2, Math.PI/4);
+		drawCol('sec2',	r*(1+d), r*(1-d),r2, -3*Math.PI/4);
+		}
+	else {
+		col = PAL.getColorCode('pri', 1, 'sorted', true);
+		circleFill(r*(1-d), r*(1+d), r2, col);
+		col = PAL.getColorCode('pri', 2, 'sorted', true);
+		circleFill(r*(1+d), r*(1-d), r2, col);
+		}
+	if (PAL.hasCompl()) {
+		drawCol('compl',r*(1+d), r*(1+d), r2, -Math.PI/4);
+		}
+	else {
+		col = PAL.getColorCode('pri', 4, 'sorted', true);
+		circleFill(r*(1+d), r*(1+d), r2, col);
+		}
+	}
+
+
+function drawCol(colId,x,y,r,alpha) {
+	var i, c, a, r2 = r*0.27, step, col;
+	a = alpha;
+	step = 2*Math.PI/10;
+
+	col = PAL.getColorCode(colId, 0, 'sorted', true);
+	circleFill(x,y,r,col);
+
+	for (i=1;i<5;i++) {
+		col = PAL.getColorCode(colId, i, 'sorted', true);
+		c = polar2xy(r,a+i*step);
+		circleFill(x+c.x,y+c.y,r2,col);
+//		if (i==0) circleStroke(x+c.x,y+c.y,r2,'#fff');
+		}
+	}
+
+function circleFill(x,y,r,col){
+	canvas.fillStyle = col;
+	canvas.beginPath();
+	canvas.arc(x,y,r,0,2*Math.PI);
+	canvas.fill();
+	}
+function circleStroke(x,y,r,col){
+	canvas.strokeStyle = col;
+	canvas.beginPath();
+	canvas.arc(x,y,r,0,2*Math.PI);
+	canvas.stroke();
+	}
+
+
+
+
+function xy2polar(x,y) {
+	var r = Math.sqrt(x*x + y*y);
+	var theta = Math.atan2(y,x);
+	if (theta<0) theta += 2*Math.PI
+	return {r:r,theta:theta}
+	}
+
+function polar2xy(r,theta) {
+	var x = r * Math.cos(theta);
+	var y = r * Math.sin(theta)
+	return {x:x,y:y}
+	}
+
+
+
+</script>
+
+</head>
+<body>
+	<div class="preview-cover">
+		<canvas></canvas>
+	</div>
+
+<script type="text/javascript" src="init.js"></script>
+
+</body>
+</html>

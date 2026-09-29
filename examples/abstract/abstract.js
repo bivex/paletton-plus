@@ -1,0 +1,177 @@
+
+//	Draw random abstract picture
+//	(c) 2014, Petr Stanicek, pixy.cz
+
+
+
+$(function(){
+
+	parent._Paletton.events.trigger('ui/example/loaded');
+	init();
+
+	});
+
+
+
+
+var $canvas, canvas, maxX, maxY,
+	objSet,
+	PAL = top._Paletton.palette;
+
+function init(){
+	
+	$canvas = $('#container');
+
+	maxX = $canvas.width(),
+	maxY = $canvas.height();
+
+	canvasObj = $canvas.get(0);
+	canvasObj.width = maxX;
+	canvasObj.height = maxY;
+	
+	canvas = canvasObj.getContext('2d');
+
+	$canvas.click( function(){
+		url = canvasObj.toDataURL('image/png');
+		window.open(url);
+		});
+
+	createSet();
+	draw();
+	
+	}
+
+
+function colorize(){
+	draw();
+	}
+
+
+function draw(){
+	var grd = canvas.createLinearGradient(0,0,maxX,maxY),
+		col = PAL.getColorCode('pri', 4, 'sorted', true);
+	grd.addColorStop(0,col);
+	grd.addColorStop(1,'#000');
+	canvas.fillStyle = grd;
+	canvas.fillRect(0,0,maxX,maxY);
+	drawSet();
+	}
+
+
+function createSet() {
+
+	var i, n, colId, points, midPoint = [maxX*0.6,maxY*0.4],
+		totalObj = 600,
+		distribution = {
+			'pri': 0.6,
+			'sec1': 0.15,
+			'sec2': 0.15,
+			'compl': 0.1
+			};
+
+	objSet = [];
+	points = randomPointsUniform(maxX,maxY,totalObj);
+
+	n = 0;
+	for (colId in distribution) {
+		count = Math.floor(distribution[colId]*totalObj);
+		for (i=0;i<count;i++) {
+			add(n,colId);
+			n++;
+			}
+		}
+
+	shuffle(objSet);
+
+
+	function add(idx,colId){
+		var i, col0, col1, n, f;
+
+	// color variants
+		n = rnd(-2,4); if (n<0) n = 0;
+
+	// the closer to the mid point, the bigger circles
+		k = dist(points[idx],midPoint);
+		k = Math.pow(1-k/Math.max(maxX,maxY),1.5);
+
+	// create object
+		f = {
+			x: points[idx][0],
+			y: points[idx][1],
+			colId: colId,
+			colN: n,
+			alpha: Math.random()<0.33 ? 0 : rnd(1,10)/10,
+			r: rnd(2,k*30),
+			};
+
+		objSet.push(f);
+		}
+	}
+
+
+/*
+	var totalObj;
+
+	function add(countPart,colId){
+		var i, f, colN,
+			count = countPart * totalObj;
+		for (i=0;i<count;i++) {
+			f = randomObj();
+			f.colId = colId;
+			f.colN = rnd(-2,4);  if (f.colN<0) f.colN = 0;
+			f.alpha = Math.random()<0.33 ? 0 : rnd(1,10)/10;
+			objSet.push(f);
+			}
+		}
+
+	objSet = [];
+	totalObj = 800;
+	add(0.60,'pri');
+	add(0.15,'sec1');
+	add(0.15,'sec2');
+	add(0.10,'compl');
+	shuffle(objSet);
+	}
+
+
+
+function randomObj(){
+	if (Math.random()<0.09) {
+		return {
+			x: rnd(150,maxX-150),
+			y: rnd(100,maxY-100),
+			r: rnd(1,32)
+			}
+		}
+	else {
+		return {
+			x: rnd(5,maxX-5),
+			y: rnd(5,maxY-5),
+			r: rnd(1,12)
+			}
+		}
+
+	}
+*/
+
+
+
+function drawSet() {
+	var i, f, col;
+
+	for (i=0;i<objSet.length;i++) {
+		f = objSet[i];
+		col = PAL.getColorCode(f.colId, f.colN, 'sorted', true, f.alpha);
+		drawObj(f,col);
+		}
+	}
+
+
+function drawObj(data,col){
+	canvas.fillStyle = col;
+	canvas.beginPath();
+	canvas.arc(data.x,data.y,data.r,0,2*Math.PI);
+	canvas.fill();		
+
+	
+	}

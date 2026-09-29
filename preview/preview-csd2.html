@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Preview - CSD2</title>
+
+	<link rel="stylesheet" type="text/css" href="../css/jqui/jquery-ui-1.10.4.custom.css">
+	<link rel="stylesheet" type="text/css" href="./common.css">
+	<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/2.1.0/jquery.min.js"></script>
+	<script type="text/javascript" src="../js/lib/jquery-ui-1.10.4.custom.min.js"></script>
+
+	<style type="text/css">
+
+html, body { overflow:visible }
+body {
+	margin: 0;
+	padding: 0;
+	background: transparent;
+	font-family: helvetica, arial, sans-serif;
+	}
+
+.preview-cover {
+	position: relative;
+	width: 360px; height: 360px;
+	margin: 10px auto;
+	}
+.preview-cover .ttl {
+	position: absolute; z-index: 2;
+	left: 10px; right: 10px;
+	border-bottom: 1px solid #fff;
+	font-size: 14px;
+	}
+.preview-cover .ttl1 {
+	top: 15px;
+	color: #000;
+	}
+.preview-cover .ttl2 {
+	bottom: 15px;
+	color: #fff;
+	border-color: #000;
+	text-align: right;
+	}
+
+.preview-box {
+	position: absolute;
+	width: 150px; height: 100px;
+	}
+.preview-box-pri {
+	left: 20px; top: 70px;
+	border-bottom: 1px solid #000;
+	border-right: 1px solid #fff;
+	}
+.preview-box-sec1 {
+	right: 20px; top: 70px;
+	}
+.preview-box-sec2 {
+	left: 20px; bottom: 50px;
+	}
+.preview-box-compl {
+	right: 20px; bottom: 50px;
+	}
+
+.no-compl .preview-box-compl.over,
+.no-secs .preview-box-sec1.over,
+.no-secs .preview-box-sec2.over { display: none }
+
+
+.preview-var {
+	position: absolute;
+	top: -7px;
+	width: 22px; height: 18px;
+	}
+.preview-var0 {
+	left: -7px;
+	width: 22px; height: 22px;
+	border: 1px outset #808080;
+	}
+.preview-var1 { left:  30px }
+.preview-var2 { left:  60px }
+.preview-var3 { left:  90px }
+.preview-var4 { left: 120px }
+
+	</style>
+</head>
+<body>
+	<div class="preview-cover bgcol bgcol-pri-0">
+
+		<div class="ttl ttl1">Lorem ipsum <b>dolor sit amet</b></div>
+		<div class="ttl ttl2">Lorem ipsum <b>dolor sit amet</b></div>
+
+		<div class="preview-box preview-box-pri bgcol bgcol-pri-0">
+			<div class="preview-var preview-var0 bgcol bgcol-pri-0"></div>
+			<div class="preview-var preview-var1 bgcol bgcol-pri-1"></div>
+			<div class="preview-var preview-var2 bgcol bgcol-pri-2"></div>
+			<div class="preview-var preview-var3 bgcol bgcol-pri-3"></div>
+			<div class="preview-var preview-var4 bgcol bgcol-pri-4"></div>
+		</div>
+
+		<div class="preview-box preview-box-sec1 bgcol bgcol-pri-1"></div>
+		<div class="preview-box preview-box-sec1 over bgcol bgcol-sec1-0">
+			<div class="preview-var preview-var0 bgcol bgcol-sec1-0"></div>
+			<div class="preview-var preview-var1 bgcol bgcol-sec1-1"></div>
+			<div class="preview-var preview-var2 bgcol bgcol-sec1-2"></div>
+			<div class="preview-var preview-var3 bgcol bgcol-sec1-3"></div>
+			<div class="preview-var preview-var4 bgcol bgcol-sec1-4"></div>
+		</div>
+
+		<div class="preview-box preview-box-sec2 bgcol bgcol-pri-2"></div>
+		<div class="preview-box preview-box-sec2 over bgcol bgcol-sec2-0">
+			<div class="preview-var preview-var0 bgcol bgcol-sec2-0"></div>
+			<div class="preview-var preview-var1 bgcol bgcol-sec2-1"></div>
+			<div class="preview-var preview-var2 bgcol bgcol-sec2-2"></div>
+			<div class="preview-var preview-var3 bgcol bgcol-sec2-3"></div>
+			<div class="preview-var preview-var4 bgcol bgcol-sec2-4"></div>
+		</div>
+
+		<div class="preview-box preview-box-compl bgcol bgcol-pri-4"></div>
+		<div class="preview-box preview-box-compl over bgcol bgcol-compl-0">
+			<div class="preview-var preview-var0 bgcol bgcol-compl-0"></div>
+			<div class="preview-var preview-var1 bgcol bgcol-compl-1"></div>
+			<div class="preview-var preview-var2 bgcol bgcol-compl-2"></div>
+			<div class="preview-var preview-var3 bgcol bgcol-compl-3"></div>
+			<div class="preview-var preview-var4 bgcol bgcol-compl-4"></div>
+		</div>
+	</div>
+
+<script type="text/javascript" src="init.js"></script>
+
+</body>
+</html>

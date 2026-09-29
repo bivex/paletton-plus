@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fomantic-UI – Palette Usage Example</title>
+    <link rel="stylesheet" href="semantic.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="../../js/lib/jquery.min.js"></script>
+    <script src="fomantic.js"></script>
+</head>
+<body class="fomantic-body">
+
+<div class="ui fluid container p-3">
+    <!-- Main Menu / Navbar -->
+    <div id="fom-menu" class="ui menu custom-fom-menu shadow-sm">
+        <div class="header item d-flex align-items-center gap-2">
+            <img src="../../img/logo.png" alt="Logo" class="ui mini circular image">
+            <span class="fom-brand-title">Fomantic-UI</span>
+        </div>
+        <a class="active item"><i class="home icon"></i> Overview</a>
+        <a class="item"><i class="cubes icon"></i> Components</a>
+        <a class="item"><i class="sliders horizontal icon"></i> Tokens</a>
+        <div class="right menu">
+            <div class="item">
+                <button id="btn-theme-toggle" class="ui mini basic button">
+                    <span id="theme-icon">🌙</span> <span id="theme-label">Dark</span>
+                </button>
+            </div>
+            <div class="item">
+                <div class="ui primary button mini">Action</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hero Segment with Ribbon -->
+    <div class="ui segment raised fom-hero-segment">
+        <a class="ui ribbon label custom-ribbon">Semantic Color Tokens</a>
+        <h2 class="ui header mt-2">
+            Harmonic UI Kit for Fomantic
+            <div class="sub header">Buttons, segments, labels, progress bars and cards driven live by Paletton color engine.</div>
+        </h2>
+        <div class="ui divider"></div>
+        <div class="ui stackable grid">
+            <div class="ten wide column">
+                <p>Every element in Fomantic-UI adapts dynamically to the current color harmonies. Test Monochromatic, Complementary, Triad, Tetrad or Free color models directly in the designer.</p>
+                <div class="ui buttons">
+                    <button class="ui primary button">Primary Action</button>
+                    <div class="or"></div>
+                    <button class="ui secondary button">Secondary</button>
+                </div>
+                <button class="ui positive button ml-2">Accent / Complement</button>
+                <button class="ui basic button">Basic Outline</button>
+            </div>
+            <div class="six wide column right aligned">
+                <div class="fom-swatch-group">
+                    <div class="fom-swatch swatch-pri" title="Primary">Pri</div>
+                    <div class="fom-swatch swatch-sec1" title="Secondary 1">Sec1</div>
+                    <div class="fom-swatch swatch-sec2" title="Secondary 2">Sec2</div>
+                    <div class="fom-swatch swatch-compl" title="Complement">Cmpl</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Steps -->
+    <div class="ui three steps small fluid mb-4 custom-steps">
+        <div class="completed step">
+            <i class="paint brush icon"></i>
+            <div class="content">
+                <div class="title">Color Model</div>
+                <div class="description">Select wheel harmony</div>
+            </div>
+        </div>
+        <div class="active step">
+            <i class="sliders icon"></i>
+            <div class="content">
+                <div class="title">Fine Tuning</div>
+                <div class="description">Adjust tint & brightness</div>
+            </div>
+        </div>
+        <div class="step">
+            <i class="check circle outline icon"></i>
+            <div class="content">
+                <div class="title">Export & Tokens</div>
+                <div class="description">CSS variables & Less ready</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards Section -->
+    <div class="ui three stackable cards mb-4">
+        <!-- Card 1 -->
+        <div class="ui card raised custom-card-pri">
+            <div class="content">
+                <div class="right floated meta">Pri-0</div>
+                <div class="header">Primary Element</div>
+                <div class="description">
+                    Used for essential branding, primary buttons, highlighted active states, and focal components.
+                </div>
+            </div>
+            <div class="extra content">
+                <div class="ui progress primary tiny active mb-0" data-percent="80">
+                    <div class="bar" style="width: 80%;"></div>
+                </div>
+            </div>
+            <div class="ui bottom attached primary button">
+                <i class="star icon"></i> Select Scheme
+            </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="ui card raised custom-card-sec1">
+            <div class="content">
+                <div class="right floated meta">Sec-1</div>
+                <div class="header">Secondary Tone</div>
+                <div class="description">
+                    Ideal for secondary hierarchy, sidebars, sub-navigation, and informational tags.
+                </div>
+            </div>
+            <div class="extra content">
+                <div class="ui progress secondary tiny active mb-0" data-percent="60">
+                    <div class="bar" style="width: 60%;"></div>
+                </div>
+            </div>
+            <div class="ui bottom attached secondary button">
+                <i class="tag icon"></i> Secondary Focus
+            </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="ui card raised custom-card-compl">
+            <div class="content">
+                <div class="right floated meta">Compl</div>
+                <div class="header">Complement Accent</div>
+                <div class="description">
+                    Maximum contrast counterpart designed for badges, conversion triggers, alerts and highlights.
+                </div>
+            </div>
+            <div class="extra content">
+                <div class="ui progress accent tiny active mb-0" data-percent="95">
+                    <div class="bar" style="width: 95%;"></div>
+                </div>
+            </div>
+            <div class="ui bottom attached positive button">
+                <i class="bolt icon"></i> Accent Action
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages & Labels -->
+    <div class="ui stackable grid mb-4">
+        <div class="eight wide column">
+            <div class="ui icon message custom-pri-message">
+                <i class="info circle icon"></i>
+                <div class="content">
+                    <div class="header">Live Fomantic Integration</div>
+                    <p>CSS variables and class overrides update immediately when you randomize or adjust the wheel.</p>
+                </div>
+            </div>
+        </div>
+        <div class="eight wide column">
+            <div class="ui segment">
+                <h5 class="ui header mb-2">Semantic Badges & Tags</h5>
+                <div class="ui tag labels">
+                    <a class="ui primary label">Primary Tag</a>
+                    <a class="ui secondary label">Secondary Tag</a>
+                    <a class="ui positive label">Accent Tag</a>
+                    <a class="ui basic label">Basic Label</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form Controls & Interactive Inputs -->
+    <div class="ui segment mb-4">
+        <h4 class="ui header"><i class="edit outline icon"></i> Form Inputs & Interactive Controls</h4>
+        <div class="ui form">
+            <div class="three fields">
+                <div class="field">
+                    <label>Scheme Identifier</label>
+                    <input type="text" value="Fomantic Modern Teal">
+                </div>
+                <div class="field">
+                    <label>Component Library</label>
+                    <select class="ui dropdown">
+                        <option value="1" selected>Fomantic-UI v2.9</option>
+                        <option value="2">Semantic UI Standard</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Accessibility Level</label>
+                    <select class="ui dropdown">
+                        <option value="1" selected>WCAG AA Compliant</option>
+                        <option value="2">WCAG AAA Strict</option>
+                    </select>
+                </div>
+            </div>
+            <div class="inline fields mb-0">
+                <label>Theme Features:</label>
+                <div class="field">
+                    <div class="ui checkbox checked">
+                        <input type="checkbox" checked tabindex="0" class="hidden">
+                        <label>Tonal auto-scale</label>
+                    </div>
+                </div>
+                <div class="field">
+                    <div class="ui toggle checkbox checked">
+                        <input type="checkbox" checked tabindex="0" class="hidden">
+                        <label>Dynamic CSS variables</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tokens & Contrast Table -->
+    <div class="ui segment mb-2 p-0 overflow-hidden">
+        <table class="ui celled table small mb-0">
+            <thead>
+                <tr>
+                    <th>Role / Semantic Name</th>
+                    <th>CSS Custom Variable</th>
+                    <th>Hex Value</th>
+                    <th>WCAG Contrast</th>
+                    <th class="right aligned">Preview</th>
+                </tr>
+            </thead>
+            <tbody id="fom-table-body">
+                <!-- Populated dynamically by fomantic.js -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</body>
+</html>
