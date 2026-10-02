@@ -767,7 +767,25 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
             var curve = prof.curve;
             var self = this;
 
+            /**
+             * Convert Paletton wheel hue (RYB-based, 0-360) to actual OKLCH hue angle
+             * by sampling the wheel color object at a stable midtone reference point.
+             * Paletton wheel ≠ OKLCH cylindrical angle — they differ by 14-26° typically.
+             */
+            var palettonHueToOklchH = function(wheelHue) {
+                var refCol = new o(wheelHue);
+                // Sample at stable mid-saturation/brightness that is chromatic and in-gamut
+                refCol.setSV(0.75, 0.80);
+                if (!refCol.rgb) return wheelHue; // fallback
+                var ref = oklch.srgbToOklch(refCol.rgb.r, refCol.rgb.g, refCol.rgb.b);
+                // Only trust the OKLCH hue if the color is chromatic enough
+                return ref.C > 0.04 ? ref.H : wheelHue;
+            };
+
             var calcGroupVals = function(groupKey, gHue) {
+                // Convert Paletton wheel angle to true perceptual OKLCH hue
+                var oklchH = palettonHueToOklchH(gHue);
+
                 var rgbs = [];
                 for (var s = 0; s < 5; s++) {
                     var ptL = curve[s][0];
@@ -776,19 +794,19 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
                     var cJitter = oklch.randomGaussian(rng, 0, 0.01 * chaos);
                     var finalL = Math.max(0.02, Math.min(0.99, ptL + lJitter));
                     var finalC = Math.max(0.005, Math.min(0.35, ptC + cJitter));
-                    rgbs[s] = oklch.oklchToSrgb(finalL, finalC, gHue);
+                    rgbs[s] = oklch.oklchToSrgb(finalL, finalC, oklchH);
                 }
 
-                // Exact WCAG Contrast Guarantee using fitContrast
+                // Exact WCAG Contrast Guarantee using fitContrast (in OKLCH space)
                 var bgRgb = rgbs[4];
-                var textFit = oklch.fitContrast({ L: curve[3][0], C: curve[3][1], H: gHue }, bgRgb, targetRatio);
+                var textFit = oklch.fitContrast({ L: curve[3][0], C: curve[3][1], H: oklchH }, bgRgb, targetRatio);
                 rgbs[3] = textFit.rgb;
 
                 var priMinRatio = (profile === "minimal" || profile === "saas") ? 3.0 : 2.5;
-                var priFit = oklch.fitContrast({ L: curve[0][0], C: curve[0][1], H: gHue }, bgRgb, priMinRatio);
+                var priFit = oklch.fitContrast({ L: curve[0][0], C: curve[0][1], H: oklchH }, bgRgb, priMinRatio);
                 rgbs[0] = priFit.rgb;
 
-                // Map into Paletton internal [kS, kV]
+                // Map into Paletton internal [kS, kV] — using gHue (wheel angle) as the base hue
                 var groupVals = [];
                 for (var k = 0; k < 5; k++) {
                     var col = new o(gHue);
@@ -822,12 +840,20 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
             this.locked = false;
             this.modelChanged();
             this.colorChanged();
+
+            // Post-render contrast verification: read ACTUAL rendered RGB from colorTable
+            // and iterate fixContrast if roundtrip lossy conversion degraded it below target
+            this._verifyAndFixContrast(targetRatio);
+
             t.trigger("palette/seed/changed", { seed: this.currentSeed });
             return this.getContrastReport();
         }, i.prototype.randomizeKeepMood = function(options) {
             options = options || {};
             this.locked = true;
-            var rng = Math.random;
+            // Use seeded PRNG for reproducibility
+            var seedStr = options.seed || oklch.generateSeed();
+            this.currentSeed = String(seedStr);
+            var rng = oklch.mulberry32(oklch.stringToSeed(this.currentSeed));
 
             if (!this.lockedColors.pri) {
                 var step = 45 + Math.floor(rng() * 270);
@@ -854,7 +880,9 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
                     var col = new o(gHue);
                     col.setSV(vals[j][0], vals[j][1]);
                     var curOklch = oklch.srgbToOklch(col.rgb.r, col.rgb.g, col.rgb.b);
-                    var newRgb = oklch.oklchToSrgb(curOklch.L, curOklch.C, gHue);
+                    // Use the actual OKLCH hue from the rendered color (already correct here since
+                    // we derive from an existing rendered slot)
+                    var newRgb = oklch.oklchToSrgb(curOklch.L, curOklch.C, curOklch.H);
                     col.setByRGB(newRgb);
                     vals[j] = [col.kS, col.kV];
                 }
@@ -864,12 +892,16 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
 
             this.locked = false;
             this.modelChanged();
+            t.trigger("palette/seed/changed", { seed: this.currentSeed });
             return this.colorChanged();
         }, i.prototype.randomizeVariations = function(options) {
             options = options || {};
             this.locked = true;
             var chaos = options.chaos !== undefined ? options.chaos : (this.chaos || 1.0);
-            var rng = Math.random;
+            // Use seeded PRNG for reproducibility
+            var seedStr = options.seed || oklch.generateSeed();
+            this.currentSeed = String(seedStr);
+            var rng = oklch.mulberry32(oklch.stringToSeed(this.currentSeed));
 
             if (!this.lockedColors.pri) {
                 var deltaH = Math.round(oklch.randomGaussian(rng, 0, 6 * chaos));
@@ -896,6 +928,7 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
                 for (var j = 0; j < vals.length; j++) {
                     var col = new o(gHue);
                     col.setSV(vals[j][0], vals[j][1]);
+                    // Derive actual OKLCH from the rendered slot color (hue already correct)
                     var curOklch = oklch.srgbToOklch(col.rgb.r, col.rgb.g, col.rgb.b);
 
                     var dL = oklch.randomGaussian(rng, 0, 0.02 * chaos);
@@ -914,6 +947,7 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
 
             this.locked = false;
             this.modelChanged();
+            t.trigger("palette/seed/changed", { seed: this.currentSeed });
             return this.colorChanged();
         }, i.prototype.generateMode = function(mode) {
             this.locked = true;
@@ -1215,6 +1249,75 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
             return this.generateMode(mood);
         }, i.prototype.setHarmonyMode = function(mode) {
             return this.generateMode(mode);
+        }, i.prototype._verifyAndFixContrast = function(targetRatio) {
+            /**
+             * Post-render contrast verification.
+             * After randomizeProfile commits [kS,kV] values, reads ACTUAL RGB from colorTable
+             * (the lossy Paletton roundtrip may shift L by up to 0.087), checks WCAG contrast
+             * for each group's text slot (index 3) vs bg slot (index 4), and corrects kV
+             * via binary search if the pair falls below targetRatio.
+             *
+             * Slot layout: 0=primary-accent, 1=light, 2=mid, 3=text, 4=background
+             */
+            targetRatio = targetRatio || 4.5;
+            var groups = ["pri"];
+            if (this.hasSecs()) groups.push("sec1", "sec2");
+            if (this.hasCompl()) groups.push("compl");
+
+            var changed = false;
+            for (var gi = 0; gi < groups.length; gi++) {
+                var grp = groups[gi];
+                if (!this.colorTable || !this.colorTable.byPalette || !this.colorTable.byPalette[grp]) continue;
+
+                var palette = this.colorTable.byPalette[grp]; // array of 5 color objects
+                if (!palette[3] || !palette[4]) continue;
+
+                var textRgb  = palette[3].rgb;
+                var bgRgb    = palette[4].rgb;
+                if (!textRgb || !bgRgb) continue;
+
+                var contrast = oklch.calcWcagContrast(textRgb, bgRgb);
+                if (contrast >= targetRatio) continue; // already good
+
+                // Contrast failed — fix by adjusting kV of slot 3 (text) via binary search
+                var varsObj = this.varsMultiOn ? this.varsMulti[grp] : this.vars;
+                if (!varsObj) continue;
+                var vals = varsObj.getVals();
+
+                var bgRgbOklch = oklch.srgbToOklch(bgRgb.r, bgRgb.g, bgRgb.b);
+                var textRgbOklch = oklch.srgbToOklch(textRgb.r, textRgb.g, textRgb.b);
+
+                // Direction: if bg is dark, text goes lighter; if bg is light, text goes darker
+                var bgL = bgRgbOklch.L;
+                var dir = bgL > 0.5 ? -1 : 1; // dir=-1 means text goes darker, +1 means lighter
+
+                var gHue = (grp === "pri" ? this.hue : (grp === "compl" ? this.hueCompl : (grp === "sec1" ? this.hueSec1 : this.hueSec2))) || this.hue;
+
+                var lo = 0, hi = 1;
+                for (var iter = 0; iter < 20; iter++) {
+                    var mid = (lo + hi) / 2;
+                    var tryL = dir === 1 ? (mid) : (1 - mid);
+                    var tryRgb = oklch.oklchToSrgb(tryL, textRgbOklch.C, textRgbOklch.H);
+                    var tryContrast = oklch.calcWcagContrast(tryRgb, bgRgb);
+                    if (tryContrast >= targetRatio) {
+                        hi = mid;
+                    } else {
+                        lo = mid;
+                    }
+                }
+                var fixedL = dir === 1 ? hi : (1 - hi);
+                var fixedRgb = oklch.oklchToSrgb(fixedL, textRgbOklch.C, textRgbOklch.H);
+                var fixedCol = new o(gHue);
+                fixedCol.setByRGB(fixedRgb);
+                vals[3] = [fixedCol.kS, fixedCol.kV];
+                varsObj.setVals(vals);
+                changed = true;
+            }
+
+            if (changed) {
+                // Re-render after contrast fixes without triggering storePalette again
+                this.calcColorTable();
+            }
         }, i.prototype._extractCandidateColors = function(profileId, seed, options) {
             // Silently generate a palette candidate without side effects (no UI updates)
             options = options || {};
@@ -1230,7 +1333,18 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
             var finalHue = Math.round((baseHue + hueJitter + 360) % 360);
 
             var curve = prof.curve;
+
+            // Same OKLCH hue correction as randomizeProfile — Paletton wheel ≠ OKLCH angle
+            var palettonHueToOklchH_c = function(wheelHue) {
+                var refCol = new o(wheelHue);
+                refCol.setSV(0.75, 0.80);
+                if (!refCol.rgb) return wheelHue;
+                var ref = oklch.srgbToOklch(refCol.rgb.r, refCol.rgb.g, refCol.rgb.b);
+                return ref.C > 0.04 ? ref.H : wheelHue;
+            };
+
             var calcRgbs = function(gHue) {
+                var oklchH = palettonHueToOklchH_c(gHue);
                 var rgbs = [];
                 for (var s = 0; s < 5; s++) {
                     var ptL = curve[s][0];
@@ -1239,10 +1353,10 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
                     var cJ = oklch.randomGaussian(rng, 0, 0.01 * chaos);
                     var fL = Math.max(0.02, Math.min(0.99, ptL + lJ));
                     var fC = Math.max(0.005, Math.min(0.35, ptC + cJ));
-                    rgbs[s] = oklch.oklchToSrgb(fL, fC, gHue);
+                    rgbs[s] = oklch.oklchToSrgb(fL, fC, oklchH);
                 }
                 var bgRgb = rgbs[4];
-                var textFit = oklch.fitContrast({ L: curve[3][0], C: curve[3][1], H: gHue }, bgRgb, targetRatio);
+                var textFit = oklch.fitContrast({ L: curve[3][0], C: curve[3][1], H: oklchH }, bgRgb, targetRatio);
                 rgbs[3] = textFit.rgb;
                 return rgbs;
             };
