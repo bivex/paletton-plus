@@ -348,6 +348,18 @@ var _Paletton_Strings = {
                     title: 'Arco Design',
                     desc: 'ByteDance design system and 10-tier tonal ramp'
                 },
+                'vant': {
+                    title: 'Vant (Mobile E-Commerce)',
+                    desc: 'Youzan mobile e-commerce UI (#1 in China)'
+                },
+                'nutui': {
+                    title: 'NutUI (JD.com)',
+                    desc: 'JD.com marketplace mobile design system'
+                },
+                'varlet': {
+                    title: 'Varlet (Material Mobile)',
+                    desc: 'Vue 3 Material Design mobile UI system'
+                },
                 'boot': {
                     title: 'Bootstrap 5',
                     desc: 'Bootstrap components and layout'

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vant – Mobile E-Commerce Design System</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="../../js/lib/jquery.min.js"></script>
+  <script src="vant.js"></script>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="vant-top-bar">
+    <div class="flex items-center gap-3">
+      <img src="../../img/logo.png" alt="Logo" class="rounded" width="26" height="26">
+      <div>
+        <div class="font-bold text-sm leading-tight">Vant UI (Youzan)</div>
+        <div class="text-xs text-muted">#1 Mobile E-Commerce Framework</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="btn-theme-toggle" class="van-button van-button--plain" style="height: 26px; font-size: 11px; padding: 0 10px;">
+        <span id="theme-icon">🌙</span> <span id="theme-label" style="margin-left: 4px;">Dark</span>
+      </button>
+      <button class="van-button van-button--primary" style="height: 26px; font-size: 11px; padding: 0 10px;">
+        Export Tokens
+      </button>
+    </div>
+  </header>
+
+  <!-- 2-Column Showcase: Phone Frame + Token Inspector -->
+  <div class="vant-layout-grid">
+
+    <!-- Phone Frame Container -->
+    <div class="van-phone-frame">
+      <!-- Phone Status Bar -->
+      <div class="van-status-bar">
+        <span>9:41</span>
+        <span>●●● 5G 100%</span>
+      </div>
+
+      <!-- Vant NavBar -->
+      <div class="van-nav-bar">
+        <span class="van-nav-bar__arrow">‹</span>
+        <span>Vant Store</span>
+        <span style="font-size: 14px; cursor: pointer;">🔍</span>
+      </div>
+
+      <!-- Vant NoticeBar -->
+      <div class="van-notice-bar">
+        <span style="margin-right: 6px;">📢</span>
+        <span>Brand Flash Sale: Extra 20% off selected items!</span>
+      </div>
+
+      <!-- Scrollable Mobile Content -->
+      <div class="van-phone-content">
+        <!-- Goods Card 1 -->
+        <div class="van-card">
+          <div class="van-card__thumb">👟</div>
+          <div class="van-card__content">
+            <div>
+              <div class="van-card__title">Paletton Pro Edition Runner Sneaker</div>
+              <div class="flex gap-1" style="margin-top: 4px;">
+                <span class="van-tag van-tag--primary">Free Return</span>
+                <span class="van-tag van-tag--plain">Official</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between" style="margin-top: 6px;">
+              <div>
+                <span class="van-card__price">¥399.00</span>
+                <span class="van-card__origin-price">¥599.00</span>
+              </div>
+              <div class="van-stepper">
+                <button class="van-stepper__btn" id="step-minus">-</button>
+                <input type="text" class="van-stepper__input" id="step-input" value="1" readonly>
+                <button class="van-stepper__btn" id="step-plus">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Goods Card 2 -->
+        <div class="van-card">
+          <div class="van-card__thumb" style="filter: hue-rotate(45deg);">🎒</div>
+          <div class="van-card__content">
+            <div>
+              <div class="van-card__title">Smart Ergonomic Minimalist Backpack</div>
+              <div class="flex gap-1" style="margin-top: 4px;">
+                <span class="van-tag van-tag--danger">Flash Deal</span>
+                <span class="van-tag van-tag--success">In Stock</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between" style="margin-top: 6px;">
+              <div>
+                <span class="van-card__price">¥189.00</span>
+                <span class="van-card__origin-price">¥249.00</span>
+              </div>
+              <span class="van-tag van-tag--plain">Qty: 1</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vant SubmitBar (Checkout bar) -->
+      <div class="van-submit-bar">
+        <div>
+          <span class="text-xs text-muted">Total: </span>
+          <span class="van-card__price">¥588.00</span>
+        </div>
+        <button class="van-submit-bar__button">Checkout</button>
+      </div>
+
+      <!-- Vant TabBar -->
+      <div class="van-tabbar">
+        <div class="van-tabbar-item is-active">
+          <div class="van-tabbar-item__icon">🏠</div>
+          <span>Home</span>
+        </div>
+        <div class="van-tabbar-item">
+          <div class="van-tabbar-item__icon">📑</div>
+          <span>Category</span>
+        </div>
+        <div class="van-tabbar-item">
+          <div class="van-tabbar-item__icon">🛒</div>
+          <span>Cart</span>
+          <span class="van-badge">2</span>
+        </div>
+        <div class="van-tabbar-item">
+          <div class="van-tabbar-item__icon">👤</div>
+          <span>Profile</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Vant Component Inspector & Tokens -->
+    <div class="flex flex-col gap-3">
+      <!-- Component Sandbox Card -->
+      <div class="vant-card flex flex-col gap-3">
+        <div class="flex items-center justify-between border-b pb-2">
+          <div class="font-bold text-sm">Vant Mobile Component Specs</div>
+          <span class="text-xs text-muted">Youzan Design System</span>
+        </div>
+
+        <!-- Buttons -->
+        <div>
+          <div class="text-xs text-muted mb-1">Button Variants</div>
+          <div class="flex gap-2 flex-wrap">
+            <button class="van-button van-button--primary">Primary Gradient</button>
+            <button class="van-button van-button--plain">Plain</button>
+            <button class="van-button van-button--success">Success</button>
+            <button class="van-button van-button--danger">Danger</button>
+            <button class="van-button van-button--primary van-button--round">Round Pill</button>
+          </div>
+        </div>
+
+        <!-- Tags & Badges -->
+        <div>
+          <div class="text-xs text-muted mb-1">E-Commerce Tags & Pills</div>
+          <div class="flex gap-2 flex-wrap">
+            <span class="van-tag van-tag--primary">van-tag primary</span>
+            <span class="van-tag van-tag--plain">van-tag plain</span>
+            <span class="van-tag van-tag--danger">Limited Deal</span>
+            <span class="van-tag van-tag--success">Verified Brand</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Design Tokens Table -->
+      <div class="vant-card p-0 overflow-hidden">
+        <table class="van-table">
+          <thead>
+            <tr>
+              <th>Vant Token</th>
+              <th>Role</th>
+              <th>Value</th>
+              <th>Contrast</th>
+              <th style="text-align: right;">Swatch</th>
+            </tr>
+          </thead>
+          <tbody id="token-table-body">
+            <!-- Dynamically populated by vant.js -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

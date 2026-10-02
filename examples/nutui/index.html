@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NutUI – JD.com Mobile E-Commerce Design System</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="../../js/lib/jquery.min.js"></script>
+  <script src="nutui.js"></script>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="nut-top-bar">
+    <div class="flex items-center gap-3">
+      <img src="../../img/logo.png" alt="Logo" class="rounded" width="26" height="26">
+      <div>
+        <div class="font-bold text-sm leading-tight">NutUI (JD.com)</div>
+        <div class="text-xs text-muted">Jingdong Retail E-Commerce Design System</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="btn-theme-toggle" class="nut-button nut-button--plain" style="height: 26px; font-size: 11px; padding: 0 10px;">
+        <span id="theme-icon">🌙</span> <span id="theme-label" style="margin-left: 4px;">Dark</span>
+      </button>
+      <button class="nut-button nut-button--primary" style="height: 26px; font-size: 11px; padding: 0 10px;">
+        Export Tokens
+      </button>
+    </div>
+  </header>
+
+  <!-- 2-Column Showcase -->
+  <div class="nut-layout-grid">
+
+    <!-- Phone Frame Container -->
+    <div class="nut-phone-frame">
+      <!-- Status Bar -->
+      <div class="nut-status-bar">
+        <span>9:41</span>
+        <span>5G 100%</span>
+      </div>
+
+      <!-- JD Search Banner -->
+      <div class="nut-search-bar">
+        <div class="flex items-center justify-between mb-2 text-xs">
+          <span class="font-bold">JD Jingdong Mall</span>
+          <span>Sign In</span>
+        </div>
+        <div class="nut-search-input">
+          <span>🔍</span>
+          <span>Search 50M+ products…</span>
+        </div>
+      </div>
+
+      <!-- Flash Deals Strip -->
+      <div class="nut-flash-strip">
+        <div class="flex items-center gap-1">
+          <span style="font-weight: 700; color: var(--nut-primary-color); font-size: 12px;">⚡ Flash Deals</span>
+          <span class="text-xs text-muted">Ends in</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <span class="nut-countdown-box">02</span>
+          <span style="font-size: 10px; font-weight: bold;">:</span>
+          <span class="nut-countdown-box">45</span>
+          <span style="font-size: 10px; font-weight: bold;">:</span>
+          <span class="nut-countdown-box">18</span>
+        </div>
+      </div>
+
+      <!-- Phone Body -->
+      <div class="nut-phone-content">
+        <!-- Product 1 -->
+        <div class="nut-card">
+          <div class="nut-card__thumb">🎧</div>
+          <div class="nut-card__content">
+            <div>
+              <div class="font-bold text-xs">Acoustic Pro Wireless Headset</div>
+              <div class="flex gap-1" style="margin-top: 4px;">
+                <span class="nut-tag">JD Logistics</span>
+                <span class="nut-tag">Coupon -¥100</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between" style="margin-top: 6px;">
+              <div class="nut-price">
+                <span class="nut-price__symbol">¥</span>
+                <span class="nut-price__big">1,299</span>
+                <span class="nut-price__decimal">.00</span>
+              </div>
+              <span class="text-xs text-muted">98% Positive</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Product 2 -->
+        <div class="nut-card">
+          <div class="nut-card__thumb" style="filter: hue-rotate(90deg);">⌚</div>
+          <div class="nut-card__content">
+            <div>
+              <div class="font-bold text-xs">Ultra Smart Sports Watch Edition</div>
+              <div class="flex gap-1" style="margin-top: 4px;">
+                <span class="nut-tag">Top Seller</span>
+                <span class="nut-tag">12 Mo. Installment</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-between" style="margin-top: 6px;">
+              <div class="nut-price">
+                <span class="nut-price__symbol">¥</span>
+                <span class="nut-price__big">849</span>
+                <span class="nut-price__decimal">.00</span>
+              </div>
+              <span class="text-xs text-muted">2.4k+ Reviews</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Action Bar (nut-action-bar) -->
+      <div class="nut-action-bar">
+        <div class="nut-action-bar__icon-btn">
+          <span>🎧</span>
+          <span>Service</span>
+        </div>
+        <div class="nut-action-bar__icon-btn">
+          <span>🏬</span>
+          <span>Shop</span>
+        </div>
+        <div class="nut-action-bar__icon-btn">
+          <span>🛒</span>
+          <span>Cart</span>
+        </div>
+        <div class="nut-action-bar__btn-group">
+          <button class="nut-action-bar__btn-cart">Add to Cart</button>
+          <button class="nut-action-bar__btn-buy">Buy Now</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: NutUI Inspector & Tokens -->
+    <div class="flex flex-col gap-3">
+      <!-- Component Specs Card -->
+      <div class="nut-panel-card flex flex-col gap-3">
+        <div class="flex items-center justify-between border-b pb-2">
+          <div class="font-bold text-sm">NutUI E-Commerce Components</div>
+          <span class="text-xs text-muted">JD Retail System</span>
+        </div>
+
+        <div>
+          <div class="text-xs text-muted mb-1">Dual-Gradient Buttons</div>
+          <div class="flex gap-2 flex-wrap">
+            <button class="nut-button nut-button--primary">Buy Now (Gradient)</button>
+            <button class="nut-button nut-button--warning">Add to Cart (Help)</button>
+            <button class="nut-button nut-button--plain">Plain Outline</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="text-xs text-muted mb-1">Promo & Logistics Tags</div>
+          <div class="flex gap-2 flex-wrap">
+            <span class="nut-tag">JD Logistics Fast Delivery</span>
+            <span class="nut-tag">Coupon -¥50</span>
+            <span class="nut-tag">Special Flash Deal</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tokens Table -->
+      <div class="nut-panel-card p-0 overflow-hidden">
+        <table class="nut-table">
+          <thead>
+            <tr>
+              <th>NutUI Token</th>
+              <th>Role</th>
+              <th>Hex / Value</th>
+              <th>Contrast</th>
+              <th style="text-align: right;">Swatch</th>
+            </tr>
+          </thead>
+          <tbody id="token-table-body">
+            <!-- Dynamically populated by nutui.js -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

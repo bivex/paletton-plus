@@ -5881,6 +5881,33 @@
                         addConvert: !0
                     }
                 },
+                vant: {
+                    data: {
+                        url: "examples/vant/index.html",
+                        addAdjuster: !0,
+                        addRandomizer: !0,
+                        addSwapSecs: !0,
+                        addConvert: !0
+                    }
+                },
+                nutui: {
+                    data: {
+                        url: "examples/nutui/index.html",
+                        addAdjuster: !0,
+                        addRandomizer: !0,
+                        addSwapSecs: !0,
+                        addConvert: !0
+                    }
+                },
+                varlet: {
+                    data: {
+                        url: "examples/varlet/index.html",
+                        addAdjuster: !0,
+                        addRandomizer: !0,
+                        addSwapSecs: !0,
+                        addConvert: !0
+                    }
+                },
                 boot: {
                     data: {
                         url: "examples/bootstrap/index.html",
