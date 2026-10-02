@@ -340,6 +340,14 @@ var _Paletton_Strings = {
                     title: 'Ant Design',
                     desc: 'Podnikové dashboardy a komponenty Ant Design'
                 },
+                'elplus': {
+                    title: 'Element Plus',
+                    desc: 'Komponenty Vue 3 a tokeny Element Plus'
+                },
+                'arco': {
+                    title: 'Arco Design',
+                    desc: 'Designový systém ByteDance a 10-úrovňová tonální škála'
+                },
                 'boot': {
                     title: 'Bootstrap 5',
                     desc: 'Komponenty Bootstrap'

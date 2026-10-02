@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Element Plus – Vue 3 Enterprise UI Example</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="../../js/lib/jquery.min.js"></script>
+  <script src="element-plus.js"></script>
+</head>
+<body>
+
+  <!-- Element Plus Top Navigation Header -->
+  <header class="el-header flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <img src="../../img/logo.png" alt="Logo" class="rounded" width="28" height="28">
+      <div>
+        <div class="font-bold text-sm leading-tight">Element Plus</div>
+        <div class="text-xs text-secondary">Vue 3 Enterprise Design System</div>
+      </div>
+      <div class="el-menu-bar ml-3">
+        <div class="el-menu-item is-active">Dashboard</div>
+        <div class="el-menu-item">Data Analytics</div>
+        <div class="el-menu-item">Theme Tokens</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Theme Switcher -->
+      <button id="btn-theme-toggle" class="el-button el-button--small" title="Toggle theme">
+        <span id="theme-icon">🌙</span> <span id="theme-label" style="margin-left: 4px;">Dark</span>
+      </button>
+
+      <!-- Primary Action -->
+      <button class="el-button el-button--primary el-button--small">
+        <span>+</span> <span style="margin-left: 4px;">Export Theme</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Metric Statistics Cards -->
+  <div class="grid grid-cols-3 gap-3 mb-4">
+    <!-- Stat 1: Primary Brand -->
+    <div class="el-card">
+      <div class="flex justify-between items-center text-xs text-secondary mb-1">
+        <span>Primary Brand Token</span>
+        <span class="el-tag el-tag--primary font-mono" id="stat-pri-tag">#409EFF</span>
+      </div>
+      <div class="text-2xl font-bold mb-1" id="stat-pri-val">$284,520</div>
+      <div class="flex items-center justify-between text-xs text-secondary mb-2">
+        <span>Brand Saturation: <strong class="text-primary">+18.5%</strong></span>
+        <span>Target: 100%</span>
+      </div>
+      <div class="el-progress-bar">
+        <div class="el-progress-bar__inner" style="width: 82%;"></div>
+      </div>
+    </div>
+
+    <!-- Stat 2: Secondary Success -->
+    <div class="el-card">
+      <div class="flex justify-between items-center text-xs text-secondary mb-1">
+        <span>Secondary Harmony</span>
+        <span class="el-tag el-tag--success font-mono" id="stat-sec-tag">Active</span>
+      </div>
+      <div class="text-2xl font-bold mb-1" id="stat-sec-val">99.8%</div>
+      <div class="flex items-center justify-between text-xs text-secondary mb-2">
+        <span>WCAG Accessibility: <strong style="color: var(--el-color-success);">AAA Pass</strong></span>
+        <span>High Contrast</span>
+      </div>
+      <div class="el-progress-bar">
+        <div class="el-progress-bar__inner" style="width: 95%; background-color: var(--el-color-success);"></div>
+      </div>
+    </div>
+
+    <!-- Stat 3: Complement Warning -->
+    <div class="el-card">
+      <div class="flex justify-between items-center text-xs text-secondary mb-1">
+        <span>Complement Accent</span>
+        <span class="el-tag el-tag--warning font-mono" id="stat-acc-tag">Alert</span>
+      </div>
+      <div class="text-2xl font-bold mb-1" id="stat-acc-val">18 Triggers</div>
+      <div class="flex items-center justify-between text-xs text-secondary mb-2">
+        <span>Call-to-Action Points</span>
+        <span style="color: var(--el-color-warning); font-weight: 600;">High Priority</span>
+      </div>
+      <div class="el-progress-bar">
+        <div class="el-progress-bar__inner" style="width: 68%; background-color: var(--el-color-warning);"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content 2-Column Grid -->
+  <div class="grid grid-cols-2 gap-3 mb-4">
+    <!-- Left Column: Components Sandbox -->
+    <div class="el-card flex flex-col gap-3">
+      <div class="flex items-center justify-between border-b pb-2">
+        <div class="font-semibold text-sm">Vue 3 Core Components</div>
+        <div class="text-xs text-secondary">Element Plus Specs</div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button class="el-button el-button--primary">Primary</button>
+        <button class="el-button el-button--success">Success</button>
+        <button class="el-button el-button--warning">Warning</button>
+        <button class="el-button el-button--plain">Plain</button>
+        <button class="el-button el-button--round el-button--primary">Round</button>
+      </div>
+
+      <!-- Tags & Badges -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="el-tag el-tag--primary">Tag Primary</span>
+        <span class="el-tag el-tag--success">Tag Success</span>
+        <span class="el-tag el-tag--warning">Tag Warning</span>
+        <span class="el-tag el-tag--round el-tag--primary">Round Tag</span>
+      </div>
+
+      <!-- Alert Component -->
+      <div class="el-alert el-alert--primary">
+        <span style="font-weight: bold; margin-right: 6px;">ℹ</span>
+        <span>Dynamic Element Plus tokens generated in real-time via Paletton color engine.</span>
+      </div>
+
+      <!-- Steps Wizard -->
+      <div class="el-steps mt-1">
+        <div class="el-step is-finish">
+          <div class="el-step-icon">✓</div>
+          <div>Color Selection</div>
+        </div>
+        <div class="el-step is-process">
+          <div class="el-step-icon">2</div>
+          <div class="font-medium text-primary">Harmonies</div>
+        </div>
+        <div class="el-step">
+          <div class="el-step-icon">3</div>
+          <div class="text-secondary">Export Vue Theme</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Interactive Form Controls -->
+    <div class="el-card flex flex-col gap-3">
+      <div class="flex items-center justify-between border-b pb-2">
+        <div class="font-semibold text-sm">Form Inputs & Interactive Controls</div>
+        <div class="text-xs text-secondary">Dynamic CSS Overrides</div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-xs text-secondary mb-1 block">Component Instance</label>
+          <input type="text" class="el-input" value="ElementPlus.ConfigProvider">
+        </div>
+        <div>
+          <label class="text-xs text-secondary mb-1 block">Theme Engine</label>
+          <select class="el-input">
+            <option>CSS Variables (Default)</option>
+            <option>SCSS Override Map</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between p-2 rounded" style="background-color: var(--el-bg-color-page); border: 1px solid var(--el-border-color-lighter);">
+        <div>
+          <div class="text-xs font-semibold">Tonal Formula Mix (light-1..9)</div>
+          <div class="text-xs text-secondary">Auto-compute 9-level brightness tint</div>
+        </div>
+        <label class="el-switch">
+          <input type="checkbox" checked>
+          <span class="el-switch-core"></span>
+        </label>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <span class="text-xs text-secondary font-medium">Brightness Adjustment</span>
+        <button class="el-button el-button--primary el-button--small">Synchronize Tokens</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enterprise Token Data Table -->
+  <div class="el-card p-0 overflow-hidden mb-2">
+    <table class="el-table">
+      <thead>
+        <tr>
+          <th>Token Variable</th>
+          <th>Semantic Role</th>
+          <th>Hex Code</th>
+          <th>WCAG 2.1 Ratio</th>
+          <th style="text-align: right;">Swatch</th>
+        </tr>
+      </thead>
+      <tbody id="token-table-body">
+        <!-- Populated dynamically by element-plus.js -->
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

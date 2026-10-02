@@ -1,0 +1,498 @@
+/* Element Plus – Vue 3 Enterprise UI Styles */
+
+:root {
+  --el-color-primary: #409eff;
+  --el-color-primary-light-3: #79bbff;
+  --el-color-primary-light-5: #a0cfff;
+  --el-color-primary-light-7: #c6e2ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+  --el-color-primary-dark-2: #337ecc;
+
+  --el-color-success: #67c23a;
+  --el-color-success-light-3: #95d475;
+  --el-color-success-light-5: #b3e19d;
+  --el-color-success-light-9: #f0f9eb;
+
+  --el-color-warning: #e6a23c;
+  --el-color-warning-light-3: #eebe77;
+  --el-color-warning-light-5: #f3d19e;
+  --el-color-warning-light-9: #fdf6ec;
+
+  --el-color-danger: #f56c6c;
+  --el-color-danger-light-9: #fef0f0;
+
+  --el-color-info: #909399;
+  --el-color-info-light-9: #f4f4f5;
+
+  --el-bg-color-page: #f2f3f5;
+  --el-bg-color: #ffffff;
+  --el-bg-color-overlay: #ffffff;
+  --el-border-color: #dcdfe6;
+  --el-border-color-light: #e4e7ed;
+  --el-border-color-lighter: #ebeef5;
+  --el-border-color-extra-light: #f2f6fc;
+
+  --el-text-color-primary: #303133;
+  --el-text-color-regular: #606266;
+  --el-text-color-secondary: #909399;
+  --el-text-color-placeholder: #a8abb2;
+
+  --el-border-radius-base: 4px;
+  --el-border-radius-small: 2px;
+  --el-border-radius-round: 20px;
+  --el-border-radius-circle: 100%;
+
+  --el-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  --el-box-shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.dark {
+  --el-bg-color-page: #0a0a0a;
+  --el-bg-color: #141414;
+  --el-bg-color-overlay: #1d1e1f;
+  --el-border-color: #414243;
+  --el-border-color-light: #363637;
+  --el-border-color-lighter: #2b2b2c;
+  --el-border-color-extra-light: #202021;
+
+  --el-text-color-primary: #e5eaf3;
+  --el-text-color-regular: #cfd3dc;
+  --el-text-color-secondary: #a3a6ad;
+  --el-text-color-placeholder: #8d9095;
+
+  --el-color-primary-light-9: rgba(64, 158, 255, 0.15);
+  --el-color-success-light-9: rgba(103, 194, 58, 0.15);
+  --el-color-warning-light-9: rgba(230, 162, 60, 0.15);
+  --el-color-info-light-9: rgba(144, 147, 153, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 1rem;
+  background-color: var(--el-bg-color-page);
+  color: var(--el-text-color-primary);
+  font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "微软雅黑", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  min-height: 100vh;
+}
+
+/* Utilities */
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.grid { display: grid; }
+.flex-col { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+.gap-1 { gap: 0.25rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.mb-1 { margin-bottom: 0.25rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-4 { margin-bottom: 1rem; }
+.p-0 { padding: 0 !important; }
+.p-2 { padding: 0.5rem; }
+.p-3 { padding: 0.75rem; }
+.p-4 { padding: 1rem; }
+.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.pb-2 { padding-bottom: 0.5rem; }
+.pb-3 { padding-bottom: 0.75rem; }
+.pt-1 { padding-top: 0.25rem; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.8125rem; }
+.text-base { font-size: 0.9375rem; }
+.text-xl { font-size: 1.25rem; }
+.text-2xl { font-size: 1.5rem; }
+.text-primary { color: var(--el-color-primary); }
+.text-secondary { color: var(--el-text-color-secondary); }
+.border-b { border-bottom: 1px solid var(--el-border-color-lighter); }
+.rounded { border-radius: var(--el-border-radius-base); }
+.overflow-hidden { overflow: hidden; }
+
+/* Element Plus Header */
+.el-header {
+  background-color: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: var(--el-border-radius-base);
+  padding: 0.65rem 1rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--el-box-shadow);
+}
+
+.el-menu-bar {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.el-menu-item {
+  padding: 0.35rem 0.75rem;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+  cursor: pointer;
+  border-radius: var(--el-border-radius-base);
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.el-menu-item:hover {
+  color: var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
+}
+
+.el-menu-item.is-active {
+  color: var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
+  font-weight: 600;
+}
+
+/* Element Plus Card */
+.el-card {
+  background-color: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--el-border-radius-base);
+  box-shadow: var(--el-box-shadow);
+  padding: 1rem;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.el-card:hover {
+  box-shadow: var(--el-box-shadow-light);
+}
+
+/* Element Plus Buttons */
+.el-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  line-height: 1;
+  height: 32px;
+  white-space: nowrap;
+  cursor: pointer;
+  background-color: var(--el-bg-color);
+  border: 1px solid var(--el-border-color);
+  color: var(--el-text-color-regular);
+  text-align: center;
+  box-sizing: border-box;
+  outline: none;
+  font-weight: 500;
+  user-select: none;
+  padding: 8px 15px;
+  font-size: 12px;
+  border-radius: var(--el-border-radius-base);
+  transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.el-button:hover {
+  color: var(--el-color-primary);
+  border-color: var(--el-color-primary-light-7);
+  background-color: var(--el-color-primary-light-9);
+}
+
+.el-button:active {
+  color: var(--el-color-primary-dark-2);
+  border-color: var(--el-color-primary-dark-2);
+}
+
+.el-button--primary {
+  color: #ffffff;
+  background-color: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+}
+
+.el-button--primary:hover {
+  background-color: var(--el-color-primary-light-3);
+  border-color: var(--el-color-primary-light-3);
+  color: #ffffff;
+}
+
+.el-button--primary:active {
+  background-color: var(--el-color-primary-dark-2);
+  border-color: var(--el-color-primary-dark-2);
+  color: #ffffff;
+}
+
+.el-button--success {
+  color: #ffffff;
+  background-color: var(--el-color-success);
+  border-color: var(--el-color-success);
+}
+
+.el-button--success:hover {
+  background-color: var(--el-color-success-light-3);
+  border-color: var(--el-color-success-light-3);
+  color: #ffffff;
+}
+
+.el-button--warning {
+  color: #ffffff;
+  background-color: var(--el-color-warning);
+  border-color: var(--el-color-warning);
+}
+
+.el-button--warning:hover {
+  background-color: var(--el-color-warning-light-3);
+  border-color: var(--el-color-warning-light-3);
+  color: #ffffff;
+}
+
+.el-button--plain {
+  background-color: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary-light-5);
+  color: var(--el-color-primary);
+}
+
+.el-button--plain:hover {
+  background-color: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+  color: #ffffff;
+}
+
+.el-button--round {
+  border-radius: var(--el-border-radius-round);
+  padding: 8px 18px;
+}
+
+.el-button--small {
+  height: 26px;
+  padding: 5px 11px;
+  font-size: 11px;
+}
+
+/* Element Plus Tags */
+.el-tag {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  height: 24px;
+  padding: 0 9px;
+  font-size: 12px;
+  line-height: 1;
+  border-radius: var(--el-border-radius-base);
+  box-sizing: border-box;
+  white-space: nowrap;
+  border: 1px solid var(--el-color-info-light-9);
+  background-color: var(--el-color-info-light-9);
+  color: var(--el-text-color-regular);
+}
+
+.el-tag--primary {
+  background-color: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary-light-8);
+  color: var(--el-color-primary);
+}
+
+.el-tag--success {
+  background-color: var(--el-color-success-light-9);
+  border-color: var(--el-color-success-light-5);
+  color: var(--el-color-success);
+}
+
+.el-tag--warning {
+  background-color: var(--el-color-warning-light-9);
+  border-color: var(--el-color-warning-light-5);
+  color: var(--el-color-warning);
+}
+
+.el-tag--round {
+  border-radius: var(--el-border-radius-round);
+}
+
+/* Progress bar */
+.el-progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: var(--el-border-color-lighter);
+  border-radius: 100px;
+  overflow: hidden;
+  position: relative;
+}
+
+.el-progress-bar__inner {
+  height: 100%;
+  background-color: var(--el-color-primary);
+  border-radius: 100px;
+  transition: width 0.3s ease;
+}
+
+/* Element Plus Alert */
+.el-alert {
+  padding: 8px 16px;
+  border-radius: var(--el-border-radius-base);
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  font-size: 12px;
+}
+
+.el-alert--primary {
+  background-color: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+  border: 1px solid var(--el-color-primary-light-8);
+}
+
+/* Element Plus Form Controls */
+.el-input {
+  width: 100%;
+  height: 32px;
+  line-height: 32px;
+  padding: 0 11px;
+  font-size: 12px;
+  border: 1px solid var(--el-border-color);
+  border-radius: var(--el-border-radius-base);
+  background-color: var(--el-bg-color);
+  color: var(--el-text-color-primary);
+  outline: none;
+  transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.el-input:focus {
+  border-color: var(--el-color-primary);
+}
+
+/* Switch */
+.el-switch {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  font-size: 14px;
+  line-height: 20px;
+  height: 20px;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.el-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.el-switch-core {
+  margin: 0;
+  display: inline-block;
+  position: relative;
+  width: 40px;
+  height: 20px;
+  border: 1px solid var(--el-border-color);
+  outline: none;
+  border-radius: 10px;
+  box-sizing: border-box;
+  background: var(--el-border-color);
+  cursor: pointer;
+  transition: border-color 0.3s, background-color 0.3s;
+}
+
+.el-switch-core::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  border-radius: 100%;
+  transition: all 0.3s;
+  width: 16px;
+  height: 16px;
+  background-color: #ffffff;
+}
+
+.el-switch input:checked + .el-switch-core {
+  border-color: var(--el-color-primary);
+  background-color: var(--el-color-primary);
+}
+
+.el-switch input:checked + .el-switch-core::after {
+  left: 100%;
+  margin-left: -17px;
+}
+
+/* Steps */
+.el-steps {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.el-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 12px;
+}
+
+.el-step-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  background-color: var(--el-bg-color);
+  border: 2px solid var(--el-border-color);
+  color: var(--el-text-color-placeholder);
+}
+
+.el-step.is-finish .el-step-icon {
+  background-color: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+  color: #ffffff;
+}
+
+.el-step.is-process .el-step-icon {
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
+}
+
+/* Table */
+.el-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  color: var(--el-text-color-regular);
+}
+
+.el-table th {
+  background-color: var(--el-bg-color);
+  color: var(--el-text-color-secondary);
+  font-weight: 600;
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.el-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  transition: background-color 0.2s;
+}
+
+.el-table tr:hover td {
+  background-color: var(--el-color-primary-light-9);
+}
+
+.color-swatch-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  display: inline-block;
+  vertical-align: middle;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}

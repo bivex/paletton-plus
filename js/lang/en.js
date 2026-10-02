@@ -340,6 +340,14 @@ var _Paletton_Strings = {
                     title: 'Ant Design',
                     desc: 'Ant Design enterprise dashboard and components'
                 },
+                'elplus': {
+                    title: 'Element Plus',
+                    desc: 'Vue 3 components and Element Plus tokens'
+                },
+                'arco': {
+                    title: 'Arco Design',
+                    desc: 'ByteDance design system and 10-tier tonal ramp'
+                },
                 'boot': {
                     title: 'Bootstrap 5',
                     desc: 'Bootstrap components and layout'

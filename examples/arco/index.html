@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arco Design – ByteDance UI Design System Example</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="../../js/lib/jquery.min.js"></script>
+  <script src="arco.js"></script>
+</head>
+<body>
+
+  <!-- Arco Top Navigation Header -->
+  <header class="arco-header flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <img src="../../img/logo.png" alt="Logo" class="rounded" width="28" height="28">
+      <div>
+        <div class="font-bold text-sm leading-tight">Arco Design</div>
+        <div class="text-xs text-secondary">ByteDance Enterprise System</div>
+      </div>
+      <div class="arco-menu-bar ml-3">
+        <div class="arco-menu-item is-active">Dashboard</div>
+        <div class="arco-menu-item">Tonal Engine</div>
+        <div class="arco-menu-item">Token Center</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Theme Switcher -->
+      <button id="btn-theme-toggle" class="arco-btn arco-btn-sm" title="Toggle theme">
+        <span id="theme-icon">🌙</span> <span id="theme-label" style="margin-left: 4px;">Dark</span>
+      </button>
+
+      <!-- Primary Action -->
+      <button class="arco-btn arco-btn-primary arco-btn-sm">
+        <span>+</span> <span style="margin-left: 4px;">Export Tokens</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Metric Statistics Cards -->
+  <div class="grid grid-cols-3 gap-3 mb-4">
+    <!-- Stat 1: Primary Brand -->
+    <div class="arco-card">
+      <div class="flex justify-between items-center text-xs text-secondary mb-1">
+        <span>Primary Token (P6)</span>
+        <span class="arco-tag arco-tag-primary font-mono" id="stat-pri-tag">#165DFF</span>
+      </div>
+      <div class="text-2xl font-bold mb-1" id="stat-pri-val">$312,890</div>
+      <div class="flex items-center justify-between text-xs text-secondary mb-2">
+        <span>Saturation Index: <strong class="text-primary">+15.8%</strong></span>
+        <span>Target: 100%</span>
+      </div>
+      <div class="arco-progress-line">
+        <div class="arco-progress-bg" style="width: 86%;"></div>
+      </div>
+    </div>
+
+    <!-- Stat 2: Secondary Success -->
+    <div class="arco-card">
+      <div class="flex justify-between items-center text-xs text-secondary mb-1">
+        <span>Secondary Harmony</span>
+        <span class="arco-tag arco-tag-success font-mono" id="stat-sec-tag">Active</span>
+      </div>
+      <div class="text-2xl font-bold mb-1" id="stat-sec-val">99.7%</div>
+      <div class="flex items-center justify-between text-xs text-secondary mb-2">
+        <span>Accessibility Standard: <strong style="color: var(--success-6);">AAA Pass</strong></span>
+        <span>Optimal Legibility</span>
+      </div>
+      <div class="arco-progress-line">
+        <div class="arco-progress-bg" style="width: 96%; background-color: var(--success-6);"></div>
+      </div>
+    </div>
+
+    <!-- Stat 3: Complement Warning -->
+    <div class="arco-card">
+      <div class="flex justify-between items-center text-xs text-secondary mb-1">
+        <span>Complement Accent</span>
+        <span class="arco-tag arco-tag-warning font-mono" id="stat-acc-tag">Focal</span>
+      </div>
+      <div class="text-2xl font-bold mb-1" id="stat-acc-val">24 Triggers</div>
+      <div class="flex items-center justify-between text-xs text-secondary mb-2">
+        <span>Call-to-Action Points</span>
+        <span style="color: var(--warning-6); font-weight: 600;">High Priority</span>
+      </div>
+      <div class="arco-progress-line">
+        <div class="arco-progress-bg" style="width: 72%; background-color: var(--warning-6);"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content 2-Column Grid -->
+  <div class="grid grid-cols-2 gap-3 mb-4">
+    <!-- Left Column: Components Sandbox & 10-tier Ramp -->
+    <div class="arco-card flex flex-col gap-3">
+      <div class="flex items-center justify-between border-b pb-2">
+        <div class="font-semibold text-sm">ByteDance 10-Tier Tonal Scale</div>
+        <div class="text-xs text-secondary">@arco-design/color</div>
+      </div>
+
+      <!-- 10-step Color Ramp Bar -->
+      <div class="grid grid-cols-10 gap-1" id="arco-ramp-container">
+        <!-- Injected dynamically by arco.js -->
+      </div>
+
+      <!-- Arco Buttons -->
+      <div class="flex items-center gap-2 flex-wrap pt-1">
+        <button class="arco-btn arco-btn-primary">Primary</button>
+        <button class="arco-btn arco-btn-secondary">Secondary</button>
+        <button class="arco-btn arco-btn-outline">Outline</button>
+        <button class="arco-btn arco-btn-text">Text</button>
+      </div>
+
+      <!-- Arco Tags -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <span class="arco-tag arco-tag-primary">Primary Tag</span>
+        <span class="arco-tag arco-tag-success">Success Tag</span>
+        <span class="arco-tag arco-tag-warning">Warning Tag</span>
+        <span class="arco-tag arco-tag-arcoblue">Solid Badge</span>
+      </div>
+
+      <!-- Alert -->
+      <div class="arco-alert">
+        <span style="font-weight: bold; margin-right: 6px;">✦</span>
+        <span>ByteDance Arco Design tokens update automatically as palette hues and shades rotate.</span>
+      </div>
+    </div>
+
+    <!-- Right Column: Interactive Form Controls & Timeline -->
+    <div class="arco-card flex flex-col gap-3">
+      <div class="flex items-center justify-between border-b pb-2">
+        <div class="font-semibold text-sm">Interactive Controls & Activity</div>
+        <div class="text-xs text-secondary">Token Bindings</div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-xs text-secondary mb-1 block">Design System Scope</label>
+          <input type="text" class="arco-input" value="@arco-design/web-react">
+        </div>
+        <div>
+          <label class="text-xs text-secondary mb-1 block">Color Algorithm</label>
+          <select class="arco-input">
+            <option>10-Tier Tonal Curve</option>
+            <option>HSL Direct Mapping</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between p-2 rounded" style="background-color: var(--color-bg-3); border: 1px solid var(--color-border-2);">
+        <div>
+          <div class="text-xs font-semibold">Live Theme Synchronization</div>
+          <div class="text-xs text-secondary">Propagate tokens into CSS root variables</div>
+        </div>
+        <label class="arco-switch">
+          <input type="checkbox" checked>
+          <span class="arco-switch-slider"></span>
+        </label>
+      </div>
+
+      <!-- Mini Timeline -->
+      <div class="arco-timeline mt-1">
+        <div class="arco-timeline-item">
+          <div class="arco-timeline-dot"></div>
+          <div>
+            <span class="font-medium text-xs">Primary Base Selected</span>
+            <span class="text-xs text-muted ml-2">Synced</span>
+          </div>
+        </div>
+        <div class="arco-timeline-item">
+          <div class="arco-timeline-dot" style="background-color: var(--success-6);"></div>
+          <div>
+            <span class="font-medium text-xs">Harmonies & Complement Bound</span>
+            <span class="text-xs text-muted ml-2">Verified</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enterprise Token Data Table -->
+  <div class="arco-card p-0 overflow-hidden mb-2">
+    <table class="arco-table">
+      <thead>
+        <tr>
+          <th>Token Variable</th>
+          <th>Semantic Role</th>
+          <th>Hex Code</th>
+          <th>WCAG 2.1 Ratio</th>
+          <th style="text-align: right;">Swatch</th>
+        </tr>
+      </thead>
+      <tbody id="token-table-body">
+        <!-- Populated dynamically by arco.js -->
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

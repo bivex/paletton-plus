@@ -340,6 +340,14 @@ var _Paletton_Strings = {
                     title: 'Ant Design',
                     desc: 'Корпоративные дашборды и компоненты Ant Design'
                 },
+                'elplus': {
+                    title: 'Element Plus',
+                    desc: 'Компоненты Vue 3 и токены Element Plus'
+                },
+                'arco': {
+                    title: 'Arco Design',
+                    desc: 'Дизайн-система ByteDance и 10-уровневая тональная шкала'
+                },
                 'boot': {
                     title: 'Bootstrap 5',
                     desc: 'Компоненты и верстка Bootstrap'

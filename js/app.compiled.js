@@ -3081,6 +3081,24 @@ define("ui.control.colorlist.table.tonal", ["app.events", "app.locale", "util", 
                         addConvert: !0
                     }
                 },
+                elplus: {
+                    data: {
+                        url: "examples/element-plus/index.html",
+                        addAdjuster: !0,
+                        addRandomizer: !0,
+                        addSwapSecs: !0,
+                        addConvert: !0
+                    }
+                },
+                arco: {
+                    data: {
+                        url: "examples/arco/index.html",
+                        addAdjuster: !0,
+                        addRandomizer: !0,
+                        addSwapSecs: !0,
+                        addConvert: !0
+                    }
+                },
                 boot: {
                     data: {
                         url: "examples/bootstrap/index.html",
