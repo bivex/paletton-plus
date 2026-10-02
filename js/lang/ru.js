@@ -644,8 +644,15 @@ var _Paletton_Strings = {
         regenSecondary: '↻ Только акценты',
         locksTitle: 'Выборочная генерация и замки',
         actionsTitle: 'Умный рандомайзер',
+        gamingGroup: 'Игровые и развлекательные (8 профилей)',
         typoTitle: 'Типографика и шрифтовые пары',
-        btnRandTypo: '🎲 Случайная типографика',
+        btnRandTypo: '🎲 Случайный (Все)',
+        btnRandGameTypo: '🎮 Игровой шрифт',
+        btnWildTypo: '⚡ Дикий генератор',
+        catAll: 'Все',
+        catGame: '🎮 Игры',
+        catUI: 'UI и Веб',
+        catEditorial: 'Издательские',
         typoCurrent: 'Активный шрифт'
     },
 

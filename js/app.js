@@ -2190,8 +2190,111 @@
         angle: 30,
         preset: "pastels"
     }, TYPOGRAPHY_PAIRS = [
+        // ── Gaming & Game UI Category (9 Presets) ──
+        {
+            id: "game_retro_pixel",
+            category: "game",
+            name: "👾 8-Bit Arcade (Press Start)",
+            heading: "'Press Start 2P', 'VT323', 'Silkscreen', 'Courier New', monospace",
+            body: "'VT323', 'Silkscreen', 'Courier New', monospace",
+            weightHeading: "400",
+            scale: "1.25",
+            letterSpacing: "0.05em",
+            lineHeight: "1.6"
+        },
+        {
+            id: "game_scifi_cyber",
+            category: "game",
+            name: "🤖 Cyberpunk HUD (Orbitron)",
+            heading: "'Orbitron', 'Audiowide', 'Michroma', 'Impact', sans-serif",
+            body: "'Rajdhani', 'Exo 2', -apple-system, sans-serif",
+            weightHeading: "800",
+            scale: "1.333",
+            letterSpacing: "0.06em",
+            lineHeight: "1.45"
+        },
+        {
+            id: "game_dark_fantasy",
+            category: "game",
+            name: "⚔️ Dark Fantasy RPG (Cinzel)",
+            heading: "'Cinzel', 'Cinzel Decorative', 'MedievalSharp', 'Georgia', serif",
+            body: "'Cormorant Garamond', 'Garamond', Georgia, serif",
+            weightHeading: "700",
+            scale: "1.414",
+            letterSpacing: "0.04em",
+            lineHeight: "1.6"
+        },
+        {
+            id: "game_tactical_fps",
+            category: "game",
+            name: "🎯 Tactical Military (Black Ops)",
+            heading: "'Black Ops One', 'Share Tech Mono', 'Impact', monospace, sans-serif",
+            body: "'Share Tech Mono', 'JetBrains Mono', 'Courier New', monospace",
+            weightHeading: "800",
+            scale: "1.25",
+            letterSpacing: "0.08em",
+            lineHeight: "1.5"
+        },
+        {
+            id: "game_esports_speed",
+            category: "game",
+            name: "🏆 Esports Arena (Russo One)",
+            heading: "'Russo One', 'Montserrat', 'Arial Black', sans-serif",
+            body: "'Chakra Petch', 'Roboto', 'Arial', sans-serif",
+            weightHeading: "900",
+            scale: "1.35",
+            letterSpacing: "-0.02em",
+            lineHeight: "1.35"
+        },
+        {
+            id: "game_cozy_casual",
+            category: "game",
+            name: "🍭 Cozy Casual (Fredoka)",
+            heading: "'Fredoka', 'Bungee', 'Luckiest Guy', 'Century Gothic', cursive, sans-serif",
+            body: "'Nunito', 'Comfortaa', -apple-system, sans-serif",
+            weightHeading: "700",
+            scale: "1.3",
+            letterSpacing: "0.02em",
+            lineHeight: "1.45"
+        },
+        {
+            id: "game_mecha_terminal",
+            category: "game",
+            name: "⚙️ Mecha Terminal (Tech Mono)",
+            heading: "'Share Tech Mono', 'Space Mono', 'Consolas', monospace",
+            body: "'Share Tech Mono', 'Courier New', monospace",
+            weightHeading: "700",
+            scale: "1.2",
+            letterSpacing: "0.1em",
+            lineHeight: "1.55"
+        },
+        {
+            id: "game_gothic_horror",
+            category: "game",
+            name: "💀 Survival Horror (Nosifer)",
+            heading: "'Creepster', 'Nosifer', 'Playfair Display', Georgia, serif",
+            body: "'Special Elite', 'Courier New', Georgia, serif",
+            weightHeading: "700",
+            scale: "1.414",
+            letterSpacing: "0.05em",
+            lineHeight: "1.6"
+        },
+        {
+            id: "game_anime_jrpg",
+            category: "game",
+            name: "⛩️ Anime / JRPG (Rounded)",
+            heading: "'M PLUS Rounded 1c', 'Zen Tokyo Zoo', 'Century Gothic', sans-serif",
+            body: "'M PLUS 1p', 'Noto Sans JP', sans-serif",
+            weightHeading: "800",
+            scale: "1.333",
+            letterSpacing: "0.01em",
+            lineHeight: "1.5"
+        },
+
+        // ── UI & Web Category (5 Presets) ──
         {
             id: "modern_sans",
+            category: "ui",
             name: "Modern Sans (SaaS)",
             heading: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
             body: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
@@ -2201,7 +2304,54 @@
             lineHeight: "1.5"
         },
         {
+            id: "swiss_grotesk",
+            category: "ui",
+            name: "Swiss Grotesk (Clean)",
+            heading: "'Helvetica Neue', Helvetica, 'Arial Black', Arial, sans-serif",
+            body: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+            weightHeading: "800",
+            scale: "1.414",
+            letterSpacing: "-0.03em",
+            lineHeight: "1.4"
+        },
+        {
+            id: "humanist",
+            category: "ui",
+            name: "Humanist (Warm UI)",
+            heading: "'Trebuchet MS', 'Segoe UI', 'Lucida Grande', sans-serif",
+            body: "'Open Sans', 'Segoe UI', Arial, sans-serif",
+            weightHeading: "700",
+            scale: "1.25",
+            letterSpacing: "-0.01em",
+            lineHeight: "1.55"
+        },
+        {
+            id: "tech_mono",
+            category: "ui",
+            name: "Developer Monospace",
+            heading: "'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace",
+            body: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+            weightHeading: "700",
+            scale: "1.2",
+            letterSpacing: "-0.01em",
+            lineHeight: "1.65"
+        },
+        {
+            id: "minimal_system",
+            category: "ui",
+            name: "Native System Compact",
+            heading: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
+            body: "-apple-system, 'SF Pro Text', 'Segoe UI', sans-serif",
+            weightHeading: "600",
+            scale: "1.2",
+            letterSpacing: "-0.015em",
+            lineHeight: "1.45"
+        },
+
+        // ── Editorial & Brand Category (5 Presets) ──
+        {
             id: "editorial_serif",
+            category: "editorial",
             name: "Editorial Serif",
             heading: "Georgia, 'Playfair Display', 'Times New Roman', serif",
             body: "Georgia, 'Charter', 'Source Serif Pro', serif",
@@ -2211,27 +2361,8 @@
             lineHeight: "1.6"
         },
         {
-            id: "swiss_grotesk",
-            name: "Swiss Grotesk",
-            heading: "'Helvetica Neue', Helvetica, 'Arial Black', Arial, sans-serif",
-            body: "'Helvetica Neue', Helvetica, Arial, sans-serif",
-            weightHeading: "800",
-            scale: "1.414",
-            letterSpacing: "-0.03em",
-            lineHeight: "1.4"
-        },
-        {
-            id: "tech_mono",
-            name: "Tech Monospace",
-            heading: "'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace",
-            body: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-            weightHeading: "700",
-            scale: "1.2",
-            letterSpacing: "-0.01em",
-            lineHeight: "1.65"
-        },
-        {
             id: "luxury_didot",
+            category: "editorial",
             name: "Luxury / Didot",
             heading: "'Didot', 'Bodoni MT', 'Cinzel', Georgia, serif",
             body: "'Cormorant Garamond', 'Garamond', Georgia, serif",
@@ -2241,17 +2372,8 @@
             lineHeight: "1.7"
         },
         {
-            id: "humanist",
-            name: "Humanist / Warm",
-            heading: "'Trebuchet MS', 'Segoe UI', 'Lucida Grande', sans-serif",
-            body: "'Open Sans', 'Segoe UI', Arial, sans-serif",
-            weightHeading: "700",
-            scale: "1.25",
-            letterSpacing: "-0.01em",
-            lineHeight: "1.55"
-        },
-        {
             id: "playful_round",
+            category: "editorial",
             name: "Playful / Casual",
             heading: "'Comic Sans MS', 'Century Gothic', 'Quicksand', cursive, sans-serif",
             body: "'Nunito', 'Segoe UI', Arial, sans-serif",
@@ -2262,6 +2384,7 @@
         },
         {
             id: "display_impact",
+            category: "editorial",
             name: "Display Impact",
             heading: "Impact, 'Arial Black', sans-serif",
             body: "Arial, 'Helvetica Neue', sans-serif",
@@ -2269,6 +2392,17 @@
             scale: "1.414",
             letterSpacing: "0.02em",
             lineHeight: "1.35"
+        },
+        {
+            id: "brutalist_poster",
+            category: "editorial",
+            name: "Brutalist Heavy Poster",
+            heading: "'Arial Black', Impact, sans-serif",
+            body: "'Courier New', Courier, monospace",
+            weightHeading: "900",
+            scale: "1.5",
+            letterSpacing: "0.03em",
+            lineHeight: "1.3"
         }
     ], p = function() {
         function i(e, n, r, i) {
@@ -2707,6 +2841,30 @@
                 } else if (profile === "darkui") {
                     var darkHues = [182, 198, 268, 282, 318];
                     hue = darkHues[Math.floor(Math.random() * darkHues.length)] + (Math.random() * 16 - 8);
+                } else if (profile === "game_rpg" || profile === "fantasy_rpg") {
+                    var rpgHues = [42, 48, 350, 278, 155];
+                    hue = rpgHues[Math.floor(Math.random() * rpgHues.length)] + (Math.random() * 12 - 6);
+                } else if (profile === "game_cyberpunk" || profile === "scifi_hud") {
+                    var cyberGameHues = [188, 322, 118, 54];
+                    hue = cyberGameHues[Math.floor(Math.random() * cyberGameHues.length)] + (Math.random() * 10 - 5);
+                } else if (profile === "game_arcade" || profile === "pixel_8bit") {
+                    var arcadeHues = [355, 212, 48, 122, 288];
+                    hue = arcadeHues[Math.floor(Math.random() * arcadeHues.length)] + (Math.random() * 10 - 5);
+                } else if (profile === "game_fps" || profile === "tactical_mil") {
+                    var fpsHues = [132, 34, 210, 44];
+                    hue = fpsHues[Math.floor(Math.random() * fpsHues.length)] + (Math.random() * 8 - 4);
+                } else if (profile === "game_horror" || profile === "survival_horror") {
+                    var horrorHues = [350, 78, 170, 225];
+                    hue = horrorHues[Math.floor(Math.random() * horrorHues.length)] + (Math.random() * 10 - 5);
+                } else if (profile === "game_cozy" || profile === "casual_mobile") {
+                    var cozyHues = [340, 46, 155, 205, 275];
+                    hue = cozyHues[Math.floor(Math.random() * cozyHues.length)] + (Math.random() * 14 - 7);
+                } else if (profile === "game_esports" || profile === "esports_arena") {
+                    var esportHues = [52, 358, 190, 265];
+                    hue = esportHues[Math.floor(Math.random() * esportHues.length)] + (Math.random() * 10 - 5);
+                } else if (profile === "game_space" || profile === "deep_space") {
+                    var spaceHues = [176, 285, 26, 198];
+                    hue = spaceHues[Math.floor(Math.random() * spaceHues.length)] + (Math.random() * 12 - 6);
                 } else {
                     hue = Math.floor(Math.random() * 360);
                 }
@@ -2730,9 +2888,18 @@
                 else if (profile === "editorial") models = ["analogcompl", "triad"];
                 else if (profile === "retro") models = ["triad", "tetrad"];
                 else if (profile === "darkui") models = ["monocompl", "analogcompl", "triadcompl"];
+                else if (profile === "game_rpg" || profile === "fantasy_rpg") models = ["triadcompl", "analogcompl", "tetrad"];
+                else if (profile === "game_cyberpunk" || profile === "scifi_hud") models = ["triad", "analogcompl", "tetrad"];
+                else if (profile === "game_arcade" || profile === "pixel_8bit") models = ["triad", "tetrad"];
+                else if (profile === "game_fps" || profile === "tactical_mil") models = ["monocompl", "analogcompl"];
+                else if (profile === "game_horror" || profile === "survival_horror") models = ["monocompl", "triad"];
+                else if (profile === "game_cozy" || profile === "casual_mobile") models = ["triad", "tetrad", "analogcompl"];
+                else if (profile === "game_esports" || profile === "esports_arena") models = ["monocompl", "triad"];
+                else if (profile === "game_space" || profile === "deep_space") models = ["analogcompl", "triadcompl"];
                 this.setModel(models[Math.floor(Math.random() * models.length)]);
                 if (this.hasSecs()) {
                     var angle = profile === "saas" || profile === "minimal" ? 30 : Math.floor(25 + Math.random() * 38);
+                    if (profile === "game_arcade" || profile === "game_esports") angle = Math.floor(35 + Math.random() * 25);
                     this.setAngle(angle);
                 }
             }
@@ -2768,6 +2935,22 @@
                 vals = [[0.58, 0.80], [0.30, 0.88], [0.62, 0.55], [0.70, 0.35], [0.20, 0.94]];
             } else if (profile === "darkui") {
                 vals = [[0.85, 0.98], [0.70, 0.85], [0.60, 0.45], [0.95, 0.12], [0.05, 0.99]];
+            } else if (profile === "game_rpg" || profile === "fantasy_rpg") {
+                vals = [[0.82, 0.90], [0.12, 0.95], [0.85, 0.35], [0.95, 0.12], [0.03, 0.98]];
+            } else if (profile === "game_cyberpunk" || profile === "scifi_hud") {
+                vals = [[0.98, 0.98], [0.82, 0.95], [0.92, 0.45], [0.98, 0.08], [0.02, 0.99]];
+            } else if (profile === "game_arcade" || profile === "pixel_8bit") {
+                vals = [[0.95, 0.95], [0.35, 0.98], [0.88, 0.70], [0.95, 0.40], [0.05, 0.98]];
+            } else if (profile === "game_fps" || profile === "tactical_mil") {
+                vals = [[0.72, 0.85], [0.15, 0.92], [0.55, 0.45], [0.75, 0.18], [0.08, 0.96]];
+            } else if (profile === "game_horror" || profile === "survival_horror") {
+                vals = [[0.80, 0.65], [0.20, 0.88], [0.75, 0.35], [0.92, 0.10], [0.06, 0.94]];
+            } else if (profile === "game_cozy" || profile === "casual_mobile") {
+                vals = [[0.68, 0.95], [0.25, 0.98], [0.55, 0.85], [0.75, 0.55], [0.10, 0.99]];
+            } else if (profile === "game_esports" || profile === "esports_arena") {
+                vals = [[0.96, 0.95], [0.15, 0.98], [0.90, 0.55], [0.98, 0.12], [0.02, 0.99]];
+            } else if (profile === "game_space" || profile === "deep_space") {
+                vals = [[0.88, 0.92], [0.30, 0.95], [0.75, 0.50], [0.92, 0.15], [0.04, 0.98]];
             }
 
             if (vals) {
@@ -3351,9 +3534,87 @@
             this.typography = typo;
             t.trigger("palette/typography/changed", this.typography);
             return this.typography;
+        }, i.prototype.generateWildTypography = function(preferredCategory) {
+            var headingList = [
+                { name: "Press Start 2P", font: "'Press Start 2P', 'VT323', monospace", weights: ["400"] },
+                { name: "Orbitron", font: "'Orbitron', 'Impact', sans-serif", weights: ["700", "800", "900"] },
+                { name: "Cinzel", font: "'Cinzel', 'Georgia', serif", weights: ["700", "800"] },
+                { name: "Black Ops One", font: "'Black Ops One', 'Impact', monospace, sans-serif", weights: ["800"] },
+                { name: "Russo One", font: "'Russo One', 'Impact', sans-serif", weights: ["900"] },
+                { name: "Fredoka", font: "'Fredoka', 'Century Gothic', cursive, sans-serif", weights: ["600", "700"] },
+                { name: "Share Tech Mono", font: "'Share Tech Mono', 'Courier New', monospace", weights: ["700"] },
+                { name: "VT323", font: "'VT323', monospace", weights: ["400"] },
+                { name: "Nosifer Horror", font: "'Nosifer', 'Creepster', Georgia, serif", weights: ["700"] },
+                { name: "M PLUS Rounded", font: "'M PLUS Rounded 1c', 'Century Gothic', sans-serif", weights: ["700", "800"] },
+                { name: "Impact", font: "Impact, 'Arial Black', sans-serif", weights: ["900"] },
+                { name: "Georgia", font: "Georgia, 'Times New Roman', serif", weights: ["700"] },
+                { name: "Helvetica Neue", font: "'Helvetica Neue', Arial, sans-serif", weights: ["700", "800"] },
+                { name: "Playfair Display", font: "'Playfair Display', Georgia, serif", weights: ["700", "800"] },
+                { name: "Trebuchet MS", font: "'Trebuchet MS', 'Segoe UI', sans-serif", weights: ["700"] },
+                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace", weights: ["700"] },
+                { name: "Didot", font: "Didot, 'Bodoni MT', serif", weights: ["600", "700"] },
+                { name: "Century Gothic", font: "'Century Gothic', sans-serif", weights: ["700"] }
+            ];
+
+            var bodyList = [
+                { name: "Rajdhani", font: "'Rajdhani', -apple-system, sans-serif" },
+                { name: "VT323", font: "'VT323', monospace" },
+                { name: "Share Tech Mono", font: "'Share Tech Mono', monospace" },
+                { name: "System Sans", font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
+                { name: "Nunito", font: "'Nunito', -apple-system, sans-serif" },
+                { name: "Cormorant", font: "'Cormorant Garamond', Georgia, serif" },
+                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace" },
+                { name: "Open Sans", font: "'Open Sans', 'Segoe UI', Arial, sans-serif" },
+                { name: "Charter Serif", font: "'Charter', Georgia, serif" },
+                { name: "Helvetica", font: "'Helvetica Neue', Helvetica, Arial, sans-serif" },
+                { name: "Roboto", font: "Roboto, 'Segoe UI', sans-serif" }
+            ];
+
+            var scales = ["1.2", "1.25", "1.3", "1.333", "1.414", "1.5", "1.618"];
+            var letterSpacings = ["-0.03em", "-0.01em", "0", "0.02em", "0.05em", "0.08em"];
+            var lineHeights = ["1.35", "1.4", "1.45", "1.5", "1.55", "1.6", "1.65"];
+
+            var pickedH = headingList[Math.floor(Math.random() * headingList.length)];
+            var pickedB = bodyList[Math.floor(Math.random() * bodyList.length)];
+            var weightH = pickedH.weights[Math.floor(Math.random() * pickedH.weights.length)];
+            var scale = scales[Math.floor(Math.random() * scales.length)];
+            var ls = letterSpacings[Math.floor(Math.random() * letterSpacings.length)];
+            var lh = lineHeights[Math.floor(Math.random() * lineHeights.length)];
+
+            return {
+                id: "wild_" + Math.random().toString(36).substr(2, 6),
+                category: "wild",
+                name: "⚡ " + pickedH.name + " + " + pickedB.name + " (" + scale + "x)",
+                heading: pickedH.font,
+                body: pickedB.font,
+                weightHeading: weightH,
+                scale: scale,
+                letterSpacing: ls,
+                lineHeight: lh
+            };
         }, i.prototype.randomizeTypography = function(type) {
-            var pool = TYPOGRAPHY_PAIRS;
+            type = (type || "").toLowerCase();
             var curId = this.typography ? this.typography.id : "";
+
+            if (type === "wild") {
+                return this.setTypography(this.generateWildTypography());
+            }
+
+            var pool = TYPOGRAPHY_PAIRS;
+            if (type === "game" || type === "gaming") {
+                pool = TYPOGRAPHY_PAIRS.filter(function(p) { return p.category === "game"; });
+            } else if (type === "ui" || type === "web") {
+                pool = TYPOGRAPHY_PAIRS.filter(function(p) { return p.category === "ui"; });
+            } else if (type === "editorial") {
+                pool = TYPOGRAPHY_PAIRS.filter(function(p) { return p.category === "editorial"; });
+            }
+
+            if (!type || type === "all") {
+                if (Math.random() < 0.35) {
+                    return this.setTypography(this.generateWildTypography());
+                }
+            }
+
             var available = pool.filter(function(p) { return p.id !== curId; });
             if (!available.length) available = pool;
             var picked = available[Math.floor(Math.random() * available.length)];
@@ -4039,6 +4300,19 @@
             addProfileBtn($uiProfiles, "neutral_accent", "Neutral + Pop");
             e.append($uiProfiles);
 
+            // Designer Profiles: Gaming & Entertainment
+            $("<DIV>").addClass("rand-section-title").text(n("random.gamingGroup") || "Gaming & Entertainment (8 Profiles)").appendTo(e);
+            var $gameProfiles = $("<DIV>").addClass("rand-btn-grid");
+            addProfileBtn($gameProfiles, "game_rpg", "Dark Fantasy RPG");
+            addProfileBtn($gameProfiles, "game_cyberpunk", "Cyberpunk HUD");
+            addProfileBtn($gameProfiles, "game_arcade", "8-Bit Retro Arcade");
+            addProfileBtn($gameProfiles, "game_fps", "Tactical Military FPS");
+            addProfileBtn($gameProfiles, "game_horror", "Survival Horror");
+            addProfileBtn($gameProfiles, "game_cozy", "Cozy / Casual Mobile");
+            addProfileBtn($gameProfiles, "game_esports", "Esports Arena");
+            addProfileBtn($gameProfiles, "game_space", "Deep Space Sci-Fi");
+            e.append($gameProfiles);
+
             // Designer Profiles: Aesthetics
             $("<DIV>").addClass("rand-section-title").text("Aesthetic Profiles").appendTo(e);
             var $aesProfiles = $("<DIV>").addClass("rand-btn-grid");
@@ -4163,7 +4437,7 @@
             }).appendTo($favRow);
             e.append($favRow);
 
-            // Typography & Font Pairings (Curated 8 pairings)
+            // Typography & Font Pairings
             $("<DIV>").addClass("rand-section-title").text(n("random.typoTitle") || "Typography & Font Pairings").appendTo(e);
             var $typoBox = $("<DIV>").addClass("rand-typo-box").css({
                 background: "#161d27",
@@ -4173,29 +4447,140 @@
                 marginBottom: "10px"
             });
 
-            var $typoHeader = $("<DIV>").css({
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "8px",
-                gap: "8px"
-            });
-
+            // Active Typography Badge
             var $typoCurrentBadge = $("<DIV>").addClass("rand-typo-badge").css({
                 fontSize: "11px",
                 color: "#94a3b8",
-                flex: "1",
+                marginBottom: "8px",
+                padding: "4px 8px",
+                background: "rgba(0,0,0,0.25)",
+                borderRadius: "4px",
+                border: "1px solid rgba(255,255,255,0.05)",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap"
             });
+            $typoBox.append($typoCurrentBadge);
+
+            // 3 Action Buttons: Random All | 🎮 Game Font | ⚡ Wild Gen
+            var $typoActionsRow = $("<DIV>").css({
+                display: "flex",
+                gap: "5px",
+                marginBottom: "8px"
+            });
+
+            var triggerTypoToast = function(typoObj) {
+                var $toast = $(".global-copy-toast");
+                if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
+                $toast.html("&#9998; Typography: <b>" + (typoObj ? typoObj.name : "Pairing") + "</b>").addClass("show");
+                setTimeout(function() { $toast.removeClass("show"); }, 2000);
+            };
+
+            var createTypoActionBtn = function(label, bg, border, color, onClick) {
+                return $("<BUTTON>").addClass("rand-btn-pill").css({
+                    flex: "1",
+                    background: bg,
+                    borderColor: border,
+                    color: color,
+                    fontWeight: "600",
+                    fontSize: "10px",
+                    padding: "5px 4px",
+                    cursor: "pointer",
+                    textAlign: "center",
+                    whiteSpace: "nowrap"
+                }).html(label).click(onClick);
+            };
+
+            $typoActionsRow.append(
+                createTypoActionBtn(n("random.btnRandTypo") || "🎲 Random All", "linear-gradient(135deg, #1e3a5f, #0f2744)", "#38bdf8", "#e0f2fe", function() {
+                    var res = r.randomizeTypography("all");
+                    updateTypoBadge();
+                    triggerTypoToast(res);
+                })
+            );
+
+            $typoActionsRow.append(
+                createTypoActionBtn(n("random.btnRandGameTypo") || "🎮 Game Font", "linear-gradient(135deg, #3b1d54, #1e1136)", "#c084fc", "#f3e8ff", function() {
+                    var res = r.randomizeTypography("game");
+                    updateTypoBadge();
+                    triggerTypoToast(res);
+                })
+            );
+
+            $typoActionsRow.append(
+                createTypoActionBtn(n("random.btnWildTypo") || "⚡ Wild Gen", "linear-gradient(135deg, #451a03, #290f02)", "#f59e0b", "#fef3c7", function() {
+                    var res = r.randomizeTypography("wild");
+                    updateTypoBadge();
+                    triggerTypoToast(res);
+                })
+            );
+
+            $typoBox.append($typoActionsRow);
+
+            // Category Filter Tabs
+            var currentCategory = "all";
+            var $typoCatRow = $("<DIV>").css({
+                display: "flex",
+                gap: "4px",
+                marginBottom: "8px",
+                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                paddingBottom: "6px"
+            });
 
             var $typoGrid = $("<DIV>").addClass("rand-btn-grid");
+
+            var pairs = pal.getTypographyPairs ? pal.getTypographyPairs() : [];
+
+            var renderCategoryTabs = function() {
+                $typoCatRow.empty();
+                var cats = [
+                    { id: "all", label: n("random.catAll") || "All" },
+                    { id: "game", label: n("random.catGame") || "🎮 Gaming" },
+                    { id: "ui", label: n("random.catUI") || "UI & Web" },
+                    { id: "editorial", label: n("random.catEditorial") || "Editorial" }
+                ];
+                cats.forEach(function(c) {
+                    var isAct = currentCategory === c.id;
+                    $("<BUTTON>").addClass("rand-btn-pill compact").css({
+                        fontSize: "9px",
+                        padding: "2px 6px",
+                        background: isAct ? "rgba(56,189,248,0.2)" : "transparent",
+                        borderColor: isAct ? "#38bdf8" : "rgba(255,255,255,0.1)",
+                        color: isAct ? "#38bdf8" : "#94a3b8",
+                        fontWeight: isAct ? "bold" : "normal"
+                    }).text(c.label).click(function() {
+                        currentCategory = c.id;
+                        renderCategoryTabs();
+                        renderPresets();
+                    }).appendTo($typoCatRow);
+                });
+            };
+
+            var renderPresets = function() {
+                $typoGrid.empty();
+                var filtered = pairs.filter(function(pair) {
+                    if (currentCategory === "all") return true;
+                    return pair.category === currentCategory;
+                });
+                filtered.forEach(function(pair) {
+                    var $pBtn = $("<BUTTON>").addClass("rand-btn-pill compact").attr("data-typo-id", pair.id).text(pair.name).css({
+                        fontSize: "10px",
+                        padding: "4px 6px"
+                    }).click(function() {
+                        r.setTypography(pair.id);
+                        updateTypoBadge();
+                        triggerTypoToast(pair);
+                    });
+                    $typoGrid.append($pBtn);
+                });
+                updateTypoBadge();
+            };
 
             var updateTypoBadge = function() {
                 var cur = pal.getTypography ? pal.getTypography() : null;
                 if (cur) {
-                    $typoCurrentBadge.html('<span style="color:#64748b">' + (n("random.typoCurrent") || "Active:") + '</span> <b style="color:#38bdf8;font-family:' + cur.heading + '">' + cur.name + '</b>');
+                    var tag = cur.category === "game" ? "🎮 " : (cur.category === "wild" ? "⚡ " : "");
+                    $typoCurrentBadge.html('<span style="color:#64748b">' + (n("random.typoCurrent") || "Active:") + '</span> <b style="color:#38bdf8;font-family:' + cur.heading + '">' + tag + cur.name + '</b>');
                     $typoGrid.find(".rand-btn-pill").each(function() {
                         var $btn = $(this);
                         if ($btn.attr("data-typo-id") === cur.id) {
@@ -4207,42 +4592,10 @@
                 }
             };
 
-            var $btnRandTypo = $("<BUTTON>").addClass("rand-btn-pill").css({
-                background: "linear-gradient(135deg, #1e3a5f, #0f2744)",
-                borderColor: "#38bdf8",
-                color: "#e0f2fe",
-                fontWeight: "600",
-                padding: "4px 10px",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                flexShrink: "0"
-            }).html(n("random.btnRandTypo") || "🎲 Randomize Typography").click(function() {
-                var res = r.randomizeTypography();
-                updateTypoBadge();
-                var $toast = $(".global-copy-toast");
-                if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
-                $toast.html("&#9998; Typography: <b>" + (res ? res.name : "Pairing") + "</b>").addClass("show");
-                setTimeout(function() { $toast.removeClass("show"); }, 2000);
-            });
+            renderCategoryTabs();
+            renderPresets();
 
-            $typoHeader.append($typoCurrentBadge).append($btnRandTypo);
-            $typoBox.append($typoHeader);
-
-            var pairs = pal.getTypographyPairs ? pal.getTypographyPairs() : [];
-            pairs.forEach(function(pair) {
-                var $pBtn = $("<BUTTON>").addClass("rand-btn-pill compact").attr("data-typo-id", pair.id).text(pair.name).css({
-                    fontSize: "10px",
-                    padding: "4px 6px"
-                }).click(function() {
-                    r.setTypography(pair.id);
-                    updateTypoBadge();
-                    var $toast = $(".global-copy-toast");
-                    if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
-                    $toast.html("&#9998; Typography: <b>" + pair.name + "</b>").addClass("show");
-                    setTimeout(function() { $toast.removeClass("show"); }, 2000);
-                });
-                $typoGrid.append($pBtn);
-            });
+            $typoBox.append($typoCatRow);
             $typoBox.append($typoGrid);
             e.append($typoBox);
 
@@ -4467,6 +4820,10 @@
                 value: "typo-" + (res ? res.id : "")
             });
             return res;
+        }, r.prototype.randomizeGameTypography = function() {
+            return this.randomizeTypography("game");
+        }, r.prototype.randomizeWildTypography = function() {
+            return this.randomizeTypography("wild");
         }, r.prototype.setTypography = function(id) {
             var res = this.palette.setTypography(id);
             t.trigger("randomizer/changed");
@@ -5104,6 +5461,7 @@
                     doc.head.appendChild(styleEl);
                 }
                 var css = [
+                    "@import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Cinzel:wght@600;700;800&family=Fredoka:wght@600;700&family=Orbitron:wght@700;800;900&family=Press+Start+2P&family=Rajdhani:wght@600;700&family=Russo+One&family=Share+Tech+Mono&family=VT323&display=swap');",
                     ':root {',
                     '  --font-heading: ' + typo.heading + ' !important;',
                     '  --font-body: ' + typo.body + ' !important;',
@@ -6496,6 +6854,7 @@
                     doc.head.appendChild(styleEl);
                 }
                 var css = [
+                    "@import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Cinzel:wght@600;700;800&family=Fredoka:wght@600;700&family=Orbitron:wght@700;800;900&family=Press+Start+2P&family=Rajdhani:wght@600;700&family=Russo+One&family=Share+Tech+Mono&family=VT323&display=swap');",
                     ':root {',
                     '  --font-heading: ' + typo.heading + ' !important;',
                     '  --font-body: ' + typo.body + ' !important;',

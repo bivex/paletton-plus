@@ -413,6 +413,7 @@ define("ui.control.examples.class", ["app.ini", "app.events", "app.settings", "a
                     doc.head.appendChild(styleEl);
                 }
                 var css = [
+                    "@import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Cinzel:wght@600;700;800&family=Fredoka:wght@600;700&family=Orbitron:wght@700;800;900&family=Press+Start+2P&family=Rajdhani:wght@600;700&family=Russo+One&family=Share+Tech+Mono&family=VT323&display=swap');",
                     ':root {',
                     '  --font-heading: ' + typo.heading + ' !important;',
                     '  --font-body: ' + typo.body + ' !important;',

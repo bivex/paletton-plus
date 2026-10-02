@@ -644,8 +644,15 @@ var _Paletton_Strings = {
         regenSecondary: '↻ Accents Only',
         locksTitle: 'Selective Regeneration & Locks',
         actionsTitle: 'Smart Randomize',
+        gamingGroup: 'Gaming & Entertainment (8 Profiles)',
         typoTitle: 'Typography & Font Pairings',
-        btnRandTypo: '🎲 Randomize Typography',
+        btnRandTypo: '🎲 Randomize All',
+        btnRandGameTypo: '🎮 Game Font',
+        btnWildTypo: '⚡ Wild Generator',
+        catAll: 'All',
+        catGame: '🎮 Gaming',
+        catUI: 'UI & Web',
+        catEditorial: 'Editorial',
         typoCurrent: 'Active Pairing'
     },
 

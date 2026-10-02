@@ -644,8 +644,15 @@ var _Paletton_Strings = {
         regenSecondary: '↻ Jen akcenty',
         locksTitle: 'Selektivní generování a zámky',
         actionsTitle: 'Chytrý generátor',
+        gamingGroup: 'Herní a zábavní (8 profilů)',
         typoTitle: 'Typografie a párování písem',
         btnRandTypo: '🎲 Náhodná typografie',
+        btnRandGameTypo: '🎮 Herní písmo',
+        btnWildTypo: '⚡ Divoký generátor',
+        catAll: 'Vše',
+        catGame: '🎮 Herní',
+        catUI: 'UI a Web',
+        catEditorial: 'Typografické',
         typoCurrent: 'Aktivní písmo'
     },
 
