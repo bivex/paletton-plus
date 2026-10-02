@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>98.css – Windows 98 / XP Retro Desktop Example</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="../../js/lib/jquery.min.js"></script>
+  <script src="win98.js"></script>
+</head>
+<body>
+
+  <!-- Windows 98 Window -->
+  <div class="win-outset win-window">
+    <!-- Titlebar -->
+    <div class="win-titlebar">
+      <div class="flex items-center gap-1">
+        <span>🖥️</span>
+        <span>Display Properties</span>
+      </div>
+      <div class="win-title-controls">
+        <button class="win-btn-control">_</button>
+        <button class="win-btn-control">□</button>
+        <button class="win-btn-control">✕</button>
+      </div>
+    </div>
+
+    <!-- Menu Bar -->
+    <div class="win-menubar">
+      <div class="win-menuitem"><u>F</u>ile</div>
+      <div class="win-menuitem"><u>E</u>dit</div>
+      <div class="win-menuitem"><u>V</u>iew</div>
+      <div class="win-menuitem"><u>H</u>elp</div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="win-tabs">
+      <div class="win-tab is-active">Appearance</div>
+      <div class="win-tab">Background</div>
+      <div class="win-tab">Screen Saver</div>
+      <div class="win-tab">Settings</div>
+    </div>
+
+    <!-- Page Body -->
+    <div class="win-page">
+      <!-- Mini Desktop Preview Box -->
+      <div class="win-inset" style="padding: 14px; background-color: #008080;">
+        <div class="win-outset" style="max-width: 320px; margin: 0 auto; box-shadow: 2px 2px 8px rgba(0,0,0,0.4);">
+          <div class="win-titlebar">
+            <span>Active Window</span>
+            <div class="win-title-controls">
+              <button class="win-btn-control">✕</button>
+            </div>
+          </div>
+          <div style="padding: 8px; background-color: #c0c0c0; color: #000;">
+            <p style="margin: 0 0 6px 0;">Paletton Dynamic Scheme Preview</p>
+            <div class="flex justify-between items-center">
+              <span class="text-xs">Current Color: <b id="stat-pri-tag">#000080</b></span>
+              <button class="win-btn is-default" style="min-width: 50px; height: 20px;">OK</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Color Scheme Properties Fieldset -->
+      <fieldset class="win-fieldset">
+        <legend class="win-legend">Scheme Customization</legend>
+        <div class="flex items-center justify-between">
+          <div>
+            <div><b>Item:</b> Active Title Bar Gradient</div>
+            <div style="color: #666; font-size: 10px;">Gradient dynamically driven by Paletton wheel.</div>
+          </div>
+          <button id="btn-theme-toggle" class="win-btn">Toggle Dark</button>
+        </div>
+      </fieldset>
+
+      <!-- System Metrics Table -->
+      <div class="win-inset p-0 overflow-hidden" style="padding: 0;">
+        <table class="win-table">
+          <thead>
+            <tr>
+              <th>System Metric</th>
+              <th>Role</th>
+              <th>Hex</th>
+              <th>WCAG</th>
+              <th style="text-align: right;">Swatch</th>
+            </tr>
+          </thead>
+          <tbody id="token-table-body">
+            <!-- Dynamically populated by win98.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Dialog Bottom Action Buttons -->
+      <div class="flex justify-end gap-2" style="margin-top: 4px;">
+        <button class="win-btn is-default">OK</button>
+        <button class="win-btn">Cancel</button>
+        <button class="win-btn">Apply</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

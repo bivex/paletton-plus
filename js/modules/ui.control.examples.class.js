@@ -115,6 +115,51 @@ define("ui.control.examples.class", ["app.ini", "app.events", "app.settings", "a
                         addConvert: !0
                     }
                 },
+                apple: {
+                    data: {
+                        url: "examples/apple/index.html",
+                        addAdjuster: !0,
+                        addRandomizer: !0,
+                        addSwapSecs: !0,
+                        addConvert: !0
+                    }
+                },
+                fluent: {
+                    data: {
+                        url: "examples/fluent/index.html",
+                        addAdjuster: !0,
+                        addRandomizer: !0,
+                        addSwapSecs: !0,
+                        addConvert: !0
+                    }
+                },
+                atlassian: {
+                    data: {
+                        url: "examples/atlassian/index.html",
+                        addAdjuster: !0,
+                        addRandomizer: !0,
+                        addSwapSecs: !0,
+                        addConvert: !0
+                    }
+                },
+                nes: {
+                    data: {
+                        url: "examples/nes/index.html",
+                        addAdjuster: !0,
+                        addRandomizer: !0,
+                        addSwapSecs: !0,
+                        addConvert: !0
+                    }
+                },
+                win98: {
+                    data: {
+                        url: "examples/win98/index.html",
+                        addAdjuster: !0,
+                        addRandomizer: !0,
+                        addSwapSecs: !0,
+                        addConvert: !0
+                    }
+                },
                 boot: {
                     data: {
                         url: "examples/bootstrap/index.html",

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Apple Human Interface Guidelines – macOS & iOS Example</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="../../js/lib/jquery.min.js"></script>
+  <script src="apple.js"></script>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="apple-top-bar">
+    <div class="flex items-center gap-3">
+      <span style="font-size: 20px;"></span>
+      <div>
+        <div class="font-bold text-sm leading-tight">Apple HIG (macOS & iOS)</div>
+        <div class="text-xs text-secondary">Cupertino Human Interface System</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="btn-theme-toggle" class="apple-btn" style="height: 26px; font-size: 11px;">
+        <span id="theme-icon">🌙</span> <span id="theme-label" style="margin-left: 4px;">Dark</span>
+      </button>
+      <button class="apple-btn apple-btn-primary" style="height: 26px; font-size: 11px;">
+        Export Tokens
+      </button>
+    </div>
+  </header>
+
+  <!-- macOS Window Mockup -->
+  <div class="macos-window mb-4">
+    <!-- Window Titlebar with Traffic Lights -->
+    <div class="macos-titlebar">
+      <div class="traffic-lights">
+        <span class="traffic-light traffic-close"></span>
+        <span class="traffic-light traffic-min"></span>
+        <span class="traffic-light traffic-zoom"></span>
+      </div>
+      <div class="macos-title">System Settings — Appearance & Accent</div>
+      <div style="width: 50px;"></div>
+    </div>
+
+    <!-- Window Body: Sidebar + Main Area -->
+    <div class="macos-body">
+      <!-- Sidebar -->
+      <div class="macos-sidebar">
+        <div class="sidebar-heading">Preferences</div>
+        <div class="sidebar-item is-active">
+          <span>🎨</span> <span>Appearance</span>
+        </div>
+        <div class="sidebar-item">
+          <span>⚙️</span> <span>General</span>
+        </div>
+        <div class="sidebar-item">
+          <span>♿</span> <span>Accessibility</span>
+        </div>
+        <div class="sidebar-item">
+          <span>🖥️</span> <span>Displays</span>
+        </div>
+        <div class="sidebar-heading" style="margin-top: 10px;">Developer</div>
+        <div class="sidebar-item">
+          <span>🛠️</span> <span>SF Symbols</span>
+        </div>
+        <div class="sidebar-item">
+          <span>📦</span> <span>SwiftUI Tokens</span>
+        </div>
+      </div>
+
+      <!-- Main Area -->
+      <div class="macos-main">
+        <!-- Appearance Controls Section -->
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="font-bold text-base">Accent Color & Theme</div>
+            <div class="text-xs text-secondary">Control the look of buttons, active controls and focus rings.</div>
+          </div>
+          <!-- Segmented Control -->
+          <div class="segmented-control">
+            <div class="segmented-item is-active">Light</div>
+            <div class="segmented-item">Dark</div>
+            <div class="segmented-item">Auto</div>
+          </div>
+        </div>
+
+        <!-- Cupertino Switch & Toggle -->
+        <div class="apple-card flex items-center justify-between">
+          <div>
+            <div class="font-semibold text-xs">Vibrancy & Material Blur</div>
+            <div class="text-xs text-secondary">Apply system-wide translucent materials (ultra-thin blur)</div>
+          </div>
+          <label class="cupertino-switch">
+            <input type="checkbox" checked>
+            <span class="cupertino-slider"></span>
+          </label>
+        </div>
+
+        <!-- Component Gallery -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="apple-card flex flex-col gap-2">
+            <div class="font-semibold text-xs">SwiftUI Button Styles</div>
+            <div class="flex gap-2 flex-wrap pt-1">
+              <button class="apple-btn apple-btn-primary">Primary Pill</button>
+              <button class="apple-btn apple-btn-tinted">Tinted</button>
+              <button class="apple-btn">Standard</button>
+            </div>
+          </div>
+
+          <div class="apple-card flex flex-col gap-2">
+            <div class="font-semibold text-xs">Active Accent Code</div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-secondary">System Hex:</span>
+              <span class="font-mono text-xs font-bold text-accent" id="stat-pri-tag">#007AFF</span>
+            </div>
+            <div class="text-xs text-secondary">
+              Synchronized with macOS Sequoia & iOS 18 Design Library.
+            </div>
+          </div>
+        </div>
+
+        <!-- Design Tokens Table -->
+        <div class="apple-card p-0 overflow-hidden">
+          <table class="apple-table">
+            <thead>
+              <tr>
+                <th>SwiftUI Token</th>
+                <th>Role</th>
+                <th>Hex Code</th>
+                <th>Contrast</th>
+                <th style="text-align: right;">Swatch</th>
+              </tr>
+            </thead>
+            <tbody id="token-table-body">
+              <!-- Dynamically populated by apple.js -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

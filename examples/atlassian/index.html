@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Atlassian Design System – Jira & Confluence Example</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="../../js/lib/jquery.min.js"></script>
+  <script src="atlassian.js"></script>
+</head>
+<body>
+
+  <!-- Top Header Bar -->
+  <header class="atlassian-header">
+    <div class="flex items-center gap-3">
+      <img src="../../img/logo.png" alt="Logo" class="rounded" width="26" height="26">
+      <div>
+        <div class="font-bold text-sm leading-tight">Atlassian Design System</div>
+        <div class="text-xs text-subtle">Jira Software & Confluence UI Tokens</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="btn-theme-toggle" class="ds-btn ds-btn-sm">
+        <span id="theme-icon">🌙</span> <span id="theme-label" style="margin-left: 4px;">Dark</span>
+      </button>
+      <button class="ds-btn ds-btn-primary ds-btn-sm">
+        <span>+</span> <span style="margin-left: 4px;">Create Issue</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Jira Kanban Board -->
+  <div class="kanban-board">
+    <!-- Column 1: TO DO -->
+    <div class="kanban-column">
+      <div class="kanban-column-title">
+        <span>To Do</span>
+        <span class="text-xs">3</span>
+      </div>
+
+      <div class="jira-card">
+        <div class="jira-card__title">Standardize WCAG 2.1 Contrast ratios in style tokens</div>
+        <div class="jira-card__footer">
+          <span class="ds-lozenge">Backlog</span>
+          <div class="flex items-center gap-1">
+            <span class="text-xs text-subtle">PAL-104</span>
+            <div class="ds-avatar">AK</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="jira-card">
+        <div class="jira-card__title">Audit accessible touch targets for mobile lozenges</div>
+        <div class="jira-card__footer">
+          <span class="ds-lozenge ds-lozenge-warning">High Priority</span>
+          <div class="flex items-center gap-1">
+            <span class="text-xs text-subtle">PAL-109</span>
+            <div class="ds-avatar" style="background-color: var(--ds-warning-bold);">TS</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 2: IN PROGRESS -->
+    <div class="kanban-column">
+      <div class="kanban-column-title">
+        <span>In Progress</span>
+        <span class="text-xs">1</span>
+      </div>
+
+      <div class="jira-card" style="border-left: 3px solid var(--ds-brand-bold);">
+        <div class="jira-card__title">Migrate color engine to Atlassian Tokens v2</div>
+        <div class="jira-card__footer">
+          <span class="ds-lozenge ds-lozenge-inprogress">In Progress</span>
+          <div class="flex items-center gap-1">
+            <span class="text-xs text-subtle font-mono" id="stat-pri-tag">#0052CC</span>
+            <div class="ds-avatar">JD</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 3: DONE -->
+    <div class="kanban-column">
+      <div class="kanban-column-title">
+        <span>Done</span>
+        <span class="text-xs">2</span>
+      </div>
+
+      <div class="jira-card">
+        <div class="jira-card__title">Setup automatic palette synchronization pipeline</div>
+        <div class="jira-card__footer">
+          <span class="ds-lozenge ds-lozenge-success">Verified</span>
+          <div class="flex items-center gap-1">
+            <span class="text-xs text-subtle">PAL-98</span>
+            <div class="ds-avatar" style="background-color: var(--ds-success-bold);">ME</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tokens Table -->
+  <div class="ds-card p-0 overflow-hidden mb-2">
+    <table class="ds-table">
+      <thead>
+        <tr>
+          <th>Atlassian Token</th>
+          <th>Semantic Role</th>
+          <th>Hex / Value</th>
+          <th>WCAG 2.1 Ratio</th>
+          <th style="text-align: right;">Swatch</th>
+        </tr>
+      </thead>
+      <tbody id="token-table-body">
+        <!-- Dynamically populated by atlassian.js -->
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

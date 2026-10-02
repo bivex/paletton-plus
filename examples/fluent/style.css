@@ -1,0 +1,290 @@
+/* Microsoft Fluent UI (Windows 11 & Office 365) Styles */
+
+:root {
+  --fluent-brand: #0078d4;
+  --fluent-brand-hover: #106ebe;
+  --fluent-brand-active: #005a9e;
+  --fluent-brand-tint: rgba(0, 120, 212, 0.12);
+  --fluent-secondary: #107c41;
+  --fluent-warning: #d83b01;
+
+  --fluent-bg-mica: #f3f3f3;
+  --fluent-bg-card: #ffffff;
+  --fluent-bg-subtle: #f9f9f9;
+  --fluent-stroke: #e5e5e5;
+  --fluent-stroke-subtle: #f0f0f0;
+
+  --fluent-text-primary: #242424;
+  --fluent-text-secondary: #616161;
+  --fluent-text-tertiary: #8a8a8a;
+
+  --fluent-radius-sm: 4px;
+  --fluent-radius-md: 8px;
+  --fluent-radius-lg: 12px;
+  --fluent-radius-circular: 999px;
+
+  --fluent-shadow-4: 0 1.6px 3.6px rgba(0, 0, 0, 0.13), 0 0.3px 0.9px rgba(0, 0, 0, 0.11);
+  --fluent-shadow-8: 0 3.2px 7.2px rgba(0, 0, 0, 0.13), 0 0.6px 1.8px rgba(0, 0, 0, 0.11);
+}
+
+.dark {
+  --fluent-bg-mica: #202020;
+  --fluent-bg-card: #2b2b2b;
+  --fluent-bg-subtle: #242424;
+  --fluent-stroke: #3b3b3b;
+  --fluent-stroke-subtle: #333333;
+
+  --fluent-text-primary: #ffffff;
+  --fluent-text-secondary: #adadad;
+  --fluent-text-tertiary: #707070;
+
+  --fluent-brand-tint: rgba(0, 120, 212, 0.25);
+  --fluent-shadow-4: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --fluent-shadow-8: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 1rem;
+  background-color: var(--fluent-bg-mica);
+  color: var(--fluent-text-primary);
+  font-family: "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  transition: background-color 0.25s, color 0.25s;
+  min-height: 100vh;
+}
+
+/* Utilities */
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.grid { display: grid; }
+.flex-col { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-1 { gap: 0.25rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.mb-1 { margin-bottom: 0.25rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.font-mono { font-family: Consolas, "Courier New", monospace; }
+.text-xs { font-size: 11px; }
+.text-sm { font-size: 12px; }
+.text-base { font-size: 14px; }
+.text-primary { color: var(--fluent-brand); }
+.text-secondary { color: var(--fluent-text-secondary); }
+
+/* Windows 11 Fluent Window */
+.fluent-window {
+  background-color: var(--fluent-bg-card);
+  border: 1px solid var(--fluent-stroke);
+  border-radius: var(--fluent-radius-md);
+  box-shadow: var(--fluent-shadow-8);
+  overflow: hidden;
+}
+
+/* Win 11 Titlebar */
+.fluent-titlebar {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background-color: var(--fluent-bg-subtle);
+  border-bottom: 1px solid var(--fluent-stroke);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fluent-window-controls {
+  display: flex;
+  gap: 12px;
+  color: var(--fluent-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Command Bar */
+.fluent-command-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: var(--fluent-bg-card);
+  border-bottom: 1px solid var(--fluent-stroke-subtle);
+}
+
+.fluent-command-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--fluent-text-primary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--fluent-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.fluent-command-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .fluent-command-btn:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.fluent-command-btn.primary {
+  background-color: var(--fluent-brand);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.fluent-command-btn.primary:hover {
+  background-color: var(--fluent-brand-hover);
+}
+
+/* Fluent Pivot Tabs */
+.fluent-pivot {
+  display: flex;
+  gap: 16px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--fluent-stroke-subtle);
+}
+
+.fluent-pivot-item {
+  padding: 10px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fluent-text-secondary);
+  cursor: pointer;
+  position: relative;
+}
+
+.fluent-pivot-item.is-active {
+  color: var(--fluent-text-primary);
+  font-weight: 600;
+}
+
+.fluent-pivot-item.is-active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background-color: var(--fluent-brand);
+  border-radius: 2px 2px 0 0;
+}
+
+/* Body Content */
+.fluent-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Card */
+.fluent-card {
+  background-color: var(--fluent-bg-subtle);
+  border: 1px solid var(--fluent-stroke);
+  border-radius: var(--fluent-radius-sm);
+  padding: 12px 14px;
+  box-shadow: var(--fluent-shadow-4);
+}
+
+/* Toggle */
+.fluent-toggle {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.fluent-toggle input {
+  display: none;
+}
+
+.fluent-toggle-slider {
+  width: 40px;
+  height: 20px;
+  border: 1px solid var(--fluent-text-secondary);
+  background-color: transparent;
+  border-radius: 10px;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.fluent-toggle-slider::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  background-color: var(--fluent-text-secondary);
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.fluent-toggle input:checked + .fluent-toggle-slider {
+  background-color: var(--fluent-brand);
+  border-color: var(--fluent-brand);
+}
+
+.fluent-toggle input:checked + .fluent-toggle-slider::after {
+  background-color: #ffffff;
+  transform: translateX(20px);
+}
+
+/* Badges */
+.fluent-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--fluent-radius-circular);
+  font-size: 11px;
+  font-weight: 600;
+  background-color: var(--fluent-brand-tint);
+  color: var(--fluent-brand);
+}
+
+/* Table */
+.fluent-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.fluent-table th {
+  text-align: left;
+  padding: 8px 10px;
+  color: var(--fluent-text-secondary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--fluent-stroke);
+}
+
+.fluent-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--fluent-stroke-subtle);
+}
+
+.color-swatch-box {
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  display: inline-block;
+  vertical-align: middle;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}

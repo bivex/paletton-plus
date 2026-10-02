@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NES.css – 8-Bit Nintendo Retro Example</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="../../js/lib/jquery.min.js"></script>
+  <script src="nes.js"></script>
+</head>
+<body>
+
+  <!-- Top NES Header Container -->
+  <div class="nes-container with-title mb-3">
+    <p class="title">8-BIT SYSTEM</p>
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span style="font-size: 18px;">👾</span>
+        <div>
+          <div class="font-bold text-sm">NES.css Arcade Console</div>
+          <div class="text-xs" style="color: #888;">8-Bit Pixel Art Design System</div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="btn-theme-toggle" class="nes-btn" style="padding: 4px 8px; font-size: 10px;">
+          <span id="theme-icon">🌙</span> <span id="theme-label">DARK</span>
+        </button>
+        <button class="nes-btn is-primary" style="padding: 4px 8px; font-size: 10px;">
+          START GAME
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dialogue Balloon Section -->
+  <div class="flex items-center mb-3">
+    <div style="font-size: 32px;">🧙‍♂️</div>
+    <div class="nes-balloon flex-1">
+      <p style="margin: 0; font-weight: bold; font-size: 11px;">
+        IT'S DANGEROUS TO CODE ALONE! USE THIS LIVE PALETTON COLOR ENGINE!
+      </p>
+    </div>
+  </div>
+
+  <!-- Gauges & Buttons Row -->
+  <div class="grid grid-cols-2 gap-3 mb-3">
+    <!-- Player Stats Container -->
+    <div class="nes-container with-title">
+      <p class="title">PLAYER STATS</p>
+      <div class="flex flex-col gap-2">
+        <div>
+          <div class="text-xs font-bold mb-1">HP (HEALTH GAUGE)</div>
+          <div class="nes-progress">
+            <div class="nes-progress-inner" style="width: 80%;"></div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between pt-1">
+          <span class="text-xs font-bold">PRIMARY CODE:</span>
+          <span class="nes-badge">
+            <span class="nes-badge-val" id="stat-pri-tag">#209CEE</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Retro 8-bit Buttons -->
+    <div class="nes-container with-title">
+      <p class="title">CONTROLLER</p>
+      <div class="flex gap-2 flex-wrap pt-1">
+        <button class="nes-btn is-primary">PRIMARY (A)</button>
+        <button class="nes-btn is-success">1UP (B)</button>
+        <button class="nes-btn is-warning">COIN (X)</button>
+        <button class="nes-btn is-error">LAVA (Y)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8-Bit Tokens Table -->
+  <div class="nes-container with-title">
+    <p class="title">PALETTE TOKENS</p>
+    <table class="nes-table">
+      <thead>
+        <tr>
+          <th>TOKEN</th>
+          <th>ROLE</th>
+          <th>HEX</th>
+          <th>WCAG</th>
+          <th style="text-align: right;">SWATCH</th>
+        </tr>
+      </thead>
+      <tbody id="token-table-body">
+        <!-- Populated dynamically by nes.js -->
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

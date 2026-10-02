@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Microsoft Fluent UI – Windows 11 & Office 365 Example</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="../../js/lib/jquery.min.js"></script>
+  <script src="fluent.js"></script>
+</head>
+<body>
+
+  <!-- Windows 11 Fluent Window Frame -->
+  <div class="fluent-window">
+    <!-- Titlebar -->
+    <div class="fluent-titlebar">
+      <div class="flex items-center gap-2">
+        <span style="font-size: 14px;">🪟</span>
+        <span>Microsoft 365 Admin Center — Fluent 2 Design Tokens</span>
+      </div>
+      <div class="fluent-window-controls">
+        <span>─</span>
+        <span>□</span>
+        <span>✕</span>
+      </div>
+    </div>
+
+    <!-- Command Bar -->
+    <div class="fluent-command-bar">
+      <button class="fluent-command-btn primary">
+        <span>+</span> <span>New Palette Entry</span>
+      </button>
+      <button class="fluent-command-btn">
+        <span>📋</span> <span>Copy Config</span>
+      </button>
+      <button class="fluent-command-btn">
+        <span>🔗</span> <span>Share</span>
+      </button>
+      <div style="flex: 1;"></div>
+      <button id="btn-theme-toggle" class="fluent-command-btn">
+        <span id="theme-icon">🌙</span> <span id="theme-label">Dark</span>
+      </button>
+    </div>
+
+    <!-- Fluent Pivot (Tabs) -->
+    <div class="fluent-pivot">
+      <div class="fluent-pivot-item is-active">Overview</div>
+      <div class="fluent-pivot-item">Fluent Controls</div>
+      <div class="fluent-pivot-item">Mica Material</div>
+      <div class="fluent-pivot-item">Design Tokens</div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="fluent-content">
+      <!-- 2-Card Metrics Row -->
+      <div class="grid grid-cols-2 gap-3">
+        <!-- Stat Card 1 -->
+        <div class="fluent-card">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-secondary">Fluent Brand Accent</span>
+            <span class="fluent-badge font-mono" id="stat-pri-tag">#0078D4</span>
+          </div>
+          <div class="text-xl font-bold mb-1">Microsoft Cloud Platform</div>
+          <div class="text-xs text-secondary">
+            Synchronized with Fluent 2 Token Pipeline.
+          </div>
+        </div>
+
+        <!-- Stat Card 2 with Toggle -->
+        <div class="fluent-card flex items-center justify-between">
+          <div>
+            <div class="font-semibold text-xs">Mica Surface Effect</div>
+            <div class="text-xs text-secondary">Dynamic translucent desktop material</div>
+          </div>
+          <label class="fluent-toggle">
+            <input type="checkbox" checked>
+            <span class="fluent-toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Enterprise Token Data Table -->
+      <div class="fluent-card p-0 overflow-hidden" style="padding: 0;">
+        <table class="fluent-table">
+          <thead>
+            <tr>
+              <th>Fluent Token Variable</th>
+              <th>Semantic Role</th>
+              <th>Hex / Value</th>
+              <th>WCAG 2.1 Ratio</th>
+              <th style="text-align: right;">Swatch</th>
+            </tr>
+          </thead>
+          <tbody id="token-table-body">
+            <!-- Dynamically populated by fluent.js -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

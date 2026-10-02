@@ -360,6 +360,26 @@ var _Paletton_Strings = {
                     title: 'Varlet (Material Mobile)',
                     desc: 'Vue 3 Material Design mobile UI system'
                 },
+                'apple': {
+                    title: 'Apple HIG (macOS & iOS)',
+                    desc: 'Apple design system: frosted glass blur, Cupertino toggles and accents'
+                },
+                'fluent': {
+                    title: 'Fluent UI (Windows 11)',
+                    desc: 'Microsoft Windows 11 and Office 365 design system with Mica'
+                },
+                'atlassian': {
+                    title: 'Atlassian (Jira & Trello)',
+                    desc: 'Jira Kanban board and enterprise task lozenges'
+                },
+                'nes': {
+                    title: 'NES.css (8-Bit Retro)',
+                    desc: '8-bit pixel art Nintendo arcade console style'
+                },
+                'win98': {
+                    title: '98.css (Windows 98 Desktop)',
+                    desc: 'Nostalgic Windows 98 / XP retro desktop with 3D beveled windows'
+                },
                 'boot': {
                     title: 'Bootstrap 5',
                     desc: 'Bootstrap components and layout'

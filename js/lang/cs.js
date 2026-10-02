@@ -360,6 +360,26 @@ var _Paletton_Strings = {
                     title: 'Varlet (Material Mobile)',
                     desc: 'Vue 3 Material Design mobilní systém'
                 },
+                'apple': {
+                    title: 'Apple HIG (macOS & iOS)',
+                    desc: 'Designový systém Apple: matné sklo, Cupertino přepínače a akcenty'
+                },
+                'fluent': {
+                    title: 'Fluent UI (Windows 11)',
+                    desc: 'Systém Microsoft Windows 11 a Office 365 s materiálem Mica'
+                },
+                'atlassian': {
+                    title: 'Atlassian (Jira & Trello)',
+                    desc: 'Jira Kanban tabule a firemní designové tokeny'
+                },
+                'nes': {
+                    title: 'NES.css (8-Bit Retro)',
+                    desc: '8-bitový pixel-art styl konzole Nintendo'
+                },
+                'win98': {
+                    title: '98.css (Windows 98 Desktop)',
+                    desc: 'Nostalgické retro rozhraní Windows 98 s 3D rámečky'
+                },
                 'boot': {
                     title: 'Bootstrap 5',
                     desc: 'Komponenty Bootstrap'
