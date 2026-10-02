@@ -56,6 +56,8 @@ define("ui.control.preview.class", ["app.ini", "app.events", "app.settings", "ap
                 return u.loaded()
             }), t.register("palette/colors/changed", function() {
                 return u.colorize()
+            }), t.register("palette/typography/changed", function(e, typo) {
+                return u.applyTypography(typo)
             }), t.register("ui/preview/colinfo", function(e, t) {
                 return u.colInfo(t.hex)
             }), n = [];
@@ -75,6 +77,8 @@ define("ui.control.preview.class", ["app.ini", "app.events", "app.settings", "ap
                 items: n
             }), this.$button.click(function(e) {
                 return e.preventDefault(), i.open()
+            }), this.$iframe.on("load", function() {
+                u.applyTypography();
             }), this.setPreview(this.selected)
         }, a.prototype.getPreview = function(e) {
             var t, n, r, i;
@@ -92,7 +96,7 @@ define("ui.control.preview.class", ["app.ini", "app.events", "app.settings", "ap
         }, a.prototype.loaded = function() {
             return this.loader.done(), t.trigger("preview/changed", {
                 id: this.selected
-            }), this.$bodyIF = this.$iframe.contents().find("body"), this.colorize()
+            }), this.$bodyIF = this.$iframe.contents().find("body"), this.applyTypography(), this.colorize()
         }, a.prototype.colorize = function() {
             var e, n;
             return n = this, e = n.$iframe.get(0).contentWindow, e && e.colorize ? n.$iframe.get(0).contentWindow.colorize() : t.trigger("palette/colorize", {
@@ -100,6 +104,65 @@ define("ui.control.preview.class", ["app.ini", "app.events", "app.settings", "ap
                 sorted: !1,
                 converted: !0
             })
+        }, a.prototype.applyTypography = function(typo) {
+            try {
+                var iframe = this.$iframe ? this.$iframe[0] : null;
+                if (!iframe) return;
+                var win = iframe.contentWindow;
+                var doc = iframe.contentDocument || (win ? win.document : null);
+                if (!doc || !doc.head) return;
+
+                var pal = window._Paletton ? window._Paletton.palette : null;
+                typo = typo || (pal && pal.getTypography ? pal.getTypography() : null);
+                if (!typo) return;
+
+                var root = doc.documentElement;
+                if (root && root.style) {
+                    if (typo.heading) root.style.setProperty('--font-heading', typo.heading);
+                    if (typo.body) root.style.setProperty('--font-body', typo.body);
+                    if (typo.weightHeading) root.style.setProperty('--font-weight-heading', typo.weightHeading);
+                    if (typo.letterSpacing) root.style.setProperty('--letter-spacing-heading', typo.letterSpacing);
+                    if (typo.lineHeight) root.style.setProperty('--line-height-body', typo.lineHeight);
+                    if (typo.scale) root.style.setProperty('--type-scale-ratio', typo.scale);
+                }
+
+                var styleEl = doc.getElementById('pal-typography-style');
+                if (!styleEl) {
+                    styleEl = doc.createElement('style');
+                    styleEl.id = 'pal-typography-style';
+                    doc.head.appendChild(styleEl);
+                }
+                var css = [
+                    ':root {',
+                    '  --font-heading: ' + typo.heading + ' !important;',
+                    '  --font-body: ' + typo.body + ' !important;',
+                    '  --font-weight-heading: ' + typo.weightHeading + ' !important;',
+                    '  --letter-spacing-heading: ' + typo.letterSpacing + ' !important;',
+                    '  --line-height-body: ' + typo.lineHeight + ' !important;',
+                    '  --type-scale-ratio: ' + typo.scale + ' !important;',
+                    '}',
+                    'body, p, span, li, td, th, input, button, select, textarea, .text-content, .copy, .preview-var {',
+                    '  font-family: ' + typo.body + ' !important;',
+                    '}',
+                    'h1, h2, h3, h4, h5, h6, .ttl, .title, .logo, header h2, .card-title, .nav-brand, .ui-heading, .stat-value, .fw-preview-head, dt {',
+                    '  font-family: ' + typo.heading + ' !important;',
+                    '  font-weight: ' + typo.weightHeading + ' !important;',
+                    '  letter-spacing: ' + typo.letterSpacing + ' !important;',
+                    '}'
+                ].join('\n');
+                styleEl.textContent = css;
+
+                var fontNameEl = doc.querySelector('.font-preview-name');
+                if (fontNameEl && typo.name) {
+                    fontNameEl.textContent = typo.name;
+                }
+
+                if (win && typeof win.applyTypography === 'function') {
+                    win.applyTypography(typo);
+                }
+            } catch(err) {
+                console.warn('Preview applyTypography error:', err);
+            }
         }, a.prototype.colInfo = function(e) {
             return new u(null, this.$parent, {
                 hex: e

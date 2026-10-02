@@ -5027,6 +5027,8 @@
                 return u.loaded()
             }), t.register("palette/colors/changed", function() {
                 return u.colorize()
+            }), t.register("palette/typography/changed", function(e, typo) {
+                return u.applyTypography(typo)
             }), t.register("ui/preview/colinfo", function(e, t) {
                 return u.colInfo(t.hex)
             }), n = [];
@@ -5046,6 +5048,8 @@
                 items: n
             }), this.$button.click(function(e) {
                 return e.preventDefault(), i.open()
+            }), this.$iframe.on("load", function() {
+                u.applyTypography();
             }), this.setPreview(this.selected)
         }, a.prototype.getPreview = function(e) {
             var t, n, r, i;
@@ -5063,7 +5067,7 @@
         }, a.prototype.loaded = function() {
             return this.loader.done(), t.trigger("preview/changed", {
                 id: this.selected
-            }), this.$bodyIF = this.$iframe.contents().find("body"), this.colorize()
+            }), this.$bodyIF = this.$iframe.contents().find("body"), this.applyTypography(), this.colorize()
         }, a.prototype.colorize = function() {
             var e, n;
             return n = this, e = n.$iframe.get(0).contentWindow, e && e.colorize ? n.$iframe.get(0).contentWindow.colorize() : t.trigger("palette/colorize", {
@@ -5071,6 +5075,65 @@
                 sorted: !1,
                 converted: !0
             })
+        }, a.prototype.applyTypography = function(typo) {
+            try {
+                var iframe = this.$iframe ? this.$iframe[0] : null;
+                if (!iframe) return;
+                var win = iframe.contentWindow;
+                var doc = iframe.contentDocument || (win ? win.document : null);
+                if (!doc || !doc.head) return;
+
+                var pal = window._Paletton ? window._Paletton.palette : null;
+                typo = typo || (pal && pal.getTypography ? pal.getTypography() : null);
+                if (!typo) return;
+
+                var root = doc.documentElement;
+                if (root && root.style) {
+                    if (typo.heading) root.style.setProperty('--font-heading', typo.heading);
+                    if (typo.body) root.style.setProperty('--font-body', typo.body);
+                    if (typo.weightHeading) root.style.setProperty('--font-weight-heading', typo.weightHeading);
+                    if (typo.letterSpacing) root.style.setProperty('--letter-spacing-heading', typo.letterSpacing);
+                    if (typo.lineHeight) root.style.setProperty('--line-height-body', typo.lineHeight);
+                    if (typo.scale) root.style.setProperty('--type-scale-ratio', typo.scale);
+                }
+
+                var styleEl = doc.getElementById('pal-typography-style');
+                if (!styleEl) {
+                    styleEl = doc.createElement('style');
+                    styleEl.id = 'pal-typography-style';
+                    doc.head.appendChild(styleEl);
+                }
+                var css = [
+                    ':root {',
+                    '  --font-heading: ' + typo.heading + ' !important;',
+                    '  --font-body: ' + typo.body + ' !important;',
+                    '  --font-weight-heading: ' + typo.weightHeading + ' !important;',
+                    '  --letter-spacing-heading: ' + typo.letterSpacing + ' !important;',
+                    '  --line-height-body: ' + typo.lineHeight + ' !important;',
+                    '  --type-scale-ratio: ' + typo.scale + ' !important;',
+                    '}',
+                    'body, p, span, li, td, th, input, button, select, textarea, .text-content, .copy, .preview-var {',
+                    '  font-family: ' + typo.body + ' !important;',
+                    '}',
+                    'h1, h2, h3, h4, h5, h6, .ttl, .title, .logo, header h2, .card-title, .nav-brand, .ui-heading, .stat-value, .fw-preview-head, dt {',
+                    '  font-family: ' + typo.heading + ' !important;',
+                    '  font-weight: ' + typo.weightHeading + ' !important;',
+                    '  letter-spacing: ' + typo.letterSpacing + ' !important;',
+                    '}'
+                ].join('\n');
+                styleEl.textContent = css;
+
+                var fontNameEl = doc.querySelector('.font-preview-name');
+                if (fontNameEl && typo.name) {
+                    fontNameEl.textContent = typo.name;
+                }
+
+                if (win && typeof win.applyTypography === 'function') {
+                    win.applyTypography(typo);
+                }
+            } catch(err) {
+                console.warn('Preview applyTypography error:', err);
+            }
         }, a.prototype.colInfo = function(e) {
             return new u(null, this.$parent, {
                 hex: e
@@ -6297,7 +6360,8 @@
                 return t.preventDefault(), e.openDlg(), e.setList()
             }), t.register("ui/example/loaded", function() {
                 var t;
-                return (t = e.loader) != null ? typeof t.done == "function" ? t.done() : void 0 : void 0
+                if ((t = e.loader) != null && typeof t.done == "function") t.done();
+                return e.applyTypography();
             }), t.register("adjuster/changed", function() {
                 var t;
                 if (!e.open) return;
@@ -6305,7 +6369,11 @@
             }), t.register("randomizer/changed", function() {
                 var t;
                 if (!e.open) return;
-                return typeof(t = e.$iframe[0].contentWindow).colorize == "function" ? t.colorize() : void 0
+                if (typeof(t = e.$iframe[0].contentWindow).colorize == "function") t.colorize();
+                return e.applyTypography();
+            }), t.register("palette/typography/changed", function(t, typo) {
+                if (!e.open) return;
+                return e.applyTypography(typo);
             })
         }, s.prototype.openDlg = function() {
             var e, n, i, s, o, a, f, l, c, h, p;
@@ -6320,6 +6388,8 @@
                 marginwidth: 0,
                 marginheight: 0,
                 frameborder: 0
+            }).on("load", function() {
+                h.applyTypography();
             }), this.$content.append(this.$iframe);
             for (a in d) {
                 l = d[a], n = $("<LI>").html('<a href="#" class="item-' + a + '">' + r("examples." + a + ".title") + "</a>"), n.addClass("item unselectable"), s.append(n);
@@ -6345,8 +6415,8 @@
                 draggable: !1,
                 modal: !0,
                 onClose: function() {
-                    var e, n;
-                    return (e = h.converter) != null && e.remove(), (n = h.adjuster) != null && n.close(), h.open = !1, t.trigger("ga/view")
+                    var e, n, r_ctrl;
+                    return (e = h.converter) != null && e.remove(), (n = h.adjuster) != null && n.close(), (r_ctrl = h.randomizer) != null && r_ctrl.close(), h.open = !1, t.trigger("ga/view")
                 },
                 position: {
                     my: "center bottom",
@@ -6355,8 +6425,8 @@
                 }
             }), this.open = !0
         }, s.prototype.setList = function(i) {
-            var s, u, a, p, d, m, g, y;
-            return i && (this.selected = i), u = v(this.selected), u || (this.selected = this.options["default"], u = v(this.selected)), a = u.data.url, this.$iframe.attr("src") === a ? this.$iframe[0].contentWindow.location.reload(!0) : this.$iframe.attr("src", a), (d = this.loader) != null && typeof d.done == "function" && d.done(), this.loader = new h(this.$iframe), n.set("EXA", this.selected), (m = this.converter) != null && m.remove(), (g = this.adjuster) != null && g.close(), this.$tools.empty(), p = this, u.data.addConvert && (this.converter = new c(this.$tools, {
+            var s, u, a, p, d, m, g, r_ctrl, y;
+            return i && (this.selected = i), u = v(this.selected), u || (this.selected = this.options["default"], u = v(this.selected)), a = u.data.url, this.$iframe.attr("src") === a ? this.$iframe[0].contentWindow.location.reload(!0) : this.$iframe.attr("src", a), (d = this.loader) != null && typeof d.done == "function" && d.done(), this.loader = new h(this.$iframe), n.set("EXA", this.selected), (m = this.converter) != null && m.remove(), (g = this.adjuster) != null && g.close(), (r_ctrl = this.randomizer) != null && r_ctrl.close(), this.$tools.empty(), p = this, u.data.addConvert && (this.converter = new c(this.$tools, {
                 positionMy: "right bottom",
                 positionAt: "right bottom",
                 selected: ((y = this.options.converter) != null ? y.getSelected() : void 0) || "none",
@@ -6384,7 +6454,7 @@
                 className: "btn-rnd",
                 asUIButton: !1,
                 label: r("random.btn") + "…"
-            }), this.$tools.append(s.$e), this.adjuster = new l(s.$e, this.palette, this.$tools, {
+            }), this.$tools.append(s.$e), this.randomizer = new l(s.$e, this.palette, this.$tools, {
                 positionMy: "center bottom",
                 positionAt: "center+10 bottom+30",
                 positionOf: this.$tools
@@ -6398,6 +6468,64 @@
             }), this.$tools.append(s.$e), t.trigger("ga/view", {
                 view: e.GA.view.example + "/" + this.selected
             })
+        }, s.prototype.applyTypography = function(typo) {
+            if (!this.open || !this.$iframe || !this.$iframe.length) return;
+            try {
+                var iframe = this.$iframe[0];
+                var win = iframe.contentWindow;
+                var doc = iframe.contentDocument || (win ? win.document : null);
+                if (!doc || !doc.head) return;
+
+                typo = typo || (this.palette && this.palette.getTypography ? this.palette.getTypography() : null);
+                if (!typo) return;
+
+                var root = doc.documentElement;
+                if (root && root.style) {
+                    if (typo.heading) root.style.setProperty('--font-heading', typo.heading);
+                    if (typo.body) root.style.setProperty('--font-body', typo.body);
+                    if (typo.weightHeading) root.style.setProperty('--font-weight-heading', typo.weightHeading);
+                    if (typo.letterSpacing) root.style.setProperty('--letter-spacing-heading', typo.letterSpacing);
+                    if (typo.lineHeight) root.style.setProperty('--line-height-body', typo.lineHeight);
+                    if (typo.scale) root.style.setProperty('--type-scale-ratio', typo.scale);
+                }
+
+                var styleEl = doc.getElementById('pal-typography-style');
+                if (!styleEl) {
+                    styleEl = doc.createElement('style');
+                    styleEl.id = 'pal-typography-style';
+                    doc.head.appendChild(styleEl);
+                }
+                var css = [
+                    ':root {',
+                    '  --font-heading: ' + typo.heading + ' !important;',
+                    '  --font-body: ' + typo.body + ' !important;',
+                    '  --font-weight-heading: ' + typo.weightHeading + ' !important;',
+                    '  --letter-spacing-heading: ' + typo.letterSpacing + ' !important;',
+                    '  --line-height-body: ' + typo.lineHeight + ' !important;',
+                    '  --type-scale-ratio: ' + typo.scale + ' !important;',
+                    '}',
+                    'body, p, span, li, td, th, input, button, select, textarea, .text-content, .copy, dl, dt, dd {',
+                    '  font-family: ' + typo.body + ' !important;',
+                    '}',
+                    'h1, h2, h3, h4, h5, h6, .ttl, .title, .logo, header h2, .card-title, .nav-brand, .ui-heading, .stat-value, .fw-preview-head, dt {',
+                    '  font-family: ' + typo.heading + ' !important;',
+                    '  font-weight: ' + typo.weightHeading + ' !important;',
+                    '  letter-spacing: ' + typo.letterSpacing + ' !important;',
+                    '}'
+                ].join('\n');
+                styleEl.textContent = css;
+
+                var fontNameEl = doc.querySelector('.font-preview-name');
+                if (fontNameEl && typo.name) {
+                    fontNameEl.textContent = typo.name;
+                }
+
+                if (win && typeof win.applyTypography === 'function') {
+                    win.applyTypography(typo);
+                }
+            } catch(err) {
+                console.warn('Examples applyTypography error:', err);
+            }
         }, s
     }(), p
 });
