@@ -6202,21 +6202,26 @@
                 return n.preventDefault(), r = $(this).parent().data("event"), t.trigger(r), t.trigger("ga/view", {
                     view: e.GA.view.coltable + "/" + r
                 })
-            }), this.dlg = new o(this.$parent, r, {
+            });
+            var winW = $(window).width();
+            var winH = $(window).height();
+            var dlgW = Math.min(1600, Math.max(1060, Math.floor(winW * 0.94)));
+            var dlgH = Math.min(960, Math.max(700, Math.floor(winH * 0.90)));
+            this.dlg = new o(this.$parent, r, {
                 className: "dlg-colorlist",
                 title: n("colorList.title"),
-                width: 990,
-                height: 660,
-                resizable: !1,
-                draggable: !1,
+                width: dlgW,
+                height: dlgH,
+                resizable: !0,
+                draggable: !0,
                 modal: !0,
                 onClose: function() {
                     return d.open = !1, t.trigger("ga/view")
                 },
                 position: {
-                    my: "center bottom",
-                    at: "center bottom+10",
-                    of: this.$parent
+                    my: "center center",
+                    at: "center center",
+                    of: window
                 }
             }), this.open = !0
         }, i.prototype.setList = function(r) {
@@ -6764,22 +6769,27 @@
                 return e.preventDefault(), s.find("li.subitem.sel").removeClass("sel"), n = $(this).parents("li.subitem"), n.addClass("sel"), s.find("li.item.sel").removeClass("sel"), $(this).parents("li.item").addClass("sel"), a = n.data("id"), h.setList(a)
             }), this.$tools = $("<DIV>", {
                 "class": "list-tools"
-            }), e.append(this.$tools), this.dlg = new u(this.$parent, e, {
+            }), e.append(this.$tools);
+            var winW = $(window).width();
+            var winH = $(window).height();
+            var dlgW = Math.min(1600, Math.max(1060, Math.floor(winW * 0.94)));
+            var dlgH = Math.min(960, Math.max(700, Math.floor(winH * 0.90)));
+            this.dlg = new u(this.$parent, e, {
                 className: "dlg-examples",
                 title: r("examples.title"),
-                width: 990,
-                height: 660,
-                resizable: !1,
-                draggable: !1,
+                width: dlgW,
+                height: dlgH,
+                resizable: !0,
+                draggable: !0,
                 modal: !0,
                 onClose: function() {
                     var e, n, r_ctrl;
                     return (e = h.converter) != null && e.remove(), (n = h.adjuster) != null && n.close(), (r_ctrl = h.randomizer) != null && r_ctrl.close(), h.open = !1, t.trigger("ga/view")
                 },
                 position: {
-                    my: "center bottom",
-                    at: "center bottom+10",
-                    of: this.$parent
+                    my: "center center",
+                    at: "center center",
+                    of: window
                 }
             }), this.open = !0
         }, s.prototype.setList = function(i) {

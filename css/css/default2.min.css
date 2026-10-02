@@ -37,11 +37,11 @@
 /* === Expansive Modern Widescreen Layout === */
 @media screen and (min-width: 993px) {
   #app {
-    width: 1260px;
-    max-width: calc(100vw - 40px);
-    height: 720px;
-    top: 30px;
-    margin: 15px auto;
+    width: 1440px;
+    max-width: calc(100vw - 32px);
+    height: 780px;
+    top: 18px;
+    margin: 10px auto;
   }
   #content {
     left: 10px;
@@ -76,15 +76,15 @@
   #content #panebox-r .pane-palette .pane-content-palette {
     top: 0;
     left: 95px;
-    width: 270px;
+    width: 290px;
   }
   .control-palette.big table {
-    width: 270px;
+    width: 290px;
     height: 28px;
   }
   #content #panebox-r .pane-palette .pane-palette-copyfmt {
     top: 3px;
-    left: 375px;
+    left: 395px;
   }
   #content #panebox-r .pane-palette .pane-tonal-strip-container {
     top: 34px;
@@ -101,7 +101,7 @@
     top: 0;
     left: 0;
     width: 100%;
-    height: 440px;
+    height: 500px;
   }
   #content #panebox-r .pane-examples {
     top: 115px;
@@ -110,3 +110,70 @@
     top: 115px;
   }
 }
+
+@media screen and (min-width: 1500px) {
+  #app {
+    width: 1680px;
+    max-width: calc(100vw - 40px);
+    height: 840px;
+  }
+  #content #panebox-r .pane-preview .pane-content-preview {
+    height: 560px;
+  }
+}
+
+@media screen and (min-width: 1800px) {
+  #app {
+    width: 1820px;
+    max-width: calc(100vw - 48px);
+    height: 880px;
+  }
+  #content #panebox-r .pane-preview .pane-content-preview {
+    height: 600px;
+  }
+}
+
+/* === Widescreen Dialog Frames (Examples & Color List) === */
+.ui-dialog.dlg-examples,
+.ui-dialog.dlg-colorlist {
+  max-width: 96vw !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65);
+}
+.ui-dialog-content.dlg-examples,
+.ui-dialog-content.dlg-colorlist {
+  padding: 10px;
+  box-sizing: border-box;
+}
+.ui-dialog-content.dlg-examples .cover,
+.ui-dialog-content.dlg-colorlist .cover {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+}
+.ui-dialog-content.dlg-examples .cover .list-menu,
+.ui-dialog-content.dlg-colorlist .cover .list-menu {
+  float: none;
+  width: 190px;
+  height: 100%;
+  max-height: none;
+  flex-shrink: 0;
+  order: 2;
+  box-sizing: border-box;
+  padding-bottom: 70px;
+}
+.ui-dialog-content.dlg-examples .cover .list-content,
+.ui-dialog-content.dlg-colorlist .cover .list-content {
+  margin: 0 10px 0 0;
+  flex: 1;
+  height: 100%;
+  order: 1;
+  box-sizing: border-box;
+}
+.ui-dialog-content.dlg-examples .cover .list-content iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 580px;
+  display: block;
+}
+
