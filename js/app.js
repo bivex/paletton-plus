@@ -2189,7 +2189,88 @@
         hue: 0,
         angle: 30,
         preset: "pastels"
-    }, p = function() {
+    }, TYPOGRAPHY_PAIRS = [
+        {
+            id: "modern_sans",
+            name: "Modern Sans (SaaS)",
+            heading: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+            body: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+            weightHeading: "700",
+            scale: "1.25",
+            letterSpacing: "-0.02em",
+            lineHeight: "1.5"
+        },
+        {
+            id: "editorial_serif",
+            name: "Editorial Serif",
+            heading: "Georgia, 'Playfair Display', 'Times New Roman', serif",
+            body: "Georgia, 'Charter', 'Source Serif Pro', serif",
+            weightHeading: "700",
+            scale: "1.333",
+            letterSpacing: "0",
+            lineHeight: "1.6"
+        },
+        {
+            id: "swiss_grotesk",
+            name: "Swiss Grotesk",
+            heading: "'Helvetica Neue', Helvetica, 'Arial Black', Arial, sans-serif",
+            body: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+            weightHeading: "800",
+            scale: "1.414",
+            letterSpacing: "-0.03em",
+            lineHeight: "1.4"
+        },
+        {
+            id: "tech_mono",
+            name: "Tech Monospace",
+            heading: "'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace",
+            body: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+            weightHeading: "700",
+            scale: "1.2",
+            letterSpacing: "-0.01em",
+            lineHeight: "1.65"
+        },
+        {
+            id: "luxury_didot",
+            name: "Luxury / Didot",
+            heading: "'Didot', 'Bodoni MT', 'Cinzel', Georgia, serif",
+            body: "'Cormorant Garamond', 'Garamond', Georgia, serif",
+            weightHeading: "600",
+            scale: "1.5",
+            letterSpacing: "0.05em",
+            lineHeight: "1.7"
+        },
+        {
+            id: "humanist",
+            name: "Humanist / Warm",
+            heading: "'Trebuchet MS', 'Segoe UI', 'Lucida Grande', sans-serif",
+            body: "'Open Sans', 'Segoe UI', Arial, sans-serif",
+            weightHeading: "700",
+            scale: "1.25",
+            letterSpacing: "-0.01em",
+            lineHeight: "1.55"
+        },
+        {
+            id: "playful_round",
+            name: "Playful / Casual",
+            heading: "'Comic Sans MS', 'Century Gothic', 'Quicksand', cursive, sans-serif",
+            body: "'Nunito', 'Segoe UI', Arial, sans-serif",
+            weightHeading: "700",
+            scale: "1.25",
+            letterSpacing: "0.01em",
+            lineHeight: "1.5"
+        },
+        {
+            id: "display_impact",
+            name: "Display Impact",
+            heading: "Impact, 'Arial Black', sans-serif",
+            body: "Arial, 'Helvetica Neue', sans-serif",
+            weightHeading: "900",
+            scale: "1.414",
+            letterSpacing: "0.02em",
+            lineHeight: "1.35"
+        }
+    ], p = function() {
         function i(e, n, r, i) {
             var s;
             this.hue = n, this.angle = r, this.hidden = i, this.uid = "", this.inited = !1, this.lock(), this.col = {}, this.col.pri = new o(this.hue), this.setModel(e), this.preset = "null", this.vars = new l(this, "default"), this.varsMulti = {
@@ -2205,7 +2286,7 @@
                 on: !1,
                 type: "none",
                 amount: 1
-            }, this.inited = !0, this.unlock(), this.modelChanged(), this.colorChanged(), s = this, this.hidden || (t.register("history/changed", function(e, t) {
+            }, this.typography = TYPOGRAPHY_PAIRS[0], this.inited = !0, this.unlock(), this.modelChanged(), this.colorChanged(), s = this, this.hidden || (t.register("history/changed", function(e, t) {
                 return s.loadPalette(t.data)
             }), t.register("palette/load", function(e, t) {
                 return s.loadPalette(t)
@@ -2241,6 +2322,10 @@
                 return s.colorize(t.$e, t.sorted, t.converted)
             }), t.register("convert/set", function(e, t) {
                 return s.setConverter(t.data)
+            }), t.register("palette/typography/set", function(e, t) {
+                return s.setTypography(t)
+            }), t.register("palette/typography/randomize", function(e, t) {
+                return s.randomizeTypography(t)
             }), t.register("export/html", function() {
                 return s["export"]("html")
             }), t.register("export/css", function() {
@@ -3207,6 +3292,20 @@
                     for (h in d) p = d[h], r = e.find("." + h + "-" + o + "-" + l).css(p, "#" + a), h === "bgcol" && (r.prop("title", a), r.attr("col-data", a)), r = e.find("." + h + "-" + o + "-lum-" + l).css(p, "#" + f), h === "bgcol" && (r.prop("title", f), r.attr("col-data", f))
                 }
             }
+            if (this.typography && e && e.length) {
+                try {
+                    var docElem = e[0].ownerDocument ? e[0].ownerDocument.documentElement : null;
+                    if (docElem && docElem.style) {
+                        var typo = this.typography;
+                        if (typo.heading) docElem.style.setProperty('--font-heading', typo.heading);
+                        if (typo.body) docElem.style.setProperty('--font-body', typo.body);
+                        if (typo.weightHeading) docElem.style.setProperty('--font-weight-heading', typo.weightHeading);
+                        if (typo.letterSpacing) docElem.style.setProperty('--letter-spacing-heading', typo.letterSpacing);
+                        if (typo.lineHeight) docElem.style.setProperty('--line-height-body', typo.lineHeight);
+                        if (typo.scale) docElem.style.setProperty('--type-scale-ratio', typo.scale);
+                    }
+                } catch(err) {}
+            }
             return !1
         }, i.prototype.lessColorize = function(e, t, n) {
             var r, i, s, o, u, a, f, l, c, h;
@@ -3232,6 +3331,33 @@
         }, i.prototype.copy = function(e) {
             var t;
             return this.isModelFree() ? (t = new i("mono", this.hue, 30, e), t.setModelFree(this.hueCnt), t.hueCompl = this.hueCompl, t.hueSec1 = this.hueSec1, t.hueSec2 = this.hueSec2, t.updateCompl(), t.updateSecs()) : t = new i(this.modelID, this.hue, this.angle, e), t.setVars(this.vars.values), t.colorChanged(), t
+        }, i.prototype.getTypographyPairs = function() {
+            return TYPOGRAPHY_PAIRS;
+        }, i.prototype.getTypography = function() {
+            return this.typography || TYPOGRAPHY_PAIRS[0];
+        }, i.prototype.setTypography = function(e) {
+            var typo = null;
+            if (typeof e === "string") {
+                for (var j = 0; j < TYPOGRAPHY_PAIRS.length; j++) {
+                    if (TYPOGRAPHY_PAIRS[j].id === e) {
+                        typo = TYPOGRAPHY_PAIRS[j];
+                        break;
+                    }
+                }
+            } else if (e && e.heading) {
+                typo = e;
+            }
+            if (!typo) typo = TYPOGRAPHY_PAIRS[0];
+            this.typography = typo;
+            t.trigger("palette/typography/changed", this.typography);
+            return this.typography;
+        }, i.prototype.randomizeTypography = function(type) {
+            var pool = TYPOGRAPHY_PAIRS;
+            var curId = this.typography ? this.typography.id : "";
+            var available = pool.filter(function(p) { return p.id !== curId; });
+            if (!available.length) available = pool;
+            var picked = available[Math.floor(Math.random() * available.length)];
+            return this.setTypography(picked);
         }, i
     }(), p
 });
@@ -4037,6 +4163,91 @@
             }).appendTo($favRow);
             e.append($favRow);
 
+            // Typography & Font Pairings (Curated 8 pairings)
+            $("<DIV>").addClass("rand-section-title").text(n("random.typoTitle") || "Typography & Font Pairings").appendTo(e);
+            var $typoBox = $("<DIV>").addClass("rand-typo-box").css({
+                background: "#161d27",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "6px",
+                padding: "8px 10px",
+                marginBottom: "10px"
+            });
+
+            var $typoHeader = $("<DIV>").css({
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "8px",
+                gap: "8px"
+            });
+
+            var $typoCurrentBadge = $("<DIV>").addClass("rand-typo-badge").css({
+                fontSize: "11px",
+                color: "#94a3b8",
+                flex: "1",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap"
+            });
+
+            var $typoGrid = $("<DIV>").addClass("rand-btn-grid");
+
+            var updateTypoBadge = function() {
+                var cur = pal.getTypography ? pal.getTypography() : null;
+                if (cur) {
+                    $typoCurrentBadge.html('<span style="color:#64748b">' + (n("random.typoCurrent") || "Active:") + '</span> <b style="color:#38bdf8;font-family:' + cur.heading + '">' + cur.name + '</b>');
+                    $typoGrid.find(".rand-btn-pill").each(function() {
+                        var $btn = $(this);
+                        if ($btn.attr("data-typo-id") === cur.id) {
+                            $btn.css({ borderColor: "#38bdf8", color: "#38bdf8", fontWeight: "700", background: "rgba(56,189,248,0.14)" });
+                        } else {
+                            $btn.css({ borderColor: "rgba(255,255,255,0.12)", color: "#cbd5e1", fontWeight: "normal", background: "transparent" });
+                        }
+                    });
+                }
+            };
+
+            var $btnRandTypo = $("<BUTTON>").addClass("rand-btn-pill").css({
+                background: "linear-gradient(135deg, #1e3a5f, #0f2744)",
+                borderColor: "#38bdf8",
+                color: "#e0f2fe",
+                fontWeight: "600",
+                padding: "4px 10px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                flexShrink: "0"
+            }).html(n("random.btnRandTypo") || "🎲 Randomize Typography").click(function() {
+                var res = r.randomizeTypography();
+                updateTypoBadge();
+                var $toast = $(".global-copy-toast");
+                if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
+                $toast.html("&#9998; Typography: <b>" + (res ? res.name : "Pairing") + "</b>").addClass("show");
+                setTimeout(function() { $toast.removeClass("show"); }, 2000);
+            });
+
+            $typoHeader.append($typoCurrentBadge).append($btnRandTypo);
+            $typoBox.append($typoHeader);
+
+            var pairs = pal.getTypographyPairs ? pal.getTypographyPairs() : [];
+            pairs.forEach(function(pair) {
+                var $pBtn = $("<BUTTON>").addClass("rand-btn-pill compact").attr("data-typo-id", pair.id).text(pair.name).css({
+                    fontSize: "10px",
+                    padding: "4px 6px"
+                }).click(function() {
+                    r.setTypography(pair.id);
+                    updateTypoBadge();
+                    var $toast = $(".global-copy-toast");
+                    if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
+                    $toast.html("&#9998; Typography: <b>" + pair.name + "</b>").addClass("show");
+                    setTimeout(function() { $toast.removeClass("show"); }, 2000);
+                });
+                $typoGrid.append($pBtn);
+            });
+            $typoBox.append($typoGrid);
+            e.append($typoBox);
+
+            updateTypoBadge();
+
             // Classic random 4 buttons (compact)
             $("<DIV>").addClass("rand-section-title").text("Classic Randomizer").appendTo(e);
             var $classic = $("<DIV>").css({ overflow: "hidden", marginBottom: "6px" });
@@ -4247,6 +4458,22 @@
             if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
             $toast.html("&#10003; Contrast adjusted: <b>" + (res ? res.priBgRatio : targetRatio) + ":1</b>").addClass("show");
             setTimeout(function() { $toast.removeClass("show"); }, 2500);
+            return res;
+        }, r.prototype.randomizeTypography = function(type) {
+            var res = this.palette.randomizeTypography(type);
+            t.trigger("randomizer/changed");
+            t.trigger("ga/event", {
+                key: e.GA.event.randomize,
+                value: "typo-" + (res ? res.id : "")
+            });
+            return res;
+        }, r.prototype.setTypography = function(id) {
+            var res = this.palette.setTypography(id);
+            t.trigger("randomizer/changed");
+            t.trigger("ga/event", {
+                key: e.GA.event.randomize,
+                value: "typo-set-" + (res ? res.id : "")
+            });
             return res;
         }, r
     }(), o

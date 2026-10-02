@@ -643,7 +643,10 @@ var _Paletton_Strings = {
         regenPrimary: '↻ Primary Only',
         regenSecondary: '↻ Accents Only',
         locksTitle: 'Selective Regeneration & Locks',
-        actionsTitle: 'Smart Randomize'
+        actionsTitle: 'Smart Randomize',
+        typoTitle: 'Typography & Font Pairings',
+        btnRandTypo: '🎲 Randomize Typography',
+        typoCurrent: 'Active Pairing'
     },
 
     variator: {

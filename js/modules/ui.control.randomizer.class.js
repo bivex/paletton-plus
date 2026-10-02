@@ -244,6 +244,91 @@ define("ui.control.randomizer.class", ["app.ini", "app.events", "app.locale", "u
             }).appendTo($favRow);
             e.append($favRow);
 
+            // Typography & Font Pairings (Curated 8 pairings)
+            $("<DIV>").addClass("rand-section-title").text(n("random.typoTitle") || "Typography & Font Pairings").appendTo(e);
+            var $typoBox = $("<DIV>").addClass("rand-typo-box").css({
+                background: "#161d27",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "6px",
+                padding: "8px 10px",
+                marginBottom: "10px"
+            });
+
+            var $typoHeader = $("<DIV>").css({
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "8px",
+                gap: "8px"
+            });
+
+            var $typoCurrentBadge = $("<DIV>").addClass("rand-typo-badge").css({
+                fontSize: "11px",
+                color: "#94a3b8",
+                flex: "1",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap"
+            });
+
+            var $typoGrid = $("<DIV>").addClass("rand-btn-grid");
+
+            var updateTypoBadge = function() {
+                var cur = pal.getTypography ? pal.getTypography() : null;
+                if (cur) {
+                    $typoCurrentBadge.html('<span style="color:#64748b">' + (n("random.typoCurrent") || "Active:") + '</span> <b style="color:#38bdf8;font-family:' + cur.heading + '">' + cur.name + '</b>');
+                    $typoGrid.find(".rand-btn-pill").each(function() {
+                        var $btn = $(this);
+                        if ($btn.attr("data-typo-id") === cur.id) {
+                            $btn.css({ borderColor: "#38bdf8", color: "#38bdf8", fontWeight: "700", background: "rgba(56,189,248,0.14)" });
+                        } else {
+                            $btn.css({ borderColor: "rgba(255,255,255,0.12)", color: "#cbd5e1", fontWeight: "normal", background: "transparent" });
+                        }
+                    });
+                }
+            };
+
+            var $btnRandTypo = $("<BUTTON>").addClass("rand-btn-pill").css({
+                background: "linear-gradient(135deg, #1e3a5f, #0f2744)",
+                borderColor: "#38bdf8",
+                color: "#e0f2fe",
+                fontWeight: "600",
+                padding: "4px 10px",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                flexShrink: "0"
+            }).html(n("random.btnRandTypo") || "🎲 Randomize Typography").click(function() {
+                var res = r.randomizeTypography();
+                updateTypoBadge();
+                var $toast = $(".global-copy-toast");
+                if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
+                $toast.html("&#9998; Typography: <b>" + (res ? res.name : "Pairing") + "</b>").addClass("show");
+                setTimeout(function() { $toast.removeClass("show"); }, 2000);
+            });
+
+            $typoHeader.append($typoCurrentBadge).append($btnRandTypo);
+            $typoBox.append($typoHeader);
+
+            var pairs = pal.getTypographyPairs ? pal.getTypographyPairs() : [];
+            pairs.forEach(function(pair) {
+                var $pBtn = $("<BUTTON>").addClass("rand-btn-pill compact").attr("data-typo-id", pair.id).text(pair.name).css({
+                    fontSize: "10px",
+                    padding: "4px 6px"
+                }).click(function() {
+                    r.setTypography(pair.id);
+                    updateTypoBadge();
+                    var $toast = $(".global-copy-toast");
+                    if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
+                    $toast.html("&#9998; Typography: <b>" + pair.name + "</b>").addClass("show");
+                    setTimeout(function() { $toast.removeClass("show"); }, 2000);
+                });
+                $typoGrid.append($pBtn);
+            });
+            $typoBox.append($typoGrid);
+            e.append($typoBox);
+
+            updateTypoBadge();
+
             // Classic random 4 buttons (compact)
             $("<DIV>").addClass("rand-section-title").text("Classic Randomizer").appendTo(e);
             var $classic = $("<DIV>").css({ overflow: "hidden", marginBottom: "6px" });
@@ -454,6 +539,22 @@ define("ui.control.randomizer.class", ["app.ini", "app.events", "app.locale", "u
             if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
             $toast.html("&#10003; Contrast adjusted: <b>" + (res ? res.priBgRatio : targetRatio) + ":1</b>").addClass("show");
             setTimeout(function() { $toast.removeClass("show"); }, 2500);
+            return res;
+        }, r.prototype.randomizeTypography = function(type) {
+            var res = this.palette.randomizeTypography(type);
+            t.trigger("randomizer/changed");
+            t.trigger("ga/event", {
+                key: e.GA.event.randomize,
+                value: "typo-" + (res ? res.id : "")
+            });
+            return res;
+        }, r.prototype.setTypography = function(id) {
+            var res = this.palette.setTypography(id);
+            t.trigger("randomizer/changed");
+            t.trigger("ga/event", {
+                key: e.GA.event.randomize,
+                value: "typo-set-" + (res ? res.id : "")
+            });
             return res;
         }, r
     }(), o

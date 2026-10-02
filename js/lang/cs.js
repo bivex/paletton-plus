@@ -643,7 +643,10 @@ var _Paletton_Strings = {
         regenPrimary: '↻ Jen primární',
         regenSecondary: '↻ Jen akcenty',
         locksTitle: 'Selektivní generování a zámky',
-        actionsTitle: 'Chytrý generátor'
+        actionsTitle: 'Chytrý generátor',
+        typoTitle: 'Typografie a párování písem',
+        btnRandTypo: '🎲 Náhodná typografie',
+        typoCurrent: 'Aktivní písmo'
     },
 
     variator: {

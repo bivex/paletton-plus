@@ -643,7 +643,10 @@ var _Paletton_Strings = {
         regenPrimary: '↻ Только Primary',
         regenSecondary: '↻ Только акценты',
         locksTitle: 'Выборочная генерация и замки',
-        actionsTitle: 'Умный рандомайзер'
+        actionsTitle: 'Умный рандомайзер',
+        typoTitle: 'Типографика и шрифтовые пары',
+        btnRandTypo: '🎲 Случайная типографика',
+        typoCurrent: 'Активный шрифт'
     },
 
     variator: {
