@@ -40,6 +40,86 @@ define("ui.control.randomizer.class", ["app.ini", "app.events", "app.locale", "u
                 boxSizing: "border-box"
             }).data("control", this);
 
+            // Seed & Chaos Control Box
+            var $seedBox = $("<DIV>").css({
+                background: "#161b22",
+                border: "1px solid #30363d",
+                borderRadius: "6px",
+                padding: "8px 10px",
+                marginBottom: "10px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px"
+            });
+
+            var $seedRow = $("<DIV>").css({ display: "flex", alignItems: "center", gap: "6px" });
+            $("<span>").css({ fontSize: "11px", fontWeight: "700", color: "#8b949e", width: "42px" }).text("Seed:").appendTo($seedRow);
+            var $seedInput = $("<INPUT>", { type: "text" }).css({
+                flex: "1",
+                background: "#0d1117",
+                border: "1px solid #30363d",
+                borderRadius: "4px",
+                color: "#e6edf3",
+                fontFamily: "monospace",
+                fontSize: "11px",
+                padding: "3px 6px"
+            }).val(pal.getSeed ? pal.getSeed() : "").appendTo($seedRow);
+
+            $("<BUTTON>").addClass("rand-btn-pill").css({
+                padding: "3px 8px",
+                fontSize: "10px",
+                background: "#21262d",
+                borderColor: "#38bdf8",
+                color: "#38bdf8"
+            }).text("Apply").click(function() {
+                var s = $seedInput.val().trim();
+                if (s && pal.setSeed) {
+                    pal.setSeed(s);
+                    r.randomizeProfile(pal.currentProfileId || "saas", { seed: s });
+                    updateContrastBadge();
+                }
+            }).appendTo($seedRow);
+
+            $("<BUTTON>").addClass("rand-btn-pill").css({
+                padding: "3px 8px",
+                fontSize: "10px",
+                background: "#21262d",
+                borderColor: "#6e7681",
+                color: "#c9d1d9"
+            }).text("Copy").click(function() {
+                var curSeed = pal.getSeed ? pal.getSeed() : $seedInput.val();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(curSeed).catch(function(){});
+                }
+                var btn = $(this);
+                var oldText = btn.text();
+                btn.text("Copied! ✓");
+                setTimeout(function() { btn.text(oldText); }, 1200);
+            }).appendTo($seedRow);
+
+            $seedBox.append($seedRow);
+
+            var $chaosRow = $("<DIV>").css({ display: "flex", alignItems: "center", gap: "8px" });
+            var curChaos = pal.getChaos ? pal.getChaos() : 1.0;
+            var $chaosLabel = $("<span>").css({ fontSize: "11px", color: "#8b949e", width: "85px" }).text("Chaos: " + curChaos.toFixed(1) + "x");
+            $("<INPUT>", {
+                type: "range",
+                min: "0.1",
+                max: "2.0",
+                step: "0.1"
+            }).css({ flex: "1", cursor: "pointer" }).val(curChaos).on("input change", function() {
+                var val = parseFloat($(this).val());
+                if (pal.setChaos) pal.setChaos(val);
+                $chaosLabel.text("Chaos: " + val.toFixed(1) + "x");
+            }).appendTo($chaosRow);
+            $chaosRow.append($chaosLabel);
+            $seedBox.append($chaosRow);
+            e.append($seedBox);
+
+            events.register("palette/seed/changed", function(ev, data) {
+                if ($seedInput && data && data.seed) $seedInput.val(data.seed);
+            });
+
             // Contrast Report Box
             var $contrastBox = $("<DIV>").addClass("rand-contrast-box");
             var updateContrastBadge = function() {
@@ -47,10 +127,12 @@ define("ui.control.randomizer.class", ["app.ini", "app.events", "app.locale", "u
                 $contrastBox.empty();
                 if (rep) {
                     var isAA = rep.passesAA;
-                    var badgeBg = isAA ? "#194d33" : "#5a3a10";
-                    var badgeColor = isAA ? "#75fbc0" : "#ffb74d";
-                    var badgeText = isAA ? (n("random.contrastPassed") || "AA Passed ✓") : (n("random.contrastWarning") || "Low Contrast ⚠");
-                    $("<span>").css({ color: "#aaa" }).html("Primary: <b>" + rep.priBgRatio + ":1</b> • Text: <b>" + rep.textBgRatio + ":1</b>").appendTo($contrastBox);
+                    var isAAA = rep.passesAAA;
+                    var badgeBg = isAAA ? "#133827" : (isAA ? "#194d33" : "#5a3a10");
+                    var badgeColor = isAAA ? "#4ade80" : (isAA ? "#75fbc0" : "#ffb74d");
+                    var badgeText = isAAA ? "AAA Passed ★" : (isAA ? (n("random.contrastPassed") || "AA Passed ✓") : (n("random.contrastWarning") || "Low Contrast ⚠"));
+                    var apcaTxt = rep.apcaText ? (" • APCA: <b>" + rep.apcaText + " Lc</b>") : "";
+                    $("<span>").css({ color: "#aaa" }).html("Primary: <b>" + rep.priBgRatio + ":1</b> • Text: <b>" + rep.textBgRatio + ":1</b>" + apcaTxt).appendTo($contrastBox);
                     $("<span>").addClass("rand-contrast-badge").css({
                         background: badgeBg,
                         color: badgeColor,

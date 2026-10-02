@@ -581,433 +581,855 @@
     }.call(this),
     function() {
         define("color.oklch", ["util"], function(r) {
-    "use strict";
+            "use strict";
 
-    // sRGB <-> Linear conversions
-    function srgbToLinear(c) {
-        var v = c / 255.0;
-        return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-    }
-
-    function linearToSrgb(c) {
-        var v = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(Math.max(0, c), 1.0 / 2.4) - 0.055;
-        return Math.round(Math.max(0, Math.min(255, v * 255.0)));
-    }
-
-    function linearToSrgbFloat(c) {
-        return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(Math.max(0, c), 1.0 / 2.4) - 0.055;
-    }
-
-    // sRGB (0..255) -> OKLab
-    function srgbToOklab(red, green, blue) {
-        var r_l = srgbToLinear(red);
-        var g_l = srgbToLinear(green);
-        var b_l = srgbToLinear(blue);
-
-        var l = 0.4122214708 * r_l + 0.5363325363 * g_l + 0.0514459929 * b_l;
-        var m = 0.2119034982 * r_l + 0.6806995451 * g_l + 0.1073969566 * b_l;
-        var s = 0.0883024619 * r_l + 0.2817188376 * g_l + 0.6299787005 * b_l;
-
-        var l_ = l > 0 ? Math.cbrt(l) : 0;
-        var m_ = m > 0 ? Math.cbrt(m) : 0;
-        var s_ = s > 0 ? Math.cbrt(s) : 0;
-
-        return {
-            L: 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
-            a: 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
-            b: 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
-        };
-    }
-
-    // OKLab -> sRGB (raw float, may be out of gamut)
-    function oklabToSrgbRaw(L, a, b) {
-        var l_ = L + 0.3963377774 * a + 0.2158037573 * b;
-        var m_ = L - 0.1055613458 * a - 0.0638541728 * b;
-        var s_ = L - 0.0894841775 * a - 1.2914855480 * b;
-
-        var l = l_ * l_ * l_;
-        var m = m_ * m_ * m_;
-        var s = s_ * s_ * s_;
-
-        var r_l = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
-        var g_l = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
-        var b_l = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
-
-        return {
-            r: linearToSrgbFloat(r_l),
-            g: linearToSrgbFloat(g_l),
-            b: linearToSrgbFloat(b_l)
-        };
-    }
-
-    // OKLab <-> OKLCH
-    function oklabToOklch(lab) {
-        var C = Math.sqrt(lab.a * lab.a + lab.b * lab.b);
-        var H = Math.atan2(lab.b, lab.a) * (180.0 / Math.PI);
-        if (H < 0) H += 360.0;
-        return { L: lab.L, C: C, H: H };
-    }
-
-    function oklchToOklab(L, C, H) {
-        var hRad = (H * Math.PI) / 180.0;
-        return {
-            L: L,
-            a: C * Math.cos(hRad),
-            b: C * Math.sin(hRad)
-        };
-    }
-
-    // sRGB -> OKLCH
-    function srgbToOklch(r, g, b) {
-        return oklabToOklch(srgbToOklab(r, g, b));
-    }
-
-    function inGamut(rgb, eps) {
-        eps = eps || 0.001;
-        return (
-            rgb.r >= -eps && rgb.r <= 1.0 + eps &&
-            rgb.g >= -eps && rgb.g <= 1.0 + eps &&
-            rgb.b >= -eps && rgb.b <= 1.0 + eps
-        );
-    }
-
-    // OKLCH -> sRGB with Gamut Mapping (binary search on Chroma)
-    function oklchToSrgb(L, C, H) {
-        if (L <= 0.0001) return { r: 0, g: 0, b: 0 };
-        if (L >= 0.9999) return { r: 255, g: 255, b: 255 };
-
-        var lab = oklchToOklab(L, C, H);
-        var raw = oklabToSrgbRaw(lab.L, lab.a, lab.b);
-
-        if (inGamut(raw)) {
-            return {
-                r: Math.round(Math.max(0, Math.min(1, raw.r)) * 255),
-                g: Math.round(Math.max(0, Math.min(1, raw.g)) * 255),
-                b: Math.round(Math.max(0, Math.min(1, raw.b)) * 255)
-            };
-        }
-
-        // Binary search chroma
-        var low = 0.0;
-        var high = C;
-        var best = { r: L, g: L, b: L };
-
-        for (var i = 0; i < 16; i++) {
-            var mid = (low + high) * 0.5;
-            var testLab = oklchToOklab(L, mid, H);
-            var testRgb = oklabToSrgbRaw(testLab.L, testLab.a, testLab.b);
-            if (inGamut(testRgb)) {
-                low = mid;
-                best = testRgb;
-            } else {
-                high = mid;
-            }
-        }
-
-        return {
-            r: Math.round(Math.max(0, Math.min(1, best.r)) * 255),
-            g: Math.round(Math.max(0, Math.min(1, best.g)) * 255),
-            b: Math.round(Math.max(0, Math.min(1, best.b)) * 255)
-        };
-    }
-
-    function formatCssOklch(L, C, H, alpha) {
-        var lPerc = (L * 100).toFixed(1) + "%";
-        var cVal = C.toFixed(3);
-        var hDeg = H.toFixed(1);
-        if (alpha != null && alpha < 1) {
-            return "oklch(" + lPerc + " " + cVal + " " + hDeg + " / " + alpha + ")";
-        }
-        return "oklch(" + lPerc + " " + cVal + " " + hDeg + ")";
-    }
-
-    function rgbToHsl(r, g, b) {
-        r /= 255; g /= 255; b /= 255;
-        var max = Math.max(r, g, b), min = Math.min(r, g, b);
-        var h = 0, s = 0, l = (max + min) / 2;
-        if (max !== min) {
-            var d = max - min;
-            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-            switch (max) {
-                case r: h = ((g - b) / d + (g < b ? 6 : 0)) * 60; break;
-                case g: h = ((b - r) / d + 2) * 60; break;
-                case b: h = ((r - g) / d + 4) * 60; break;
-            }
-        }
-        return { h: h, s: s, l: l };
-    }
-
-    function formatColorString(r, g, b, format) {
-        format = (format || "hex").toLowerCase();
-        var cr = Math.max(0, Math.min(255, Math.round(r || 0)));
-        var cg = Math.max(0, Math.min(255, Math.round(g || 0)));
-        var cb = Math.max(0, Math.min(255, Math.round(b || 0)));
-        var hex = ((1 << 24) + (cr << 16) + (cg << 8) + cb).toString(16).slice(1).toUpperCase();
-        if (format === "hex") {
-            return "#" + hex;
-        }
-        if (format === "oklch") {
-            var oklch = srgbToOklch(cr, cg, cb);
-            return formatCssOklch(oklch.L, oklch.C, oklch.H);
-        }
-        if (format === "rgb") {
-            return "rgb(" + cr + ", " + cg + ", " + cb + ")";
-        }
-        if (format === "hsl") {
-            var hsl = rgbToHsl(cr, cg, cb);
-            return "hsl(" + Math.round(hsl.h) + ", " + Math.round(hsl.s * 100) + "%, " + Math.round(hsl.l * 100) + "%)";
-        }
-        return "#" + hex;
-    }
-
-    function formatHexColor(hexStr, format) {
-        var hex = (hexStr || "").replace(/^#/, "");
-        if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-        var r = parseInt(hex.slice(0, 2), 16) || 0;
-        var g = parseInt(hex.slice(2, 4), 16) || 0;
-        var b = parseInt(hex.slice(4, 6), 16) || 0;
-        return formatColorString(r, g, b, format);
-    }
-
-    /**
-     * Generate modern 11-step tonal scale (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950)
-     * with perceptually uniform lightness steps and subtle natural hue-shift (warm light, cool shadow).
-     */
-    var TONAL_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
-    var TONAL_LIGHTNESS = {
-        50: 0.98,
-        100: 0.94,
-        200: 0.86,
-        300: 0.77,
-        400: 0.67,
-        500: 0.56,
-        600: 0.46,
-        700: 0.36,
-        800: 0.27,
-        900: 0.18,
-        950: 0.11
-    };
-
-    function generateTonalScale(baseR, baseG, baseB, options) {
-        options = options || {};
-        var base = srgbToOklch(baseR, baseG, baseB);
-        var maxC = Math.max(0.04, base.C);
-        var hueShift = options.hueShift !== undefined ? options.hueShift : 4.0; // degrees
-        var scale = {};
-
-        for (var i = 0; i < TONAL_STEPS.length; i++) {
-            var step = TONAL_STEPS[i];
-            var targetL = TONAL_LIGHTNESS[step];
-
-            // Chroma curve: peak at midtones, taper at extremes
-            // Bell-shaped curve centered around L=0.55
-            var distFromCenter = Math.abs(targetL - 0.55);
-            var chromaFactor = Math.max(0.15, 1.0 - distFromCenter * 1.5);
-            var stepC = maxC * chromaFactor;
-
-            // Hue shift: shift lighter steps towards warmer (~80 deg, yellow/amber),
-            // darker steps towards cooler (~260 deg, blue)
-            var stepH = base.H;
-            if (hueShift > 0) {
-                var shiftFactor = (targetL - 0.55) * 2; // -1 to +1
-                stepH = (base.H + shiftFactor * hueShift + 360) % 360;
+            // sRGB <-> Linear conversions
+            function srgbToLinear(c) {
+                var v = c / 255.0;
+                return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
             }
 
-            var rgb = oklchToSrgb(targetL, stepC, stepH);
-            scale[step] = {
-                step: step,
-                L: targetL,
-                C: stepC,
-                H: stepH,
-                r: rgb.r,
-                g: rgb.g,
-                b: rgb.b,
-                hex: "#" + ((1 << 24) + (rgb.r << 16) + (rgb.g << 8) + rgb.b).toString(16).slice(1).toUpperCase(),
-                css: "rgb(" + rgb.r + "," + rgb.g + "," + rgb.b + ")",
-                oklchCss: formatCssOklch(targetL, stepC, stepH)
+            function linearToSrgb(c) {
+                var v = c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(Math.max(0, c), 1.0 / 2.4) - 0.055;
+                return Math.round(Math.max(0, Math.min(255, v * 255.0)));
+            }
+
+            function linearToSrgbFloat(c) {
+                return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(Math.max(0, c), 1.0 / 2.4) - 0.055;
+            }
+
+            // sRGB (0..255) -> OKLab
+            function srgbToOklab(red, green, blue) {
+                var r_l = srgbToLinear(red);
+                var g_l = srgbToLinear(green);
+                var b_l = srgbToLinear(blue);
+
+                var l = 0.4122214708 * r_l + 0.5363325363 * g_l + 0.0514459929 * b_l;
+                var m = 0.2119034982 * r_l + 0.6806995451 * g_l + 0.1073969566 * b_l;
+                var s = 0.0883024619 * r_l + 0.2817188376 * g_l + 0.6299787005 * b_l;
+
+                var l_ = l > 0 ? Math.cbrt(l) : 0;
+                var m_ = m > 0 ? Math.cbrt(m) : 0;
+                var s_ = s > 0 ? Math.cbrt(s) : 0;
+
+                return {
+                    L: 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_,
+                    a: 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_,
+                    b: 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
+                };
+            }
+
+            // OKLab -> sRGB (raw float, may be out of gamut)
+            function oklabToSrgbRaw(L, a, b) {
+                var l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+                var m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+                var s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+
+                var l = l_ * l_ * l_;
+                var m = m_ * m_ * m_;
+                var s = s_ * s_ * s_;
+
+                var r_l = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+                var g_l = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+                var b_l = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
+
+                return {
+                    r: linearToSrgbFloat(r_l),
+                    g: linearToSrgbFloat(g_l),
+                    b: linearToSrgbFloat(b_l)
+                };
+            }
+
+            // OKLab <-> OKLCH
+            function oklabToOklch(lab) {
+                var C = Math.sqrt(lab.a * lab.a + lab.b * lab.b);
+                var H = Math.atan2(lab.b, lab.a) * (180.0 / Math.PI);
+                if (H < 0) H += 360.0;
+                return { L: lab.L, C: C, H: H };
+            }
+
+            function oklchToOklab(L, C, H) {
+                var hRad = (H * Math.PI) / 180.0;
+                return {
+                    L: L,
+                    a: C * Math.cos(hRad),
+                    b: C * Math.sin(hRad)
+                };
+            }
+
+            // sRGB -> OKLCH
+            function srgbToOklch(r, g, b) {
+                return oklabToOklch(srgbToOklab(r, g, b));
+            }
+
+            function inGamut(rgb, eps) {
+                eps = eps || 0.001;
+                return (
+                    rgb.r >= -eps && rgb.r <= 1.0 + eps &&
+                    rgb.g >= -eps && rgb.g <= 1.0 + eps &&
+                    rgb.b >= -eps && rgb.b <= 1.0 + eps
+                );
+            }
+
+            // OKLCH -> sRGB with Gamut Mapping (binary search on Chroma)
+            function oklchToSrgb(L, C, H) {
+                if (L <= 0.0001) return { r: 0, g: 0, b: 0 };
+                if (L >= 0.9999) return { r: 255, g: 255, b: 255 };
+
+                var lab = oklchToOklab(L, C, H);
+                var raw = oklabToSrgbRaw(lab.L, lab.a, lab.b);
+
+                if (inGamut(raw)) {
+                    return {
+                        r: Math.round(Math.max(0, Math.min(1, raw.r)) * 255),
+                        g: Math.round(Math.max(0, Math.min(1, raw.g)) * 255),
+                        b: Math.round(Math.max(0, Math.min(1, raw.b)) * 255)
+                    };
+                }
+
+                // Binary search chroma
+                var low = 0.0;
+                var high = C;
+                var best = { r: L, g: L, b: L };
+
+                for (var i = 0; i < 16; i++) {
+                    var mid = (low + high) * 0.5;
+                    var testLab = oklchToOklab(L, mid, H);
+                    var testRgb = oklabToSrgbRaw(testLab.L, testLab.a, testLab.b);
+                    if (inGamut(testRgb)) {
+                        low = mid;
+                        best = testRgb;
+                    } else {
+                        high = mid;
+                    }
+                }
+
+                return {
+                    r: Math.round(Math.max(0, Math.min(1, best.r)) * 255),
+                    g: Math.round(Math.max(0, Math.min(1, best.g)) * 255),
+                    b: Math.round(Math.max(0, Math.min(1, best.b)) * 255)
+                };
+            }
+
+            function formatCssOklch(L, C, H, alpha) {
+                var lPerc = (L * 100).toFixed(1) + "%";
+                var cVal = C.toFixed(3);
+                var hDeg = H.toFixed(1);
+                if (alpha != null && alpha < 1) {
+                    return "oklch(" + lPerc + " " + cVal + " " + hDeg + " / " + alpha + ")";
+                }
+                return "oklch(" + lPerc + " " + cVal + " " + hDeg + ")";
+            }
+
+            function rgbToHsl(r, g, b) {
+                r /= 255; g /= 255; b /= 255;
+                var max = Math.max(r, g, b), min = Math.min(r, g, b);
+                var h = 0, s = 0, l = (max + min) / 2;
+                if (max !== min) {
+                    var d = max - min;
+                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                    switch (max) {
+                        case r: h = ((g - b) / d + (g < b ? 6 : 0)) * 60; break;
+                        case g: h = ((b - r) / d + 2) * 60; break;
+                        case b: h = ((r - g) / d + 4) * 60; break;
+                    }
+                }
+                return { h: h, s: s, l: l };
+            }
+
+            function formatColorString(r, g, b, format) {
+                format = (format || "hex").toLowerCase();
+                var cr = Math.max(0, Math.min(255, Math.round(r || 0)));
+                var cg = Math.max(0, Math.min(255, Math.round(g || 0)));
+                var cb = Math.max(0, Math.min(255, Math.round(b || 0)));
+                var hex = ((1 << 24) + (cr << 16) + (cg << 8) + cb).toString(16).slice(1).toUpperCase();
+                if (format === "hex") {
+                    return "#" + hex;
+                }
+                if (format === "oklch") {
+                    var oklch = srgbToOklch(cr, cg, cb);
+                    return formatCssOklch(oklch.L, oklch.C, oklch.H);
+                }
+                if (format === "rgb") {
+                    return "rgb(" + cr + ", " + cg + ", " + cb + ")";
+                }
+                if (format === "hsl") {
+                    var hsl = rgbToHsl(cr, cg, cb);
+                    return "hsl(" + Math.round(hsl.h) + ", " + Math.round(hsl.s * 100) + "%, " + Math.round(hsl.l * 100) + "%)";
+                }
+                return "#" + hex;
+            }
+
+            function formatHexColor(hexStr, format) {
+                var hex = (hexStr || "").replace(/^#/, "");
+                if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+                var r = parseInt(hex.slice(0, 2), 16) || 0;
+                var g = parseInt(hex.slice(2, 4), 16) || 0;
+                var b = parseInt(hex.slice(4, 6), 16) || 0;
+                return formatColorString(r, g, b, format);
+            }
+
+            /**
+             * Generate modern 11-step tonal scale (50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950)
+             * with perceptually uniform lightness steps and subtle natural hue-shift (warm light, cool shadow).
+             */
+            var TONAL_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+            var TONAL_LIGHTNESS = {
+                50: 0.98,
+                100: 0.94,
+                200: 0.86,
+                300: 0.77,
+                400: 0.67,
+                500: 0.56,
+                600: 0.46,
+                700: 0.36,
+                800: 0.27,
+                900: 0.18,
+                950: 0.11
             };
-        }
 
-        return scale;
-    }
+            function generateTonalScale(baseR, baseG, baseB, options) {
+                options = options || {};
+                var base = srgbToOklch(baseR, baseG, baseB);
+                var maxC = Math.max(0.04, base.C);
+                var hueShift = options.hueShift !== undefined ? options.hueShift : 4.0; // degrees
+                var scale = {};
 
-    function getRelativeLuminance(r, g, b) {
-        var rL = srgbToLinear(r);
-        var gL = srgbToLinear(g);
-        var bL = srgbToLinear(b);
-        return 0.2126 * rL + 0.7152 * gL + 0.0722 * bL;
-    }
+                for (var i = 0; i < TONAL_STEPS.length; i++) {
+                    var step = TONAL_STEPS[i];
+                    var targetL = TONAL_LIGHTNESS[step];
 
-    function calcWcagContrast(rgb1, rgb2) {
-        if (!rgb1 || !rgb2) return 1.0;
-        var r1 = rgb1.r != null ? rgb1.r : (rgb1[0] || 0);
-        var g1 = rgb1.g != null ? rgb1.g : (rgb1[1] || 0);
-        var b1 = rgb1.b != null ? rgb1.b : (rgb1[2] || 0);
-        var r2 = rgb2.r != null ? rgb2.r : (rgb2[0] || 0);
-        var g2 = rgb2.g != null ? rgb2.g : (rgb2[1] || 0);
-        var b2 = rgb2.b != null ? rgb2.b : (rgb2[2] || 0);
-        var l1 = getRelativeLuminance(r1, g1, b1);
-        var l2 = getRelativeLuminance(r2, g2, b2);
-        var lighter = Math.max(l1, l2);
-        var darker = Math.min(l1, l2);
-        var ratio = (lighter + 0.05) / (darker + 0.05);
-        return Math.round(ratio * 100) / 100;
-    }
+                    // Chroma curve: peak at midtones, taper at extremes
+                    // Bell-shaped curve centered around L=0.55
+                    var distFromCenter = Math.abs(targetL - 0.55);
+                    var chromaFactor = Math.max(0.15, 1.0 - distFromCenter * 1.5);
+                    var stepC = maxC * chromaFactor;
 
-    function simulateColorBlindness(r, g, b, type) {
-        var rl = srgbToLinear(r);
-        var gl = srgbToLinear(g);
-        var bl = srgbToLinear(b);
-        var ro, go, bo;
-        if (type === "protanopia") {
-            ro = 0.56667 * rl + 0.43333 * gl + 0.00000 * bl;
-            go = 0.55833 * rl + 0.44167 * gl + 0.00000 * bl;
-            bo = 0.00000 * rl + 0.24167 * gl + 0.75833 * bl;
-        } else if (type === "deuteranopia") {
-            ro = 0.62500 * rl + 0.37500 * gl + 0.00000 * bl;
-            go = 0.70000 * rl + 0.30000 * gl + 0.00000 * bl;
-            bo = 0.00000 * rl + 0.30000 * gl + 0.70000 * bl;
-        } else if (type === "tritanopia") {
-            ro = 0.95000 * rl + 0.05000 * gl + 0.00000 * bl;
-            go = 0.00000 * rl + 0.43333 * gl + 0.56667 * bl;
-            bo = 0.00000 * rl + 0.47500 * gl + 0.52500 * bl;
-        } else if (type === "achromatopsia" || type === "grayscale") {
-            var y = 0.2126 * rl + 0.7152 * gl + 0.0722 * bl;
-            ro = y; go = y; bo = y;
-        } else {
-            ro = rl; go = gl; bo = bl;
-        }
-        return {
-            r: linearToSrgb(ro),
-            g: linearToSrgb(go),
-            b: linearToSrgb(bo)
-        };
-    }
+                    // Hue shift: shift lighter steps towards warmer (~80 deg, yellow/amber),
+                    // darker steps towards cooler (~260 deg, blue)
+                    var stepH = base.H;
+                    if (hueShift > 0) {
+                        var shiftFactor = (targetL - 0.55) * 2; // -1 to +1
+                        stepH = (base.H + shiftFactor * hueShift + 360) % 360;
+                    }
 
-    function sRgbToApcaY(c) {
-        if (!c) return 0;
-        var cr = c.r != null ? c.r : (c[0] != null ? c[0] : 0);
-        var cg = c.g != null ? c.g : (c[1] != null ? c[1] : 0);
-        var cb = c.b != null ? c.b : (c[2] != null ? c[2] : 0);
-        var r = Math.pow(Math.max(0, Math.min(255, cr)) / 255.0, 2.4);
-        var g = Math.pow(Math.max(0, Math.min(255, cg)) / 255.0, 2.4);
-        var b = Math.pow(Math.max(0, Math.min(255, cb)) / 255.0, 2.4);
-        return 0.2126729 * r + 0.7151522 * g + 0.0721750 * b;
-    }
+                    var rgb = oklchToSrgb(targetL, stepC, stepH);
+                    scale[step] = {
+                        step: step,
+                        L: targetL,
+                        C: stepC,
+                        H: stepH,
+                        r: rgb.r,
+                        g: rgb.g,
+                        b: rgb.b,
+                        hex: "#" + ((1 << 24) + (rgb.r << 16) + (rgb.g << 8) + rgb.b).toString(16).slice(1).toUpperCase(),
+                        css: "rgb(" + rgb.r + "," + rgb.g + "," + rgb.b + ")",
+                        oklchCss: formatCssOklch(targetL, stepC, stepH)
+                    };
+                }
 
-    function calcAPCA(txtRgb, bgRgb) {
-        if (!txtRgb || !bgRgb) return 0;
-        var yTxt = sRgbToApcaY(txtRgb);
-        var yBg = sRgbToApcaY(bgRgb);
-        var blkThrs = 0.022;
-        var blkClmp = 1.414;
-        if (yTxt < blkThrs) yTxt += Math.pow(blkThrs - yTxt, blkClmp);
-        if (yBg < blkThrs) yBg += Math.pow(blkThrs - yBg, blkClmp);
-        var deltaY2 = Math.abs(yBg - yTxt);
-        if (deltaY2 < 0.0005) return 0;
-        var SAPC = 0;
-        if (yBg > yTxt) {
-            SAPC = (Math.pow(yBg, 0.56) - Math.pow(yTxt, 0.57)) * 1.14;
-        } else {
-            SAPC = (Math.pow(yBg, 0.65) - Math.pow(yTxt, 0.62)) * 1.14;
-        }
-        if (Math.abs(SAPC) < 0.1) return 0;
-        var Lc = SAPC > 0 ? (SAPC - 0.027) * 100 : (SAPC + 0.027) * 100;
-        return Math.round(Lc * 10) / 10;
-    }
+                return scale;
+            }
 
-    function interpolateOklab(r1, g1, b1, r2, g2, b2, t) {
-        var lab1 = srgbToOklab(r1, g1, b1);
-        var lab2 = srgbToOklab(r2, g2, b2);
-        var L = lab1.L * (1 - t) + lab2.L * t;
-        var a = lab1.a * (1 - t) + lab2.a * t;
-        var b = lab1.b * (1 - t) + lab2.b * t;
-        var lch = oklabToOklch({ L: L, a: a, b: b });
-        return oklchToSrgb(lch.L, lch.C, lch.H);
-    }
+            function getRelativeLuminance(r, g, b) {
+                var rL = srgbToLinear(r);
+                var gL = srgbToLinear(g);
+                var bL = srgbToLinear(b);
+                return 0.2126 * rL + 0.7152 * gL + 0.0722 * bL;
+            }
 
-    function parseCssColor(str) {
-        if (!str || typeof str !== 'string') return null;
-        str = str.trim();
+            function calcWcagContrast(rgb1, rgb2) {
+                if (!rgb1 || !rgb2) return 1.0;
+                var r1 = rgb1.r != null ? rgb1.r : (rgb1[0] || 0);
+                var g1 = rgb1.g != null ? rgb1.g : (rgb1[1] || 0);
+                var b1 = rgb1.b != null ? rgb1.b : (rgb1[2] || 0);
+                var r2 = rgb2.r != null ? rgb2.r : (rgb2[0] || 0);
+                var g2 = rgb2.g != null ? rgb2.g : (rgb2[1] || 0);
+                var b2 = rgb2.b != null ? rgb2.b : (rgb2[2] || 0);
+                var l1 = getRelativeLuminance(r1, g1, b1);
+                var l2 = getRelativeLuminance(r2, g2, b2);
+                var lighter = Math.max(l1, l2);
+                var darker = Math.min(l1, l2);
+                var ratio = (lighter + 0.05) / (darker + 0.05);
+                return Math.round(ratio * 100) / 100;
+            }
 
-        // 1. OKLCH: oklch(L C H) or oklch(L% C H)
-        var mOklch = str.match(/^oklch\(\s*([\d\.]+)%?\s+([\d\.]+)\s+([\d\.]+)/i);
-        if (mOklch) {
-            var rawL = parseFloat(mOklch[1]);
-            var L = str.includes('%') || rawL > 1 ? rawL / 100.0 : rawL;
-            var C = parseFloat(mOklch[2]);
-            var H = parseFloat(mOklch[3]);
-            return oklchToSrgb(L, C, H);
-        }
+            function simulateColorBlindness(r, g, b, type) {
+                var rl = srgbToLinear(r);
+                var gl = srgbToLinear(g);
+                var bl = srgbToLinear(b);
+                var ro, go, bo;
+                if (type === "protanopia") {
+                    ro = 0.56667 * rl + 0.43333 * gl + 0.00000 * bl;
+                    go = 0.55833 * rl + 0.44167 * gl + 0.00000 * bl;
+                    bo = 0.00000 * rl + 0.24167 * gl + 0.75833 * bl;
+                } else if (type === "deuteranopia") {
+                    ro = 0.62500 * rl + 0.37500 * gl + 0.00000 * bl;
+                    go = 0.70000 * rl + 0.30000 * gl + 0.00000 * bl;
+                    bo = 0.00000 * rl + 0.30000 * gl + 0.70000 * bl;
+                } else if (type === "tritanopia") {
+                    ro = 0.95000 * rl + 0.05000 * gl + 0.00000 * bl;
+                    go = 0.00000 * rl + 0.43333 * gl + 0.56667 * bl;
+                    bo = 0.00000 * rl + 0.47500 * gl + 0.52500 * bl;
+                } else if (type === "achromatopsia" || type === "grayscale") {
+                    var y = 0.2126 * rl + 0.7152 * gl + 0.0722 * bl;
+                    ro = y; go = y; bo = y;
+                } else {
+                    ro = rl; go = gl; bo = bl;
+                }
+                return {
+                    r: linearToSrgb(ro),
+                    g: linearToSrgb(go),
+                    b: linearToSrgb(bo)
+                };
+            }
 
-        // 2. RGB: rgb(r, g, b) or rgba(r, g, b, a)
-        var mRgb = str.match(/^rgba?\(\s*([\d\.]+%?)[,\s]+([\d\.]+%?)[,\s]+([\d\.]+%?)/i);
-        if (mRgb) {
-            var parseVal = function(v) {
-                return v.endsWith('%') ? Math.round(parseFloat(v) * 2.55) : Math.round(parseFloat(v));
+            function sRgbToApcaY(c) {
+                if (!c) return 0;
+                var cr = c.r != null ? c.r : (c[0] != null ? c[0] : 0);
+                var cg = c.g != null ? c.g : (c[1] != null ? c[1] : 0);
+                var cb = c.b != null ? c.b : (c[2] != null ? c[2] : 0);
+                var r = Math.pow(Math.max(0, Math.min(255, cr)) / 255.0, 2.4);
+                var g = Math.pow(Math.max(0, Math.min(255, cg)) / 255.0, 2.4);
+                var b = Math.pow(Math.max(0, Math.min(255, cb)) / 255.0, 2.4);
+                return 0.2126729 * r + 0.7151522 * g + 0.0721750 * b;
+            }
+
+            function calcAPCA(txtRgb, bgRgb) {
+                if (!txtRgb || !bgRgb) return 0;
+                var yTxt = sRgbToApcaY(txtRgb);
+                var yBg = sRgbToApcaY(bgRgb);
+                var blkThrs = 0.022;
+                var blkClmp = 1.414;
+                if (yTxt < blkThrs) yTxt += Math.pow(blkThrs - yTxt, blkClmp);
+                if (yBg < blkThrs) yBg += Math.pow(blkThrs - yBg, blkClmp);
+                var deltaY2 = Math.abs(yBg - yTxt);
+                if (deltaY2 < 0.0005) return 0;
+                var SAPC = 0;
+                if (yBg > yTxt) {
+                    SAPC = (Math.pow(yBg, 0.56) - Math.pow(yTxt, 0.57)) * 1.14;
+                } else {
+                    SAPC = (Math.pow(yBg, 0.65) - Math.pow(yTxt, 0.62)) * 1.14;
+                }
+                if (Math.abs(SAPC) < 0.1) return 0;
+                var Lc = SAPC > 0 ? (SAPC - 0.027) * 100 : (SAPC + 0.027) * 100;
+                return Math.round(Lc * 10) / 10;
+            }
+
+            function interpolateOklab(r1, g1, b1, r2, g2, b2, t) {
+                var lab1 = srgbToOklab(r1, g1, b1);
+                var lab2 = srgbToOklab(r2, g2, b2);
+                var L = lab1.L * (1 - t) + lab2.L * t;
+                var a = lab1.a * (1 - t) + lab2.a * t;
+                var b = lab1.b * (1 - t) + lab2.b * t;
+                var lch = oklabToOklch({ L: L, a: a, b: b });
+                return oklchToSrgb(lch.L, lch.C, lch.H);
+            }
+
+            function parseCssColor(str) {
+                if (!str || typeof str !== 'string') return null;
+                str = str.trim();
+
+                // 1. OKLCH: oklch(L C H) or oklch(L% C H)
+                var mOklch = str.match(/^oklch\(\s*([\d\.]+)%?\s+([\d\.]+)\s+([\d\.]+)/i);
+                if (mOklch) {
+                    var rawL = parseFloat(mOklch[1]);
+                    var L = str.includes('%') || rawL > 1 ? rawL / 100.0 : rawL;
+                    var C = parseFloat(mOklch[2]);
+                    var H = parseFloat(mOklch[3]);
+                    return oklchToSrgb(L, C, H);
+                }
+
+                // 2. RGB: rgb(r, g, b) or rgba(r, g, b, a)
+                var mRgb = str.match(/^rgba?\(\s*([\d\.]+%?)[,\s]+([\d\.]+%?)[,\s]+([\d\.]+%?)/i);
+                if (mRgb) {
+                    var parseVal = function(v) {
+                        return v.endsWith('%') ? Math.round(parseFloat(v) * 2.55) : Math.round(parseFloat(v));
+                    };
+                    return {
+                        r: Math.max(0, Math.min(255, parseVal(mRgb[1]))),
+                        g: Math.max(0, Math.min(255, parseVal(mRgb[2]))),
+                        b: Math.max(0, Math.min(255, parseVal(mRgb[3])))
+                    };
+                }
+
+                // 3. HSL: hsl(h, s%, l%) or hsla(h, s%, l%, a)
+                var mHsl = str.match(/^hsla?\(\s*([\d\.]+)(?:deg)?[,\s]+([\d\.]+)%[,\s]+([\d\.]+)%/i);
+                if (mHsl) {
+                    var h = (parseFloat(mHsl[1]) % 360 + 360) % 360;
+                    var s = parseFloat(mHsl[2]) / 100.0;
+                    var l = parseFloat(mHsl[3]) / 100.0;
+                    var a = s * Math.min(l, 1 - l);
+                    var f = function(n) {
+                        var k = (n + h / 30) % 12;
+                        var color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                        return Math.round(Math.max(0, Math.min(255, 255 * color)));
+                    };
+                    return { r: f(0), g: f(8), b: f(4) };
+                }
+
+                // 4. HEX: #RGB, #RRGGBB, RGB, RRGGBB
+                var cleanHex = str.replace(/[^0-9a-f]/gi, '');
+                if (cleanHex.length === 3) {
+                    cleanHex = cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2];
+                }
+                if (cleanHex.length === 6) {
+                    var num = parseInt(cleanHex, 16);
+                    return {
+                        r: (num >> 16) & 255,
+                        g: (num >> 8) & 255,
+                        b: num & 255
+                    };
+                }
+
+                return null;
+            }
+
+            // === Seed-based PRNG & Gaussian Distribution ===
+            function mulberry32(seed) {
+                var s = (seed >>> 0);
+                return function() {
+                    var t = s += 0x6D2B79F5;
+                    t = Math.imul(t ^ (t >>> 15), t | 1);
+                    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+                };
+            }
+
+            function stringToSeed(str) {
+                if (typeof str === "number") return str >>> 0;
+                if (!str) return (Math.random() * 0xFFFFFFFF) >>> 0;
+                var hash = 0;
+                for (var i = 0; i < str.length; i++) {
+                    hash = Math.imul(31, hash) + str.charCodeAt(i) | 0;
+                }
+                return hash >>> 0;
+            }
+
+            function generateSeed() {
+                return Math.random().toString(36).substring(2, 10);
+            }
+
+            // Box-Muller Gaussian Jitter
+            function randomGaussian(rng, mean, stdDev) {
+                var u1 = rng();
+                var u2 = rng();
+                while (u1 <= 1e-7) u1 = rng();
+                var z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+                return (mean || 0) + z0 * (stdDev !== undefined ? stdDev : 1);
+            }
+
+            /**
+             * Binary search on OKLCH Lightness L to guarantee WCAG targetRatio (e.g. 4.5 or 7.0).
+             * Preserves H, applies gamut mapping on C at each step, and returns optimal readable L.
+             */
+            function fitContrast(fgOklch, bgRgb, targetRatio, options) {
+                options = options || {};
+                targetRatio = targetRatio || 4.5;
+                if (!bgRgb) bgRgb = { r: 255, g: 255, b: 255 };
+                var bgLum = getRelativeLuminance(bgRgb.r, bgRgb.g, bgRgb.b);
+
+                var curRgb = oklchToSrgb(fgOklch.L, fgOklch.C, fgOklch.H);
+                var curRatio = calcWcagContrast(curRgb, bgRgb);
+                if (curRatio >= targetRatio) {
+                    return {
+                        L: fgOklch.L,
+                        C: fgOklch.C,
+                        H: fgOklch.H,
+                        rgb: curRgb,
+                        ratio: curRatio,
+                        passed: true
+                    };
+                }
+
+                var maxDarkRatio = (bgLum + 0.05) / 0.05;
+                var maxLightRatio = 1.05 / (bgLum + 0.05);
+                var goDark = (bgLum >= 0.179 && maxDarkRatio >= targetRatio) || (maxLightRatio < targetRatio);
+
+                var lo = goDark ? 0.0 : Math.min(0.99, fgOklch.L);
+                var hi = goDark ? Math.max(0.01, fgOklch.L) : 1.0;
+
+                var bestL = goDark ? 0.0 : 1.0;
+                var bestRgb = oklchToSrgb(bestL, fgOklch.C, fgOklch.H);
+                var bestRatio = calcWcagContrast(bestRgb, bgRgb);
+
+                for (var i = 0; i < 20; i++) {
+                    var mid = (lo + hi) * 0.5;
+                    var testRgb = oklchToSrgb(mid, fgOklch.C, fgOklch.H);
+                    var ratio = calcWcagContrast(testRgb, bgRgb);
+
+                    if (goDark) {
+                        if (ratio >= targetRatio) {
+                            bestL = mid;
+                            bestRgb = testRgb;
+                            bestRatio = ratio;
+                            lo = mid;
+                        } else {
+                            hi = mid;
+                        }
+                    } else {
+                        if (ratio >= targetRatio) {
+                            bestL = mid;
+                            bestRgb = testRgb;
+                            bestRatio = ratio;
+                            hi = mid;
+                        } else {
+                            lo = mid;
+                        }
+                    }
+                }
+
+                if (bestRatio < targetRatio) {
+                    var fallbackL = goDark ? 0.02 : 0.98;
+                    bestL = fallbackL;
+                    bestRgb = oklchToSrgb(bestL, 0.01, fgOklch.H);
+                    bestRatio = calcWcagContrast(bestRgb, bgRgb);
+                }
+
+                var apca = calcAPCA(bestRgb, bgRgb);
+                return {
+                    L: bestL,
+                    C: fgOklch.C,
+                    H: fgOklch.H,
+                    rgb: bestRgb,
+                    ratio: bestRatio,
+                    apca: apca,
+                    passed: bestRatio >= targetRatio
+                };
+            }
+
+            function fitContrastApca(fgOklch, bgRgb, targetLc, options) {
+                targetLc = Math.abs(targetLc || 60);
+                if (!bgRgb) bgRgb = { r: 255, g: 255, b: 255 };
+                var bgLum = getRelativeLuminance(bgRgb.r, bgRgb.g, bgRgb.b);
+                var curRgb = oklchToSrgb(fgOklch.L, fgOklch.C, fgOklch.H);
+                var curLc = Math.abs(calcAPCA(curRgb, bgRgb));
+                if (curLc >= targetLc) {
+                    return { L: fgOklch.L, C: fgOklch.C, H: fgOklch.H, rgb: curRgb, apca: curLc, passed: true };
+                }
+
+                var goDark = bgLum >= 0.179;
+                var lo = goDark ? 0.0 : Math.min(0.99, fgOklch.L);
+                var hi = goDark ? Math.max(0.01, fgOklch.L) : 1.0;
+
+                var bestL = goDark ? 0.0 : 1.0;
+                var bestRgb = oklchToSrgb(bestL, fgOklch.C, fgOklch.H);
+                var bestLc = Math.abs(calcAPCA(bestRgb, bgRgb));
+
+                for (var i = 0; i < 20; i++) {
+                    var mid = (lo + hi) * 0.5;
+                    var testRgb = oklchToSrgb(mid, fgOklch.C, fgOklch.H);
+                    var lc = Math.abs(calcAPCA(testRgb, bgRgb));
+                    if (goDark) {
+                        if (lc >= targetLc) {
+                            bestL = mid; bestRgb = testRgb; bestLc = lc;
+                            lo = mid;
+                        } else {
+                            hi = mid;
+                        }
+                    } else {
+                        if (lc >= targetLc) {
+                            bestL = mid; bestRgb = testRgb; bestLc = lc;
+                            hi = mid;
+                        } else {
+                            lo = mid;
+                        }
+                    }
+                }
+                return { L: bestL, C: fgOklch.C, H: fgOklch.H, rgb: bestRgb, apca: bestLc, passed: bestLc >= targetLc };
+            }
+
+            function auditSemanticContrast(priRgb, bgRgb, textRgb, secRgb) {
+                if (!priRgb || !bgRgb || !textRgb) return null;
+                var textBgRatio = calcWcagContrast(textRgb, bgRgb);
+                var priBgRatio = calcWcagContrast(priRgb, bgRgb);
+                var secBgRatio = secRgb ? calcWcagContrast(secRgb, bgRgb) : null;
+
+                var apcaText = Math.abs(calcAPCA(textRgb, bgRgb));
+                var apcaPri = Math.abs(calcAPCA(priRgb, bgRgb));
+                var apcaSec = secRgb ? Math.abs(calcAPCA(secRgb, bgRgb)) : null;
+
+                var passesAA = textBgRatio >= 4.5 && priBgRatio >= 3.0;
+                var passesAAA = textBgRatio >= 7.0 && priBgRatio >= 4.5;
+
+                return {
+                    textBgRatio: textBgRatio,
+                    priBgRatio: priBgRatio,
+                    secBgRatio: secBgRatio,
+                    apcaText: apcaText,
+                    apcaPri: apcaPri,
+                    apcaSec: apcaSec,
+                    passesAA: passesAA,
+                    passesAAA: passesAAA,
+                    score: Math.min(100, Math.round((Math.min(7.0, textBgRatio) / 7.0 * 50) + (Math.min(4.5, priBgRatio) / 4.5 * 50)))
+                };
+            }
+
+            // Comprehensive OKLCH Profiles Dictionary (22 profiles with [L, C] perceptual curves)
+            var OKLCH_PROFILES = {
+                saas: {
+                    id: "saas",
+                    name: "SaaS & Cloud Platform",
+                    category: "ui",
+                    hues: [220, 235, 250, 265, 175, 195],
+                    models: ["analogcompl", "monocompl", "triad"],
+                    angle: [24, 34],
+                    curve: [[0.56, 0.16], [0.95, 0.03], [0.72, 0.10], [0.22, 0.04], [0.99, 0.005]],
+                    typoCategory: "ui"
+                },
+                minimal: {
+                    id: "minimal",
+                    name: "Swiss Minimal & Bauhaus",
+                    category: "ui",
+                    hues: [30, 210, 355, 45, 150],
+                    models: ["mono", "monocompl"],
+                    angle: [25, 35],
+                    curve: [[0.50, 0.08], [0.96, 0.01], [0.78, 0.03], [0.18, 0.02], [0.99, 0.002]],
+                    typoCategory: "ui"
+                },
+                cyberpunk: {
+                    id: "cyberpunk",
+                    name: "Cyberpunk Neon 2077",
+                    category: "game",
+                    hues: [195, 325, 140, 60],
+                    models: ["triad", "analogcompl"],
+                    angle: [30, 50],
+                    curve: [[0.72, 0.25], [0.86, 0.18], [0.60, 0.22], [0.16, 0.06], [0.08, 0.03]],
+                    typoCategory: "game"
+                },
+                darkui: {
+                    id: "darkui",
+                    name: "Modern Dark Mode",
+                    category: "ui",
+                    hues: [215, 240, 275, 310, 180],
+                    models: ["monocompl", "analogcompl", "triadcompl"],
+                    angle: [25, 40],
+                    curve: [[0.65, 0.17], [0.82, 0.08], [0.50, 0.12], [0.20, 0.03], [0.11, 0.015]],
+                    typoCategory: "ui"
+                },
+                luxury: {
+                    id: "luxury",
+                    name: "Luxury & High Jewelry",
+                    category: "editorial",
+                    hues: [75, 82, 350, 240],
+                    models: ["monocompl", "triadcompl"],
+                    angle: [28, 42],
+                    curve: [[0.68, 0.12], [0.95, 0.02], [0.52, 0.10], [0.18, 0.03], [0.98, 0.008]],
+                    typoCategory: "editorial"
+                },
+                nature: {
+                    id: "nature",
+                    name: "Organic Botanical",
+                    category: "ui",
+                    hues: [135, 145, 155, 65, 80],
+                    models: ["analogcompl", "analog", "triad"],
+                    angle: [25, 35],
+                    curve: [[0.55, 0.11], [0.94, 0.025], [0.70, 0.08], [0.24, 0.04], [0.98, 0.008]],
+                    typoCategory: "ui"
+                },
+                playful: {
+                    id: "playful",
+                    name: "Playful & EdTech",
+                    category: "ui",
+                    hues: [45, 140, 240, 340],
+                    models: ["triad", "tetrad"],
+                    angle: [30, 48],
+                    curve: [[0.65, 0.22], [0.93, 0.06], [0.75, 0.18], [0.25, 0.08], [0.98, 0.015]],
+                    typoCategory: "ui"
+                },
+                pastel: {
+                    id: "pastel",
+                    name: "Soft Pastel Calm",
+                    category: "ui",
+                    hues: [195, 260, 330, 140],
+                    models: ["triad", "analogcompl", "mono"],
+                    angle: [25, 35],
+                    curve: [[0.82, 0.07], [0.96, 0.02], [0.88, 0.05], [0.35, 0.04], [0.99, 0.005]],
+                    typoCategory: "ui"
+                },
+                monochrome: {
+                    id: "monochrome",
+                    name: "Pure Monochromatic",
+                    category: "ui",
+                    hues: [220],
+                    models: ["mono"],
+                    angle: [30, 30],
+                    curve: [[0.50, 0.01], [0.95, 0.002], [0.75, 0.005], [0.22, 0.005], [0.99, 0.001]],
+                    typoCategory: "ui"
+                },
+                earth: {
+                    id: "earth",
+                    name: "Warm Earth & Terracotta",
+                    category: "ui",
+                    hues: [45, 60, 75, 85],
+                    models: ["analogcompl", "triad"],
+                    angle: [25, 38],
+                    curve: [[0.52, 0.09], [0.93, 0.03], [0.68, 0.07], [0.22, 0.03], [0.98, 0.01]],
+                    typoCategory: "ui"
+                },
+                ocean: {
+                    id: "ocean",
+                    name: "Deep Ocean & Aqua",
+                    category: "ui",
+                    hues: [190, 210, 230, 245],
+                    models: ["analog", "analogcompl"],
+                    angle: [25, 35],
+                    curve: [[0.55, 0.14], [0.94, 0.03], [0.72, 0.10], [0.20, 0.05], [0.98, 0.008]],
+                    typoCategory: "ui"
+                },
+                sunset: {
+                    id: "sunset",
+                    name: "Sunset Gradient",
+                    category: "ui",
+                    hues: [25, 45, 70, 320, 340],
+                    models: ["analogcompl", "triad"],
+                    angle: [28, 44],
+                    curve: [[0.62, 0.19], [0.94, 0.04], [0.74, 0.14], [0.22, 0.06], [0.98, 0.01]],
+                    typoCategory: "ui"
+                },
+                neutral_accent: {
+                    id: "neutral_accent",
+                    name: "Neutral Gray with Vibrant Accent",
+                    category: "ui",
+                    hues: [25, 140, 220, 280, 340],
+                    models: ["monocompl"],
+                    angle: [30, 30],
+                    curve: [[0.60, 0.20], [0.95, 0.005], [0.80, 0.01], [0.20, 0.01], [0.99, 0.002]],
+                    typoCategory: "ui"
+                },
+                editorial: {
+                    id: "editorial",
+                    name: "High Editorial Magazine",
+                    category: "editorial",
+                    hues: [30, 45, 140, 220, 350],
+                    models: ["analogcompl", "triad"],
+                    angle: [26, 40],
+                    curve: [[0.48, 0.11], [0.95, 0.015], [0.70, 0.08], [0.18, 0.025], [0.98, 0.005]],
+                    typoCategory: "editorial"
+                },
+                retro: {
+                    id: "retro",
+                    name: "Retro Synth & 70s Warmth",
+                    category: "editorial",
+                    hues: [45, 75, 145, 195],
+                    models: ["triad", "tetrad"],
+                    angle: [30, 46],
+                    curve: [[0.58, 0.13], [0.92, 0.04], [0.72, 0.10], [0.26, 0.05], [0.97, 0.02]],
+                    typoCategory: "editorial"
+                },
+                game_rpg: {
+                    id: "game_rpg",
+                    name: "Dark Fantasy RPG (Elden/Witcher)",
+                    category: "game",
+                    hues: [75, 30, 355, 275],
+                    models: ["triadcompl", "analogcompl", "tetrad"],
+                    angle: [26, 40],
+                    curve: [[0.65, 0.15], [0.92, 0.03], [0.48, 0.12], [0.18, 0.04], [0.08, 0.02]],
+                    typoCategory: "game"
+                },
+                game_cyberpunk: {
+                    id: "game_cyberpunk",
+                    name: "Sci-Fi HUD & Hologram",
+                    category: "game",
+                    hues: [195, 325, 140, 95],
+                    models: ["triad", "analogcompl", "tetrad"],
+                    angle: [32, 54],
+                    curve: [[0.74, 0.26], [0.88, 0.18], [0.60, 0.22], [0.15, 0.08], [0.06, 0.03]],
+                    typoCategory: "game"
+                },
+                game_arcade: {
+                    id: "game_arcade",
+                    name: "8-Bit Retro Arcade (NES/Famicom)",
+                    category: "game",
+                    hues: [30, 140, 230, 350],
+                    models: ["triad", "tetrad"],
+                    angle: [35, 55],
+                    curve: [[0.68, 0.24], [0.90, 0.12], [0.76, 0.20], [0.22, 0.10], [0.98, 0.01]],
+                    typoCategory: "game"
+                },
+                game_fps: {
+                    id: "game_fps",
+                    name: "Tactical Military FPS (CoD/Arma)",
+                    category: "game",
+                    hues: [115, 75, 50, 215],
+                    models: ["monocompl", "analogcompl"],
+                    angle: [24, 34],
+                    curve: [[0.48, 0.09], [0.88, 0.03], [0.62, 0.07], [0.20, 0.03], [0.10, 0.02]],
+                    typoCategory: "game"
+                },
+                game_horror: {
+                    id: "game_horror",
+                    name: "Survival Horror (Resident Evil)",
+                    category: "game",
+                    hues: [25, 355, 175, 270],
+                    models: ["monocompl", "triad"],
+                    angle: [25, 42],
+                    curve: [[0.42, 0.14], [0.75, 0.05], [0.35, 0.10], [0.14, 0.03], [0.05, 0.015]],
+                    typoCategory: "game"
+                },
+                game_cozy: {
+                    id: "game_cozy",
+                    name: "Cozy / Casual Mobile (Animal Crossing)",
+                    category: "game",
+                    hues: [340, 65, 150, 205],
+                    models: ["triad", "tetrad", "analogcompl"],
+                    angle: [28, 48],
+                    curve: [[0.72, 0.17], [0.94, 0.05], [0.82, 0.13], [0.32, 0.06], [0.99, 0.01]],
+                    typoCategory: "game"
+                },
+                game_esports: {
+                    id: "game_esports",
+                    name: "Esports Arena (Apex/Valorant)",
+                    category: "game",
+                    hues: [85, 355, 200, 275],
+                    models: ["monocompl", "triad"],
+                    angle: [34, 52],
+                    curve: [[0.70, 0.25], [0.88, 0.15], [0.55, 0.20], [0.16, 0.06], [0.07, 0.025]],
+                    typoCategory: "game"
+                },
+                game_space: {
+                    id: "game_space",
+                    name: "Deep Space Sci-Fi (EVE/Starfield)",
+                    category: "game",
+                    hues: [190, 280, 45, 230],
+                    models: ["analogcompl", "triadcompl"],
+                    angle: [28, 46],
+                    curve: [[0.62, 0.18], [0.86, 0.10], [0.50, 0.15], [0.16, 0.05], [0.07, 0.02]],
+                    typoCategory: "game"
+                }
             };
+
             return {
-                r: Math.max(0, Math.min(255, parseVal(mRgb[1]))),
-                g: Math.max(0, Math.min(255, parseVal(mRgb[2]))),
-                b: Math.max(0, Math.min(255, parseVal(mRgb[3])))
+                srgbToLinear: srgbToLinear,
+                linearToSrgb: linearToSrgb,
+                srgbToOklab: srgbToOklab,
+                oklabToOklch: oklabToOklch,
+                oklchToOklab: oklchToOklab,
+                srgbToOklch: srgbToOklch,
+                oklchToSrgb: oklchToSrgb,
+                formatCssOklch: formatCssOklch,
+                generateTonalScale: generateTonalScale,
+                calcAPCA: calcAPCA,
+                getRelativeLuminance: getRelativeLuminance,
+                calcWcagContrast: calcWcagContrast,
+                simulateColorBlindness: simulateColorBlindness,
+                interpolateOklab: interpolateOklab,
+                parseCssColor: parseCssColor,
+                rgbToHsl: rgbToHsl,
+                formatColorString: formatColorString,
+                formatHexColor: formatHexColor,
+                TONAL_STEPS: TONAL_STEPS,
+                TONAL_LIGHTNESS: TONAL_LIGHTNESS,
+                mulberry32: mulberry32,
+                stringToSeed: stringToSeed,
+                generateSeed: generateSeed,
+                randomGaussian: randomGaussian,
+                fitContrast: fitContrast,
+                fitContrastApca: fitContrastApca,
+                auditSemanticContrast: auditSemanticContrast,
+                OKLCH_PROFILES: OKLCH_PROFILES
             };
-        }
-
-        // 3. HSL: hsl(h, s%, l%) or hsla(h, s%, l%, a)
-        var mHsl = str.match(/^hsla?\(\s*([\d\.]+)(?:deg)?[,\s]+([\d\.]+)%[,\s]+([\d\.]+)%/i);
-        if (mHsl) {
-            var h = (parseFloat(mHsl[1]) % 360 + 360) % 360;
-            var s = parseFloat(mHsl[2]) / 100.0;
-            var l = parseFloat(mHsl[3]) / 100.0;
-            var a = s * Math.min(l, 1 - l);
-            var f = function(n) {
-                var k = (n + h / 30) % 12;
-                var color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-                return Math.round(Math.max(0, Math.min(255, 255 * color)));
-            };
-            return { r: f(0), g: f(8), b: f(4) };
-        }
-
-        // 4. HEX: #RGB, #RRGGBB, RGB, RRGGBB
-        var cleanHex = str.replace(/[^0-9a-f]/gi, '');
-        if (cleanHex.length === 3) {
-            cleanHex = cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2];
-        }
-        if (cleanHex.length === 6) {
-            var num = parseInt(cleanHex, 16);
-            return {
-                r: (num >> 16) & 255,
-                g: (num >> 8) & 255,
-                b: num & 255
-            };
-        }
-
-        return null;
-    }
-
-    return {
-        srgbToLinear: srgbToLinear,
-        linearToSrgb: linearToSrgb,
-        srgbToOklab: srgbToOklab,
-        oklabToOklch: oklabToOklch,
-        oklchToOklab: oklchToOklab,
-        srgbToOklch: srgbToOklch,
-        oklchToSrgb: oklchToSrgb,
-        formatCssOklch: formatCssOklch,
-        generateTonalScale: generateTonalScale,
-        calcAPCA: calcAPCA,
-        getRelativeLuminance: getRelativeLuminance,
-        calcWcagContrast: calcWcagContrast,
-        simulateColorBlindness: simulateColorBlindness,
-        interpolateOklab: interpolateOklab,
-        parseCssColor: parseCssColor,
-        rgbToHsl: rgbToHsl,
-        formatColorString: formatColorString,
-        formatHexColor: formatHexColor,
-        TONAL_STEPS: TONAL_STEPS,
-        TONAL_LIGHTNESS: TONAL_LIGHTNESS
-    };
-});
+        });
     }.call(this),
     function() {
         define("color.rgb.class", ["color.cmyk.class", "color.lab.class", "util", "color.oklch"], function(e, t, n, oklch) {
@@ -2167,1461 +2589,1470 @@
     }.call(this),
     function() {
         define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "color.wheel", "color.presets", "color.class", "color.models.class", "color.rgb.class", "color.hsv.class", "color.variator1.class", "color.convert", "ui.control.paletteimg.class", "color.oklch"], function(e, t, n, r, i, s, o, u, a, f, l, c, h, oklch) {
-    var p, d, v, m;
-    return m = {
-        mono: 1,
-        monocompl: 2,
-        triad: 3,
-        triadcompl: 4,
-        analog: 5,
-        analogcompl: 6,
-        tetrad: 7,
-        free: 10
-    }, v = function(e) {
-        var t, n;
-        for (t in m) {
-            n = m[t];
-            if (n === e) return t
-        }
-        return "mono"
-    }, d = {
-        model: "mono",
-        hue: 0,
-        angle: 30,
-        preset: "pastels"
-    }, TYPOGRAPHY_PAIRS = [
-        // ── Gaming & Game UI Category (9 Presets) ──
-        {
-            id: "game_retro_pixel",
-            category: "game",
-            name: "👾 8-Bit Arcade (Press Start)",
-            heading: "'Press Start 2P', 'VT323', 'Silkscreen', 'Courier New', monospace",
-            body: "'VT323', 'Silkscreen', 'Courier New', monospace",
-            weightHeading: "400",
-            scale: "1.25",
-            letterSpacing: "0.05em",
-            lineHeight: "1.6"
-        },
-        {
-            id: "game_scifi_cyber",
-            category: "game",
-            name: "🤖 Cyberpunk HUD (Orbitron)",
-            heading: "'Orbitron', 'Audiowide', 'Michroma', 'Impact', sans-serif",
-            body: "'Rajdhani', 'Exo 2', -apple-system, sans-serif",
-            weightHeading: "800",
-            scale: "1.333",
-            letterSpacing: "0.06em",
-            lineHeight: "1.45"
-        },
-        {
-            id: "game_dark_fantasy",
-            category: "game",
-            name: "⚔️ Dark Fantasy RPG (Cinzel)",
-            heading: "'Cinzel', 'Cinzel Decorative', 'MedievalSharp', 'Georgia', serif",
-            body: "'Cormorant Garamond', 'Garamond', Georgia, serif",
-            weightHeading: "700",
-            scale: "1.414",
-            letterSpacing: "0.04em",
-            lineHeight: "1.6"
-        },
-        {
-            id: "game_tactical_fps",
-            category: "game",
-            name: "🎯 Tactical Military (Black Ops)",
-            heading: "'Black Ops One', 'Share Tech Mono', 'Impact', monospace, sans-serif",
-            body: "'Share Tech Mono', 'JetBrains Mono', 'Courier New', monospace",
-            weightHeading: "800",
-            scale: "1.25",
-            letterSpacing: "0.08em",
-            lineHeight: "1.5"
-        },
-        {
-            id: "game_esports_speed",
-            category: "game",
-            name: "🏆 Esports Arena (Russo One)",
-            heading: "'Russo One', 'Montserrat', 'Arial Black', sans-serif",
-            body: "'Chakra Petch', 'Roboto', 'Arial', sans-serif",
-            weightHeading: "900",
-            scale: "1.35",
-            letterSpacing: "-0.02em",
-            lineHeight: "1.35"
-        },
-        {
-            id: "game_cozy_casual",
-            category: "game",
-            name: "🍭 Cozy Casual (Fredoka)",
-            heading: "'Fredoka', 'Bungee', 'Luckiest Guy', 'Century Gothic', cursive, sans-serif",
-            body: "'Nunito', 'Comfortaa', -apple-system, sans-serif",
-            weightHeading: "700",
-            scale: "1.3",
-            letterSpacing: "0.02em",
-            lineHeight: "1.45"
-        },
-        {
-            id: "game_mecha_terminal",
-            category: "game",
-            name: "⚙️ Mecha Terminal (Tech Mono)",
-            heading: "'Share Tech Mono', 'Space Mono', 'Consolas', monospace",
-            body: "'Share Tech Mono', 'Courier New', monospace",
-            weightHeading: "700",
-            scale: "1.2",
-            letterSpacing: "0.1em",
-            lineHeight: "1.55"
-        },
-        {
-            id: "game_gothic_horror",
-            category: "game",
-            name: "💀 Survival Horror (Nosifer)",
-            heading: "'Creepster', 'Nosifer', 'Playfair Display', Georgia, serif",
-            body: "'Special Elite', 'Courier New', Georgia, serif",
-            weightHeading: "700",
-            scale: "1.414",
-            letterSpacing: "0.05em",
-            lineHeight: "1.6"
-        },
-        {
-            id: "game_anime_jrpg",
-            category: "game",
-            name: "⛩️ Anime / JRPG (Rounded)",
-            heading: "'M PLUS Rounded 1c', 'Zen Tokyo Zoo', 'Century Gothic', sans-serif",
-            body: "'M PLUS 1p', 'Noto Sans JP', sans-serif",
-            weightHeading: "800",
-            scale: "1.333",
-            letterSpacing: "0.01em",
-            lineHeight: "1.5"
-        },
+            var p, d, v, m;
+            return m = {
+                mono: 1,
+                monocompl: 2,
+                triad: 3,
+                triadcompl: 4,
+                analog: 5,
+                analogcompl: 6,
+                tetrad: 7,
+                free: 10
+            }, v = function(e) {
+                var t, n;
+                for (t in m) {
+                    n = m[t];
+                    if (n === e) return t
+                }
+                return "mono"
+            }, d = {
+                model: "mono",
+                hue: 0,
+                angle: 30,
+                preset: "pastels"
+            }, TYPOGRAPHY_PAIRS = [
+                // ── Gaming & Game UI Category (9 Presets) ──
+                {
+                    id: "game_retro_pixel",
+                    category: "game",
+                    name: "👾 8-Bit Arcade (Press Start)",
+                    heading: "'Press Start 2P', 'VT323', 'Silkscreen', 'Courier New', monospace",
+                    body: "'VT323', 'Silkscreen', 'Courier New', monospace",
+                    weightHeading: "400",
+                    scale: "1.25",
+                    letterSpacing: "0.05em",
+                    lineHeight: "1.6"
+                },
+                {
+                    id: "game_scifi_cyber",
+                    category: "game",
+                    name: "🤖 Cyberpunk HUD (Orbitron)",
+                    heading: "'Orbitron', 'Audiowide', 'Michroma', 'Impact', sans-serif",
+                    body: "'Rajdhani', 'Exo 2', -apple-system, sans-serif",
+                    weightHeading: "800",
+                    scale: "1.333",
+                    letterSpacing: "0.06em",
+                    lineHeight: "1.45"
+                },
+                {
+                    id: "game_dark_fantasy",
+                    category: "game",
+                    name: "⚔️ Dark Fantasy RPG (Cinzel)",
+                    heading: "'Cinzel', 'Cinzel Decorative', 'MedievalSharp', 'Georgia', serif",
+                    body: "'Cormorant Garamond', 'Garamond', Georgia, serif",
+                    weightHeading: "700",
+                    scale: "1.414",
+                    letterSpacing: "0.04em",
+                    lineHeight: "1.6"
+                },
+                {
+                    id: "game_tactical_fps",
+                    category: "game",
+                    name: "🎯 Tactical Military (Black Ops)",
+                    heading: "'Black Ops One', 'Share Tech Mono', 'Impact', monospace, sans-serif",
+                    body: "'Share Tech Mono', 'JetBrains Mono', 'Courier New', monospace",
+                    weightHeading: "800",
+                    scale: "1.25",
+                    letterSpacing: "0.08em",
+                    lineHeight: "1.5"
+                },
+                {
+                    id: "game_esports_speed",
+                    category: "game",
+                    name: "🏆 Esports Arena (Russo One)",
+                    heading: "'Russo One', 'Montserrat', 'Arial Black', sans-serif",
+                    body: "'Chakra Petch', 'Roboto', 'Arial', sans-serif",
+                    weightHeading: "900",
+                    scale: "1.35",
+                    letterSpacing: "-0.02em",
+                    lineHeight: "1.35"
+                },
+                {
+                    id: "game_cozy_casual",
+                    category: "game",
+                    name: "🍭 Cozy Casual (Fredoka)",
+                    heading: "'Fredoka', 'Bungee', 'Luckiest Guy', 'Century Gothic', cursive, sans-serif",
+                    body: "'Nunito', 'Comfortaa', -apple-system, sans-serif",
+                    weightHeading: "700",
+                    scale: "1.3",
+                    letterSpacing: "0.02em",
+                    lineHeight: "1.45"
+                },
+                {
+                    id: "game_mecha_terminal",
+                    category: "game",
+                    name: "⚙️ Mecha Terminal (Tech Mono)",
+                    heading: "'Share Tech Mono', 'Space Mono', 'Consolas', monospace",
+                    body: "'Share Tech Mono', 'Courier New', monospace",
+                    weightHeading: "700",
+                    scale: "1.2",
+                    letterSpacing: "0.1em",
+                    lineHeight: "1.55"
+                },
+                {
+                    id: "game_gothic_horror",
+                    category: "game",
+                    name: "💀 Survival Horror (Nosifer)",
+                    heading: "'Creepster', 'Nosifer', 'Playfair Display', Georgia, serif",
+                    body: "'Special Elite', 'Courier New', Georgia, serif",
+                    weightHeading: "700",
+                    scale: "1.414",
+                    letterSpacing: "0.05em",
+                    lineHeight: "1.6"
+                },
+                {
+                    id: "game_anime_jrpg",
+                    category: "game",
+                    name: "⛩️ Anime / JRPG (Rounded)",
+                    heading: "'M PLUS Rounded 1c', 'Zen Tokyo Zoo', 'Century Gothic', sans-serif",
+                    body: "'M PLUS 1p', 'Noto Sans JP', sans-serif",
+                    weightHeading: "800",
+                    scale: "1.333",
+                    letterSpacing: "0.01em",
+                    lineHeight: "1.5"
+                },
 
-        // ── UI & Web Category (5 Presets) ──
-        {
-            id: "modern_sans",
-            category: "ui",
-            name: "Modern Sans (SaaS)",
-            heading: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-            body: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-            weightHeading: "700",
-            scale: "1.25",
-            letterSpacing: "-0.02em",
-            lineHeight: "1.5"
-        },
-        {
-            id: "swiss_grotesk",
-            category: "ui",
-            name: "Swiss Grotesk (Clean)",
-            heading: "'Helvetica Neue', Helvetica, 'Arial Black', Arial, sans-serif",
-            body: "'Helvetica Neue', Helvetica, Arial, sans-serif",
-            weightHeading: "800",
-            scale: "1.414",
-            letterSpacing: "-0.03em",
-            lineHeight: "1.4"
-        },
-        {
-            id: "humanist",
-            category: "ui",
-            name: "Humanist (Warm UI)",
-            heading: "'Trebuchet MS', 'Segoe UI', 'Lucida Grande', sans-serif",
-            body: "'Open Sans', 'Segoe UI', Arial, sans-serif",
-            weightHeading: "700",
-            scale: "1.25",
-            letterSpacing: "-0.01em",
-            lineHeight: "1.55"
-        },
-        {
-            id: "tech_mono",
-            category: "ui",
-            name: "Developer Monospace",
-            heading: "'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace",
-            body: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-            weightHeading: "700",
-            scale: "1.2",
-            letterSpacing: "-0.01em",
-            lineHeight: "1.65"
-        },
-        {
-            id: "minimal_system",
-            category: "ui",
-            name: "Native System Compact",
-            heading: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
-            body: "-apple-system, 'SF Pro Text', 'Segoe UI', sans-serif",
-            weightHeading: "600",
-            scale: "1.2",
-            letterSpacing: "-0.015em",
-            lineHeight: "1.45"
-        },
+                // ── UI & Web Category (5 Presets) ──
+                {
+                    id: "modern_sans",
+                    category: "ui",
+                    name: "Modern Sans (SaaS)",
+                    heading: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+                    body: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+                    weightHeading: "700",
+                    scale: "1.25",
+                    letterSpacing: "-0.02em",
+                    lineHeight: "1.5"
+                },
+                {
+                    id: "swiss_grotesk",
+                    category: "ui",
+                    name: "Swiss Grotesk (Clean)",
+                    heading: "'Helvetica Neue', Helvetica, 'Arial Black', Arial, sans-serif",
+                    body: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+                    weightHeading: "800",
+                    scale: "1.414",
+                    letterSpacing: "-0.03em",
+                    lineHeight: "1.4"
+                },
+                {
+                    id: "humanist",
+                    category: "ui",
+                    name: "Humanist (Warm UI)",
+                    heading: "'Trebuchet MS', 'Segoe UI', 'Lucida Grande', sans-serif",
+                    body: "'Open Sans', 'Segoe UI', Arial, sans-serif",
+                    weightHeading: "700",
+                    scale: "1.25",
+                    letterSpacing: "-0.01em",
+                    lineHeight: "1.55"
+                },
+                {
+                    id: "tech_mono",
+                    category: "ui",
+                    name: "Developer Monospace",
+                    heading: "'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace",
+                    body: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+                    weightHeading: "700",
+                    scale: "1.2",
+                    letterSpacing: "-0.01em",
+                    lineHeight: "1.65"
+                },
+                {
+                    id: "minimal_system",
+                    category: "ui",
+                    name: "Native System Compact",
+                    heading: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
+                    body: "-apple-system, 'SF Pro Text', 'Segoe UI', sans-serif",
+                    weightHeading: "600",
+                    scale: "1.2",
+                    letterSpacing: "-0.015em",
+                    lineHeight: "1.45"
+                },
 
-        // ── Editorial & Brand Category (5 Presets) ──
-        {
-            id: "editorial_serif",
-            category: "editorial",
-            name: "Editorial Serif",
-            heading: "Georgia, 'Playfair Display', 'Times New Roman', serif",
-            body: "Georgia, 'Charter', 'Source Serif Pro', serif",
-            weightHeading: "700",
-            scale: "1.333",
-            letterSpacing: "0",
-            lineHeight: "1.6"
-        },
-        {
-            id: "luxury_didot",
-            category: "editorial",
-            name: "Luxury / Didot",
-            heading: "'Didot', 'Bodoni MT', 'Cinzel', Georgia, serif",
-            body: "'Cormorant Garamond', 'Garamond', Georgia, serif",
-            weightHeading: "600",
-            scale: "1.5",
-            letterSpacing: "0.05em",
-            lineHeight: "1.7"
-        },
-        {
-            id: "playful_round",
-            category: "editorial",
-            name: "Playful / Casual",
-            heading: "'Comic Sans MS', 'Century Gothic', 'Quicksand', cursive, sans-serif",
-            body: "'Nunito', 'Segoe UI', Arial, sans-serif",
-            weightHeading: "700",
-            scale: "1.25",
-            letterSpacing: "0.01em",
-            lineHeight: "1.5"
-        },
-        {
-            id: "display_impact",
-            category: "editorial",
-            name: "Display Impact",
-            heading: "Impact, 'Arial Black', sans-serif",
-            body: "Arial, 'Helvetica Neue', sans-serif",
-            weightHeading: "900",
-            scale: "1.414",
-            letterSpacing: "0.02em",
-            lineHeight: "1.35"
-        },
-        {
-            id: "brutalist_poster",
-            category: "editorial",
-            name: "Brutalist Heavy Poster",
-            heading: "'Arial Black', Impact, sans-serif",
-            body: "'Courier New', Courier, monospace",
-            weightHeading: "900",
-            scale: "1.5",
-            letterSpacing: "0.03em",
-            lineHeight: "1.3"
-        }
-    ], p = function() {
-        function i(e, n, r, i) {
-            var s;
-            this.hue = n, this.angle = r, this.hidden = i, this.uid = "", this.inited = !1, this.lock(), this.col = {}, this.col.pri = new o(this.hue), this.setModel(e), this.preset = "null", this.vars = new l(this, "default"), this.varsMulti = {
-                pri: new l(this, "default"),
-                compl: new l(this, "default"),
-                sec1: new l(this, "default"),
-                sec2: new l(this, "default")
-            }, this.varsMultiOn = !1, this.lockedColors = {
-                pri: !1,
-                sec: !1,
-                compl: !1
-            }, this.converter = {
-                on: !1,
-                type: "none",
-                amount: 1
-            }, this.typography = TYPOGRAPHY_PAIRS[0], this.inited = !0, this.unlock(), this.modelChanged(), this.colorChanged(), s = this, this.hidden || (t.register("history/changed", function(e, t) {
-                return s.loadPalette(t.data)
-            }), t.register("palette/load", function(e, t) {
-                return s.loadPalette(t)
-            }), t.register("palette/reset", function() {
-                return s.loadPalette(null)
-            }), t.register("palette/colors/update", function() {
-                return s.colorChanged()
-            }), t.register("palette/model/free", function(e, t) {
-                return s.setModelFree(t.id)
-            }), t.register("drag/start", function() {
-                return s.lock()
-            }), t.register("drag/stop", function() {
-                return s.unlock(), s.storePalette()
-            }), t.register("palette/set/base", function(e, t) {
-                return s.setBase(t.color)
-            }), t.register("palette/switchvars/same", function() {
-                return s.switchVars(!1)
-            }), t.register("palette/switchvars/multi", function() {
-                return s.switchVars(!0)
-            }), t.register("palette/switchvars/active", function(e, t) {
-                return s.setVarsActive(t.colId)
-            }), t.register("palette/adjust/hue", function(e, t) {
-                return s.addHue(t.val), s.storePalette()
-            }), t.register("palette/adjust/saturation", function(e, t) {
-                return s.addSaturation(t.val), s.storePalette()
-            }), t.register("palette/adjust/bright", function(e, t) {
-                return s.addBright(t.val), s.storePalette()
-            }), t.register("palette/adjust/contrast", function(e, t) {
-                return s.addContrast(t.val), s.storePalette()
-            }), t.register("palette/swapsecs", function() {
-                return s.swapSecs()
-            }), t.register("palette/colorize", function(e, t) {
-                return s.colorize(t.$e, t.sorted, t.converted)
-            }), t.register("convert/set", function(e, t) {
-                return s.setConverter(t.data)
-            }), t.register("palette/typography/set", function(e, t) {
-                return s.setTypography(t)
-            }), t.register("palette/typography/randomize", function(e, t) {
-                return s.randomizeTypography(t)
-            }), t.register("export/html", function() {
-                return s["export"]("html")
-            }), t.register("export/css", function() {
-                return s["export"]("css")
-            }), t.register("export/oklch", function() {
-                return s["export"]("oklch")
-            }), t.register("export/tailwind", function() {
-                return s["export"]("tailwind")
-            }), t.register("export/dtcg", function() {
-                return s["export"]("dtcg")
-            }), t.register("export/figma", function() {
-                return s["export"]("figma")
-            }), t.register("export/svg", function() {
-                return s["export"]("svg")
-            }), t.register("export/less", function() {
-                return s["export"]("less")
-            }), t.register("export/sass", function() {
-                return s["export"]("sass")
-            }), t.register("export/xml", function() {
-                return s["export"]("xml")
-            }), t.register("export/text", function() {
-                return s["export"]("txt")
-            }), t.register("export/aco", function() {
-                return s["export"]("aco")
-            }), t.register("export/gpl", function() {
-                return s["export"]("gpl")
-            }), t.register("export/sketch", function() {
-                return s["export"]("sketch")
-            }), t.register("export/png", function() {
-                return s.exportImg()
-            }))
-        }
-        return i.prototype.modelChanged = function() {
-            if (!this.hidden) return t.trigger("palette/model/changed")
-        }, i.prototype.colorChanged = function() {
-            this.calcColorTable();
-            if (!this.hidden) return t.trigger("palette/colors/changed"), this.storePalette()
-        }, i.prototype.varsChanged = function() {
-            this.calcColorTable();
-            if (!this.hidden) return t.trigger("palette/colors/changed"), this.storePalette()
-        }, i.prototype.setModel = function(e, t) {
-            this.modelID = e, this.model = u[e], t && !this.model.swapped && this.model.swapSecs(), this.hueCompl = this.model.getComplement(this.hue), this.hueCompl != null ? this.col.compl = new o(this.hueCompl) : this.col.compl = null, this.hueSec1 = this.model.getSec1(this.hue, this.angle), this.hueSec1 != null ? this.col.sec1 = new o(this.hueSec1) : this.col.sec1 = null, this.hueSec2 = this.model.getSec2(this.hue, this.angle), this.hueSec2 != null ? this.col.sec2 = new o(this.hueSec2) : this.col.sec2 = null, this.hueCnt = 1, this.hasCompl() && this.hueCnt++, this.hasSecs() && (this.hueCnt += 2), this.hueCnt === 1 && (this.varsMultiOn = !1), this.varsMultiOn && (!this.hasCompl() && this.varsActive === "compl" || !this.hasSecs() && (this.varsActive === "sec1" || this.varsActive === "sec2")) && this.setVarsActive("pri"), this.inited && this.modelChanged();
-            if (this.inited) return this.colorChanged()
-        }, i.prototype.setModelFree = function(e) {
-            this.modelID = "free", this.model = null;
-            if (!e || e < 2 || e > 4) e = 2;
-            this.hueCnt = e, e === 2 && (this.hueSec1 = this.hueSec2 = this.col.sec1 = this.col.sec2 = null), e === 3 && (this.hueCompl = this.col.compl = null);
-            if (e === 2 || e === 4) this.hueCompl == null && (this.hueCompl = r.angleNorm(this.hue + 180)), this.col.compl = new o(this.hueCompl);
-            e >= 3 && (this.hueSec1 == null && (this.hueSec1 = r.angleNorm(this.hue + 30)), this.col.sec1 = new o(this.hueSec1), this.hueSec2 == null && (this.hueSec2 = r.angleNorm(this.hue - 30)), this.col.sec2 = new o(this.hueSec2)), this.locked || this.modelChanged();
-            if (this.inited) return this.colorChanged()
-        }, i.prototype.setHue = function(e, t) {
-            var n;
-            return n = e - this.hue, this.isModelFree() && !t ? this.addHueAll(n) : (this.hue = r.angleNorm(e), this.col.pri.setHue(Math.round(this.hue)), this.updateCompl(), this.updateSecs(), this.colorChanged())
-        }, i.prototype.addHue = function(e) {
-            return this.setHue(this.hue + e)
-        }, i.prototype.addHueAll = function(e) {
-            return this.hue = r.angleNorm(this.hue + e), this.col.pri.setHue(Math.round(this.hue)), this.hasCompl() && (this.hueCompl = r.angleNorm(this.hueCompl + e), this.updateCompl()), this.hasSecs() && (this.hueSec1 = r.angleNorm(this.hueSec1 + e), this.hueSec2 = r.angleNorm(this.hueSec2 + e), this.updateSecs()), this.colorChanged()
-        }, i.prototype.setHueCompl = function(e, t) {
-            var n;
-            return this.isModelFree() ? t ? (this.hueCompl = r.angleNorm(e), this.updateCompl(), this.colorChanged()) : (n = e - this.hueCompl, this.addHueAll(n)) : this.setHue(this.model.getComplement(e))
-        }, i.prototype.setHueSec = function(e, t, n) {
-            var i, s, o;
-            return this.isModelFree() ? n ? (o = r.angleNorm(e), t === 1 ? this.hueSec1 = o : this.hueSec2 = o, this.updateSecs(), this.colorChanged()) : (s = e - (t === 1 ? this.hueSec1 : this.hueSec2), this.addHueAll(s)) : (i = r.angleDiff(e, this.hue), i = this.model.getAngle(i), this.setAngle(i))
-        }, i.prototype.setAngle = function(e) {
-            var t;
-            this.angle = r.angleNorm(e);
-            if (this.angle > 90) {
-                t = "", this.modelID === "analog" ? t = "triad" : this.modelID === "triad" ? t = "analog" : this.modelID === "analogcompl" ? t = "triadcompl" : this.modelID === "triadcompl" && (t = "analogcompl");
-                if (t) {
-                    this.angle = 180 - this.angle, this.setModel(t, !this.model.swapped);
-                    return
+                // ── Editorial & Brand Category (5 Presets) ──
+                {
+                    id: "editorial_serif",
+                    category: "editorial",
+                    name: "Editorial Serif",
+                    heading: "Georgia, 'Playfair Display', 'Times New Roman', serif",
+                    body: "Georgia, 'Charter', 'Source Serif Pro', serif",
+                    weightHeading: "700",
+                    scale: "1.333",
+                    letterSpacing: "0",
+                    lineHeight: "1.6"
+                },
+                {
+                    id: "luxury_didot",
+                    category: "editorial",
+                    name: "Luxury / Didot",
+                    heading: "'Didot', 'Bodoni MT', 'Cinzel', Georgia, serif",
+                    body: "'Cormorant Garamond', 'Garamond', Georgia, serif",
+                    weightHeading: "600",
+                    scale: "1.5",
+                    letterSpacing: "0.05em",
+                    lineHeight: "1.7"
+                },
+                {
+                    id: "playful_round",
+                    category: "editorial",
+                    name: "Playful / Casual",
+                    heading: "'Comic Sans MS', 'Century Gothic', 'Quicksand', cursive, sans-serif",
+                    body: "'Nunito', 'Segoe UI', Arial, sans-serif",
+                    weightHeading: "700",
+                    scale: "1.25",
+                    letterSpacing: "0.01em",
+                    lineHeight: "1.5"
+                },
+                {
+                    id: "display_impact",
+                    category: "editorial",
+                    name: "Display Impact",
+                    heading: "Impact, 'Arial Black', sans-serif",
+                    body: "Arial, 'Helvetica Neue', sans-serif",
+                    weightHeading: "900",
+                    scale: "1.414",
+                    letterSpacing: "0.02em",
+                    lineHeight: "1.35"
+                },
+                {
+                    id: "brutalist_poster",
+                    category: "editorial",
+                    name: "Brutalist Heavy Poster",
+                    heading: "'Arial Black', Impact, sans-serif",
+                    body: "'Courier New', Courier, monospace",
+                    weightHeading: "900",
+                    scale: "1.5",
+                    letterSpacing: "0.03em",
+                    lineHeight: "1.3"
                 }
-            }
-            return this.updateSecs(), this.colorChanged()
-        }, i.prototype.swapSecs = function(e) {
-            if (this.model) return this.model.swapSecs(), this.updateSecs(), this.colorChanged()
-        }, i.prototype.setPreset = function(e) {
-            return this.preset = e, this.vars.setPreset(e)
-        }, i.prototype.switchVars = function(e) {
-            if (this.varsMultiOn === !!e) return;
-            return e && (this.hasCompl() || this.hasSecs()) ? (this.varsMultiOn = !0, this.varsMulti.pri.setVals(this.vars.getVals()), this.varsMulti.compl.setVals(this.vars.getVals()), this.varsMulti.sec1.setVals(this.vars.getVals()), this.varsMulti.sec2.setVals(this.vars.getVals()), this.setVarsActive("pri")) : this.varsMultiOn = !1, this.colorChanged()
-        }, i.prototype.setVarsActive = function(e) {
-            if (!this.varsMultiOn) return;
-            return this.varsActive = e, this.vars = this.varsMulti[e], this.colorChanged()
-        }, i.prototype.setVars = function(e) {
-            return this.vars.setVals(e)
-        }, i.prototype.addSaturation = function(e) {
-            if (!this.varsMultiOn) return this.vars.addSaturation(e);
-            this.varsMulti.pri.addSaturation(e), this.hasCompl() && this.varsMulti.compl.addSaturation(e);
-            if (this.hasSecs()) return this.varsMulti.sec1.addSaturation(e), this.varsMulti.sec2.addSaturation(e)
-        }, i.prototype.addBright = function(e) {
-            if (!this.varsMultiOn) return this.vars.addBright(e);
-            this.varsMulti.pri.addBright(e), this.hasCompl() && this.varsMulti.compl.addBright(e);
-            if (this.hasSecs()) return this.varsMulti.sec1.addBright(e), this.varsMulti.sec2.addBright(e)
-        }, i.prototype.addContrast = function(e) {
-            if (!this.varsMultiOn) return this.vars.addContrast(e);
-            this.varsMulti.pri.addContrast(e), this.hasCompl() && this.varsMulti.compl.addContrast(e);
-            if (this.hasSecs()) return this.varsMulti.sec1.addContrast(e), this.varsMulti.sec2.addContrast(e)
-        }, i.prototype.setBase = function(e) {
-            return this.locked = !0, this.setHue(e.hsv.h), this.vars.setMainVal([e.kS, e.kV]), this.locked = !1, this.colorChanged()
-        }, i.prototype.setByCssColor = function(str) {
-            var p = oklch.parseCssColor(str);
-            if (!p) return !1;
-            var rgb = new a(p.r, p.g, p.b), col = new o(0);
-            return col.setByRGB(rgb), this.setBase(col)
-        }, i.prototype.setByHex = function(e) {
-            var p = oklch.parseCssColor(e);
-            if (p) {
-                var rgb = new a(p.r, p.g, p.b), col = new o(0);
-                return col.setByRGB(rgb), this.setBase(col)
-            }
-            var t, n;
-            return n = new a(0, 0, 0), n.setByHex(e), t = new o(0), t.setByRGB(n), this.setBase(t)
-        }, i.prototype.setConverter = function(e) {
-            return e.type ? this.converter = {
-                on: !0,
-                type: e.type,
-                amount: e.amount
-            } : this.converter.on = !1, this.colorChanged()
-        }, i.prototype.isModelFree = function() {
-            return this.modelID === "free"
-        }, i.prototype.hasCompl = function() {
-            return this.hueCompl != null
-        }, i.prototype.hasSecs = function() {
-            return this.hueSec1 != null
-        }, i.prototype.getVar = function(e, t) {
-            return this.varsMultiOn ? this.varsMulti[t].getVal(e) : this.vars.getVal(e)
-        }, i.prototype.getVars = function() {
-            return this.vars.getVals()
-        }, i.prototype.getHueActive = function() {
-            if (!this.varsMultiOn) return this.hue;
-            switch (this.varsActive) {
-                case "pri":
-                    return this.hue;
-                case "compl":
-                    return this.hueCompl;
-                case "sec1":
-                    return this.hueSec1;
-                case "sec2":
-                    return this.hueSec2
-            }
-        }, i.prototype.getColCnt = function() {
-            var e;
-            return e = 1, this.hasCompl() && (e = 2), this.hasSecs() && (e += 2), e
-        }, i.prototype.updateCompl = function() {
-            if (this.col.compl) {
-                this.isModelFree() || (this.hueCompl = this.model.getComplement(this.hue));
-                if (this.hueCompl != null) return this.col.compl.setHue(Math.round(this.hueCompl))
-            }
-        }, i.prototype.updateSecs = function() {
-            this.col.sec1 && (this.isModelFree() || (this.hueSec1 = this.model.getSec1(this.hue, this.angle)), this.hueSec1 != null && this.col.sec1.setHue(Math.round(this.hueSec1)));
-            if (this.col.sec2) {
-                this.isModelFree() || (this.hueSec2 = this.model.getSec2(this.hue, this.angle));
-                if (this.hueSec2 != null) return this.col.sec2.setHue(Math.round(this.hueSec2))
-            }
-        }, i.prototype.lock = function() {
-            return this.locked = !0
-        }, i.prototype.unlock = function() {
-            return this.locked = !1
-        }, i.prototype.storePalette = function() {
-            if (this.hidden || this.locked) return;
-            this.uid = this.getSerialized();
-            this.recordHistory();
-            return t.trigger("history/setstate", {
-                uid: this.uid
-            }), t.trigger("palette/uid/changed", {
-                uid: this.uid
-            })
-        }, i.prototype.loadPalette = function(e) {
-            var t;
-            this.locked = !0;
-            if (e && e.uid && e.uid !== -1) {
-                if (e.uid === this.uid) return this.locked = !1, 0;
-                t = this.setSerialized(e.uid);
-                if (!t) {
-                    this.loadPalette(null);
-                    return
+            ], p = function() {
+                function i(e, n, r, i) {
+                    var s;
+                    this.hue = n, this.angle = r, this.hidden = i, this.uid = "", this.inited = !1, this.lock(), this.col = {}, this.col.pri = new o(this.hue), this.setModel(e), this.preset = "null", this.vars = new l(this, "default"), this.varsMulti = {
+                        pri: new l(this, "default"),
+                        compl: new l(this, "default"),
+                        sec1: new l(this, "default"),
+                        sec2: new l(this, "default")
+                    }, this.varsMultiOn = !1, this.lockedColors = {
+                        pri: !1,
+                        sec: !1,
+                        compl: !1
+                    }, this.converter = {
+                        on: !1,
+                        type: "none",
+                        amount: 1
+                    }, this.typography = TYPOGRAPHY_PAIRS[0], this.currentSeed = oklch.generateSeed(), this.chaos = 1.0, this.lastProfiles = [], this.inited = !0, this.unlock(), this.modelChanged(), this.colorChanged(), s = this, this.hidden || (t.register("history/changed", function(e, t) {
+                        return s.loadPalette(t.data)
+                    }), t.register("palette/load", function(e, t) {
+                        return s.loadPalette(t)
+                    }), t.register("palette/reset", function() {
+                        return s.loadPalette(null)
+                    }), t.register("palette/colors/update", function() {
+                        return s.colorChanged()
+                    }), t.register("palette/model/free", function(e, t) {
+                        return s.setModelFree(t.id)
+                    }), t.register("drag/start", function() {
+                        return s.lock()
+                    }), t.register("drag/stop", function() {
+                        return s.unlock(), s.storePalette()
+                    }), t.register("palette/set/base", function(e, t) {
+                        return s.setBase(t.color)
+                    }), t.register("palette/switchvars/same", function() {
+                        return s.switchVars(!1)
+                    }), t.register("palette/switchvars/multi", function() {
+                        return s.switchVars(!0)
+                    }), t.register("palette/switchvars/active", function(e, t) {
+                        return s.setVarsActive(t.colId)
+                    }), t.register("palette/adjust/hue", function(e, t) {
+                        return s.addHue(t.val), s.storePalette()
+                    }), t.register("palette/adjust/saturation", function(e, t) {
+                        return s.addSaturation(t.val), s.storePalette()
+                    }), t.register("palette/adjust/bright", function(e, t) {
+                        return s.addBright(t.val), s.storePalette()
+                    }), t.register("palette/adjust/contrast", function(e, t) {
+                        return s.addContrast(t.val), s.storePalette()
+                    }), t.register("palette/swapsecs", function() {
+                        return s.swapSecs()
+                    }), t.register("palette/colorize", function(e, t) {
+                        return s.colorize(t.$e, t.sorted, t.converted)
+                    }), t.register("convert/set", function(e, t) {
+                        return s.setConverter(t.data)
+                    }), t.register("palette/typography/set", function(e, t) {
+                        return s.setTypography(t)
+                    }), t.register("palette/typography/randomize", function(e, t) {
+                        return s.randomizeTypography(t)
+                    }), t.register("export/html", function() {
+                        return s["export"]("html")
+                    }), t.register("export/css", function() {
+                        return s["export"]("css")
+                    }), t.register("export/oklch", function() {
+                        return s["export"]("oklch")
+                    }), t.register("export/tailwind", function() {
+                        return s["export"]("tailwind")
+                    }), t.register("export/dtcg", function() {
+                        return s["export"]("dtcg")
+                    }), t.register("export/figma", function() {
+                        return s["export"]("figma")
+                    }), t.register("export/svg", function() {
+                        return s["export"]("svg")
+                    }), t.register("export/less", function() {
+                        return s["export"]("less")
+                    }), t.register("export/sass", function() {
+                        return s["export"]("sass")
+                    }), t.register("export/xml", function() {
+                        return s["export"]("xml")
+                    }), t.register("export/text", function() {
+                        return s["export"]("txt")
+                    }), t.register("export/aco", function() {
+                        return s["export"]("aco")
+                    }), t.register("export/gpl", function() {
+                        return s["export"]("gpl")
+                    }), t.register("export/sketch", function() {
+                        return s["export"]("sketch")
+                    }), t.register("export/png", function() {
+                        return s.exportImg()
+                    }))
                 }
-                this.uid = this.getSerialized()
-            } else this.setModel(d.model), this.setHue(d.hue), this.setAngle(d.angle), this.setPreset(d.preset);
-            return this.locked = !1, this.modelChanged(), this.colorChanged()
-        }, i.prototype.toggleColorLock = function(k) {
-            return this.lockedColors[k] = !this.lockedColors[k], this.lockedColors[k]
-        }, i.prototype.isColorLocked = function(k) {
-            return !!this.lockedColors[k]
-        }, i.prototype.recordHistory = function() {
-            if (!this.uid || this.uid === -1) return;
-            try {
-                var hist = JSON.parse(localStorage.getItem("pal_history") || "[]");
-                if (hist.length > 0 && hist[0].uid === this.uid) return;
-                var hexes = [];
-                var groups = ["pri"];
-                if (this.hasSecs()) groups.push("sec1", "sec2");
-                if (this.hasCompl()) groups.push("compl");
-                for (var g = 0; g < groups.length; g++) {
-                    var hex = this.getColorCode(groups[g], 0);
-                    if (hex) hexes.push(hex.startsWith("#") ? hex : ("#" + hex));
-                }
-                hist.unshift({
-                    uid: this.uid,
-                    model: this.modelID,
-                    hue: Math.round(this.hue),
-                    hexes: hexes,
-                    timestamp: Date.now()
-                });
-                localStorage.setItem("pal_history", JSON.stringify(hist.slice(0, 30)));
-            } catch (err) {}
-        }, i.prototype.getFavorites = function() {
-            try {
-                var favs = localStorage.getItem("pal_favorites");
-                return favs ? JSON.parse(favs) : [];
-            } catch (err) {
-                return [];
-            }
-        }, i.prototype.saveFavorite = function(name) {
-            try {
-                var favs = this.getFavorites();
-                var uid = this.uid;
-                var exists = false;
-                for (var idx = 0; idx < favs.length; idx++) {
-                    if (favs[idx].uid === uid) {
-                        exists = true;
-                        break;
+                return i.prototype.modelChanged = function() {
+                    if (!this.hidden) return t.trigger("palette/model/changed")
+                }, i.prototype.colorChanged = function() {
+                    this.calcColorTable();
+                    if (!this.hidden) return t.trigger("palette/colors/changed"), this.storePalette()
+                }, i.prototype.varsChanged = function() {
+                    this.calcColorTable();
+                    if (!this.hidden) return t.trigger("palette/colors/changed"), this.storePalette()
+                }, i.prototype.setModel = function(e, t) {
+                    this.modelID = e, this.model = u[e], t && !this.model.swapped && this.model.swapSecs(), this.hueCompl = this.model.getComplement(this.hue), this.hueCompl != null ? this.col.compl = new o(this.hueCompl) : this.col.compl = null, this.hueSec1 = this.model.getSec1(this.hue, this.angle), this.hueSec1 != null ? this.col.sec1 = new o(this.hueSec1) : this.col.sec1 = null, this.hueSec2 = this.model.getSec2(this.hue, this.angle), this.hueSec2 != null ? this.col.sec2 = new o(this.hueSec2) : this.col.sec2 = null, this.hueCnt = 1, this.hasCompl() && this.hueCnt++, this.hasSecs() && (this.hueCnt += 2), this.hueCnt === 1 && (this.varsMultiOn = !1), this.varsMultiOn && (!this.hasCompl() && this.varsActive === "compl" || !this.hasSecs() && (this.varsActive === "sec1" || this.varsActive === "sec2")) && this.setVarsActive("pri"), this.inited && this.modelChanged();
+                    if (this.inited) return this.colorChanged()
+                }, i.prototype.setModelFree = function(e) {
+                    this.modelID = "free", this.model = null;
+                    if (!e || e < 2 || e > 4) e = 2;
+                    this.hueCnt = e, e === 2 && (this.hueSec1 = this.hueSec2 = this.col.sec1 = this.col.sec2 = null), e === 3 && (this.hueCompl = this.col.compl = null);
+                    if (e === 2 || e === 4) this.hueCompl == null && (this.hueCompl = r.angleNorm(this.hue + 180)), this.col.compl = new o(this.hueCompl);
+                    e >= 3 && (this.hueSec1 == null && (this.hueSec1 = r.angleNorm(this.hue + 30)), this.col.sec1 = new o(this.hueSec1), this.hueSec2 == null && (this.hueSec2 = r.angleNorm(this.hue - 30)), this.col.sec2 = new o(this.hueSec2)), this.locked || this.modelChanged();
+                    if (this.inited) return this.colorChanged()
+                }, i.prototype.setHue = function(e, t) {
+                    var n;
+                    return n = e - this.hue, this.isModelFree() && !t ? this.addHueAll(n) : (this.hue = r.angleNorm(e), this.col.pri.setHue(Math.round(this.hue)), this.updateCompl(), this.updateSecs(), this.colorChanged())
+                }, i.prototype.addHue = function(e) {
+                    return this.setHue(this.hue + e)
+                }, i.prototype.addHueAll = function(e) {
+                    return this.hue = r.angleNorm(this.hue + e), this.col.pri.setHue(Math.round(this.hue)), this.hasCompl() && (this.hueCompl = r.angleNorm(this.hueCompl + e), this.updateCompl()), this.hasSecs() && (this.hueSec1 = r.angleNorm(this.hueSec1 + e), this.hueSec2 = r.angleNorm(this.hueSec2 + e), this.updateSecs()), this.colorChanged()
+                }, i.prototype.setHueCompl = function(e, t) {
+                    var n;
+                    return this.isModelFree() ? t ? (this.hueCompl = r.angleNorm(e), this.updateCompl(), this.colorChanged()) : (n = e - this.hueCompl, this.addHueAll(n)) : this.setHue(this.model.getComplement(e))
+                }, i.prototype.setHueSec = function(e, t, n) {
+                    var i, s, o;
+                    return this.isModelFree() ? n ? (o = r.angleNorm(e), t === 1 ? this.hueSec1 = o : this.hueSec2 = o, this.updateSecs(), this.colorChanged()) : (s = e - (t === 1 ? this.hueSec1 : this.hueSec2), this.addHueAll(s)) : (i = r.angleDiff(e, this.hue), i = this.model.getAngle(i), this.setAngle(i))
+                }, i.prototype.setAngle = function(e) {
+                    var t;
+                    this.angle = r.angleNorm(e);
+                    if (this.angle > 90) {
+                        t = "", this.modelID === "analog" ? t = "triad" : this.modelID === "triad" ? t = "analog" : this.modelID === "analogcompl" ? t = "triadcompl" : this.modelID === "triadcompl" && (t = "analogcompl");
+                        if (t) {
+                            this.angle = 180 - this.angle, this.setModel(t, !this.model.swapped);
+                            return
+                        }
                     }
-                }
-                if (!exists) {
-                    var hexes = [];
+                    return this.updateSecs(), this.colorChanged()
+                }, i.prototype.swapSecs = function(e) {
+                    if (this.model) return this.model.swapSecs(), this.updateSecs(), this.colorChanged()
+                }, i.prototype.setPreset = function(e) {
+                    return this.preset = e, this.vars.setPreset(e)
+                }, i.prototype.switchVars = function(e) {
+                    if (this.varsMultiOn === !!e) return;
+                    return e && (this.hasCompl() || this.hasSecs()) ? (this.varsMultiOn = !0, this.varsMulti.pri.setVals(this.vars.getVals()), this.varsMulti.compl.setVals(this.vars.getVals()), this.varsMulti.sec1.setVals(this.vars.getVals()), this.varsMulti.sec2.setVals(this.vars.getVals()), this.setVarsActive("pri")) : this.varsMultiOn = !1, this.colorChanged()
+                }, i.prototype.setVarsActive = function(e) {
+                    if (!this.varsMultiOn) return;
+                    return this.varsActive = e, this.vars = this.varsMulti[e], this.colorChanged()
+                }, i.prototype.setVars = function(e) {
+                    return this.vars.setVals(e)
+                }, i.prototype.addSaturation = function(e) {
+                    if (!this.varsMultiOn) return this.vars.addSaturation(e);
+                    this.varsMulti.pri.addSaturation(e), this.hasCompl() && this.varsMulti.compl.addSaturation(e);
+                    if (this.hasSecs()) return this.varsMulti.sec1.addSaturation(e), this.varsMulti.sec2.addSaturation(e)
+                }, i.prototype.addBright = function(e) {
+                    if (!this.varsMultiOn) return this.vars.addBright(e);
+                    this.varsMulti.pri.addBright(e), this.hasCompl() && this.varsMulti.compl.addBright(e);
+                    if (this.hasSecs()) return this.varsMulti.sec1.addBright(e), this.varsMulti.sec2.addBright(e)
+                }, i.prototype.addContrast = function(e) {
+                    if (!this.varsMultiOn) return this.vars.addContrast(e);
+                    this.varsMulti.pri.addContrast(e), this.hasCompl() && this.varsMulti.compl.addContrast(e);
+                    if (this.hasSecs()) return this.varsMulti.sec1.addContrast(e), this.varsMulti.sec2.addContrast(e)
+                }, i.prototype.setBase = function(e) {
+                    return this.locked = !0, this.setHue(e.hsv.h), this.vars.setMainVal([e.kS, e.kV]), this.locked = !1, this.colorChanged()
+                }, i.prototype.setByCssColor = function(str) {
+                    var p = oklch.parseCssColor(str);
+                    if (!p) return !1;
+                    var rgb = new a(p.r, p.g, p.b), col = new o(0);
+                    return col.setByRGB(rgb), this.setBase(col)
+                }, i.prototype.setByHex = function(e) {
+                    var p = oklch.parseCssColor(e);
+                    if (p) {
+                        var rgb = new a(p.r, p.g, p.b), col = new o(0);
+                        return col.setByRGB(rgb), this.setBase(col)
+                    }
+                    var t, n;
+                    return n = new a(0, 0, 0), n.setByHex(e), t = new o(0), t.setByRGB(n), this.setBase(t)
+                }, i.prototype.setConverter = function(e) {
+                    return e.type ? this.converter = {
+                        on: !0,
+                        type: e.type,
+                        amount: e.amount
+                    } : this.converter.on = !1, this.colorChanged()
+                }, i.prototype.isModelFree = function() {
+                    return this.modelID === "free"
+                }, i.prototype.hasCompl = function() {
+                    return this.hueCompl != null
+                }, i.prototype.hasSecs = function() {
+                    return this.hueSec1 != null
+                }, i.prototype.getVar = function(e, t) {
+                    return this.varsMultiOn ? this.varsMulti[t].getVal(e) : this.vars.getVal(e)
+                }, i.prototype.getVars = function() {
+                    return this.vars.getVals()
+                }, i.prototype.getHueActive = function() {
+                    if (!this.varsMultiOn) return this.hue;
+                    switch (this.varsActive) {
+                        case "pri":
+                            return this.hue;
+                        case "compl":
+                            return this.hueCompl;
+                        case "sec1":
+                            return this.hueSec1;
+                        case "sec2":
+                            return this.hueSec2
+                    }
+                }, i.prototype.getColCnt = function() {
+                    var e;
+                    return e = 1, this.hasCompl() && (e = 2), this.hasSecs() && (e += 2), e
+                }, i.prototype.updateCompl = function() {
+                    if (this.col.compl) {
+                        this.isModelFree() || (this.hueCompl = this.model.getComplement(this.hue));
+                        if (this.hueCompl != null) return this.col.compl.setHue(Math.round(this.hueCompl))
+                    }
+                }, i.prototype.updateSecs = function() {
+                    this.col.sec1 && (this.isModelFree() || (this.hueSec1 = this.model.getSec1(this.hue, this.angle)), this.hueSec1 != null && this.col.sec1.setHue(Math.round(this.hueSec1)));
+                    if (this.col.sec2) {
+                        this.isModelFree() || (this.hueSec2 = this.model.getSec2(this.hue, this.angle));
+                        if (this.hueSec2 != null) return this.col.sec2.setHue(Math.round(this.hueSec2))
+                    }
+                }, i.prototype.lock = function() {
+                    return this.locked = !0
+                }, i.prototype.unlock = function() {
+                    return this.locked = !1
+                }, i.prototype.storePalette = function() {
+                    if (this.hidden || this.locked) return;
+                    this.uid = this.getSerialized();
+                    this.recordHistory();
+                    return t.trigger("history/setstate", {
+                        uid: this.uid
+                    }), t.trigger("palette/uid/changed", {
+                        uid: this.uid
+                    })
+                }, i.prototype.loadPalette = function(e) {
+                    var t;
+                    this.locked = !0;
+                    if (e && e.uid && e.uid !== -1) {
+                        if (e.uid === this.uid) return this.locked = !1, 0;
+                        t = this.setSerialized(e.uid);
+                        if (!t) {
+                            this.loadPalette(null);
+                            return
+                        }
+                        this.uid = this.getSerialized()
+                    } else this.setModel(d.model), this.setHue(d.hue), this.setAngle(d.angle), this.setPreset(d.preset);
+                    return this.locked = !1, this.modelChanged(), this.colorChanged()
+                }, i.prototype.toggleColorLock = function(k) {
+                    return this.lockedColors[k] = !this.lockedColors[k], this.lockedColors[k]
+                }, i.prototype.isColorLocked = function(k) {
+                    return !!this.lockedColors[k]
+                }, i.prototype.recordHistory = function() {
+                    if (!this.uid || this.uid === -1) return;
+                    try {
+                        var hist = JSON.parse(localStorage.getItem("pal_history") || "[]");
+                        if (hist.length > 0 && hist[0].uid === this.uid) return;
+                        var hexes = [];
+                        var groups = ["pri"];
+                        if (this.hasSecs()) groups.push("sec1", "sec2");
+                        if (this.hasCompl()) groups.push("compl");
+                        for (var g = 0; g < groups.length; g++) {
+                            var hex = this.getColorCode(groups[g], 0);
+                            if (hex) hexes.push(hex.startsWith("#") ? hex : ("#" + hex));
+                        }
+                        hist.unshift({
+                            uid: this.uid,
+                            model: this.modelID,
+                            hue: Math.round(this.hue),
+                            hexes: hexes,
+                            timestamp: Date.now()
+                        });
+                        localStorage.setItem("pal_history", JSON.stringify(hist.slice(0, 30)));
+                    } catch (err) {}
+                }, i.prototype.getFavorites = function() {
+                    try {
+                        var favs = localStorage.getItem("pal_favorites");
+                        return favs ? JSON.parse(favs) : [];
+                    } catch (err) {
+                        return [];
+                    }
+                }, i.prototype.saveFavorite = function(name) {
+                    try {
+                        var favs = this.getFavorites();
+                        var uid = this.uid;
+                        var exists = false;
+                        for (var idx = 0; idx < favs.length; idx++) {
+                            if (favs[idx].uid === uid) {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists) {
+                            var hexes = [];
+                            var groups = ["pri"];
+                            if (this.hasSecs()) groups.push("sec1", "sec2");
+                            if (this.hasCompl()) groups.push("compl");
+                            for (var g = 0; g < groups.length; g++) {
+                                var hex = this.getColorCode(groups[g], 0);
+                                if (hex) hexes.push(hex.startsWith("#") ? hex : ("#" + hex));
+                            }
+                            favs.unshift({
+                                uid: uid,
+                                name: name || ("Palette " + (favs.length + 1)),
+                                model: this.modelID,
+                                hue: Math.round(this.hue),
+                                hexes: hexes,
+                                timestamp: Date.now()
+                            });
+                            localStorage.setItem("pal_favorites", JSON.stringify(favs.slice(0, 50)));
+                        }
+                        return true;
+                    } catch (err) {
+                        return false;
+                    }
+                }, i.prototype.removeFavorite = function(uid) {
+                    try {
+                        var favs = this.getFavorites();
+                        var next = [];
+                        for (var idx = 0; idx < favs.length; idx++) {
+                            if (favs[idx].uid !== uid) next.push(favs[idx]);
+                        }
+                        localStorage.setItem("pal_favorites", JSON.stringify(next));
+                        return true;
+                    } catch (err) {
+                        return false;
+                    }
+                }, i.prototype.isFavorite = function() {
+                    var favs = this.getFavorites();
+                    for (var idx = 0; idx < favs.length; idx++) {
+                        if (favs[idx].uid === this.uid) return true;
+                    }
+                    return false;
+                }, i.prototype.getSeed = function() {
+                    return this.currentSeed || (this.currentSeed = oklch.generateSeed());
+                }, i.prototype.setSeed = function(seed) {
+                    if (!seed) return this.getSeed();
+                    this.currentSeed = String(seed).trim();
+                    t.trigger("palette/seed/changed", { seed: this.currentSeed });
+                    return this.currentSeed;
+                }, i.prototype.getChaos = function() {
+                    return this.chaos !== undefined ? this.chaos : 1.0;
+                }, i.prototype.setChaos = function(val) {
+                    var c = parseFloat(val);
+                    if (!isNaN(c) && c >= 0.1 && c <= 2.5) {
+                        this.chaos = Math.round(c * 10) / 10;
+                        t.trigger("palette/chaos/changed", { chaos: this.chaos });
+                    }
+                    return this.chaos;
+                }, i.prototype.getContrastReport = function() {
+                    var cTable = this.colorTable && this.colorTable.byPalette && this.colorTable.byPalette.pri;
+                    if (!cTable || cTable.length < 5) return null;
+                    var baseRgb = cTable[0] ? cTable[0].rgb : null;
+                    var lightBgRgb = cTable[4] ? cTable[4].rgb : null;
+                    var darkTextRgb = cTable[3] ? cTable[3].rgb : null;
+                    var secRgb = (this.colorTable.byPalette && this.colorTable.byPalette.sec1 && this.colorTable.byPalette.sec1[0]) ? this.colorTable.byPalette.sec1[0].rgb : null;
+                    if (!baseRgb || !lightBgRgb || !darkTextRgb) return null;
+                    return oklch.auditSemanticContrast(baseRgb, lightBgRgb, darkTextRgb, secRgb);
+                }, i.prototype.fixContrast = function(targetRatio) {
+                    targetRatio = targetRatio || 4.5;
+                    this.locked = true;
+                    var cTable = this.colorTable && this.colorTable.byPalette && this.colorTable.byPalette.pri;
+                    var bgRgb = (cTable && cTable[4] && cTable[4].rgb) ? cTable[4].rgb : { r: 255, g: 255, b: 255 };
+
                     var groups = ["pri"];
                     if (this.hasSecs()) groups.push("sec1", "sec2");
                     if (this.hasCompl()) groups.push("compl");
+
                     for (var g = 0; g < groups.length; g++) {
-                        var hex = this.getColorCode(groups[g], 0);
-                        if (hex) hexes.push(hex.startsWith("#") ? hex : ("#" + hex));
+                        var grp = groups[g];
+                        var varsObj = this.varsMultiOn ? this.varsMulti[grp] : this.vars;
+                        if (!varsObj) continue;
+                        if (this.lockedColors[grp]) continue;
+
+                        var vals = varsObj.getVals();
+                        var gHue = (grp === "pri" ? this.hue : (grp === "compl" ? this.hueCompl : (grp === "sec1" ? this.hueSec1 : this.hueSec2))) || this.hue;
+
+                        // Slot 3 (Text): guarantee targetRatio against background
+                        var colText = new o(gHue);
+                        colText.setSV(vals[3][0], vals[3][1]);
+                        var textOklch = oklch.srgbToOklch(colText.rgb.r, colText.rgb.g, colText.rgb.b);
+                        var fittedText = oklch.fitContrast(textOklch, bgRgb, targetRatio);
+                        colText.setByRGB(fittedText.rgb);
+                        vals[3] = [colText.kS, colText.kV];
+
+                        // Slot 0 (Primary brand button / accent): guarantee contrast
+                        var colPri = new o(gHue);
+                        colPri.setSV(vals[0][0], vals[0][1]);
+                        var priOklch = oklch.srgbToOklch(colPri.rgb.r, colPri.rgb.g, colPri.rgb.b);
+                        var priTarget = targetRatio >= 7.0 ? 4.5 : 3.0;
+                        var fittedPri = oklch.fitContrast(priOklch, bgRgb, priTarget);
+                        colPri.setByRGB(fittedPri.rgb);
+                        vals[0] = [colPri.kS, colPri.kV];
+
+                        varsObj.setVals(vals);
+                        if (!this.varsMultiOn) break;
                     }
-                    favs.unshift({
-                        uid: uid,
-                        name: name || ("Palette " + (favs.length + 1)),
-                        model: this.modelID,
-                        hue: Math.round(this.hue),
-                        hexes: hexes,
-                        timestamp: Date.now()
-                    });
-                    localStorage.setItem("pal_favorites", JSON.stringify(favs.slice(0, 50)));
-                }
-                return true;
-            } catch (err) {
-                return false;
-            }
-        }, i.prototype.removeFavorite = function(uid) {
-            try {
-                var favs = this.getFavorites();
-                var next = [];
-                for (var idx = 0; idx < favs.length; idx++) {
-                    if (favs[idx].uid !== uid) next.push(favs[idx]);
-                }
-                localStorage.setItem("pal_favorites", JSON.stringify(next));
-                return true;
-            } catch (err) {
-                return false;
-            }
-        }, i.prototype.isFavorite = function() {
-            var favs = this.getFavorites();
-            for (var idx = 0; idx < favs.length; idx++) {
-                if (favs[idx].uid === this.uid) return true;
-            }
-            return false;
-        }, i.prototype.getContrastReport = function() {
-            var cTable = this.colorTable && this.colorTable.byPalette && this.colorTable.byPalette.pri;
-            if (!cTable || cTable.length < 5) return null;
-            var baseRgb = cTable[0] ? cTable[0].rgb : null;
-            var lightBgRgb = cTable[4] ? cTable[4].rgb : null;
-            var darkTextRgb = cTable[3] ? cTable[3].rgb : null;
-            if (!baseRgb || !lightBgRgb || !darkTextRgb) return null;
-            var textBgRatio = oklch.calcWcagContrast(darkTextRgb, lightBgRgb);
-            var priBgRatio = oklch.calcWcagContrast(baseRgb, lightBgRgb);
-            var apcaText = oklch.calcAPCA ? oklch.calcAPCA(darkTextRgb, lightBgRgb) : 0;
-            var apcaPri = oklch.calcAPCA ? oklch.calcAPCA(baseRgb, lightBgRgb) : 0;
-            return {
-                textBgRatio: textBgRatio,
-                priBgRatio: priBgRatio,
-                apcaText: apcaText,
-                apcaPri: apcaPri,
-                passesAA: priBgRatio >= 4.5 || textBgRatio >= 4.5,
-                passesAAA: textBgRatio >= 7.0
-            };
-        }, i.prototype.fixContrast = function(targetRatio) {
-            targetRatio = targetRatio || 4.5;
-            this.locked = true;
-            var vals = this.vars.getVals();
-            // Shade 4: light background
-            vals[4][0] = Math.min(vals[4][0], 0.05);
-            vals[4][1] = 0.99;
-            // Shade 1: light surface
-            vals[1][0] = Math.min(vals[1][0], 0.12);
-            vals[1][1] = 0.95;
-            // Shade 3: dark text
-            vals[3][0] = Math.max(vals[3][0], 0.70);
-            vals[3][1] = targetRatio >= 7.0 ? 0.08 : 0.14;
+                    this.locked = false;
+                    this.colorChanged();
+                    return this.getContrastReport();
+                }, i.prototype.randomizeProfile = function(profile, options) {
+                    options = options || {};
+                    this.locked = true;
 
-            // Shade 0: Base primary accent - ensure target ratio against light background
-            var baseSat = vals[0][0];
-            var baseVal = vals[0][1];
-            var h = this.hue;
-            var bgRgb = { r: 250, g: 250, b: 250 };
-            var colObj = new o(h);
-            colObj.setSV(baseSat, baseVal);
-            var testRgb = colObj.rgb;
-            var ratio = oklch.calcWcagContrast(testRgb, bgRgb);
-            if (ratio < targetRatio) {
-                while (baseVal > 0.20 && ratio < targetRatio) {
-                    baseVal -= 0.03;
-                    colObj.setSV(baseSat, baseVal);
-                    testRgb = colObj.rgb;
-                    ratio = oklch.calcWcagContrast(testRgb, bgRgb);
-                }
-                vals[0][1] = Math.round(baseVal * 100) / 100;
-            }
+                    var seedStr = options.seed || oklch.generateSeed();
+                    this.currentSeed = String(seedStr);
+                    var seedNum = oklch.stringToSeed(this.currentSeed);
+                    var rng = oklch.mulberry32(seedNum);
 
-            if (this.varsMultiOn) {
-                if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
-                if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
-                if (!this.lockedColors.sec && this.hasSecs()) {
-                    this.varsMulti.sec1.setVals(vals);
-                    this.varsMulti.sec2.setVals(vals);
-                }
-                this.varsActive = "pri";
-                this.vars = this.varsMulti.pri;
-            } else {
-                this.vars.setVals(vals);
-            }
-            this.locked = false;
-            this.modelChanged();
-            this.colorChanged();
-            return this.getContrastReport();
-        }, i.prototype.randomizeProfile = function(profile) {
-            this.locked = true;
-            if (!this.lockedColors.pri) {
-                var hue = 0;
-                if (profile === "saas") {
-                    var techHues = [205, 215, 225, 235, 255, 275, 160, 180];
-                    hue = techHues[Math.floor(Math.random() * techHues.length)] + (Math.random() * 16 - 8);
-                } else if (profile === "minimal") {
-                    var swissHues = [358, 2, 218, 38, 205];
-                    hue = swissHues[Math.floor(Math.random() * swissHues.length)] + (Math.random() * 8 - 4);
-                } else if (profile === "nature") {
-                    var natHues = [138, 148, 158, 32, 44, 75];
-                    hue = natHues[Math.floor(Math.random() * natHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "luxury") {
-                    var luxHues = [42, 46, 350, 215];
-                    hue = luxHues[Math.floor(Math.random() * luxHues.length)] + (Math.random() * 8 - 4);
-                } else if (profile === "playful") {
-                    var playHues = [45, 175, 280, 345];
-                    hue = playHues[Math.floor(Math.random() * playHues.length)] + (Math.random() * 12 - 6);
-                } else if (profile === "pastel") {
-                    var pastHues = [195, 265, 335, 145];
-                    hue = pastHues[Math.floor(Math.random() * pastHues.length)] + (Math.random() * 14 - 7);
-                } else if (profile === "monochrome") {
-                    hue = Math.floor(Math.random() * 360);
-                } else if (profile === "cyberpunk") {
-                    var cyberHues = [188, 322, 118];
-                    hue = cyberHues[Math.floor(Math.random() * cyberHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "earth") {
-                    var earthHues = [20, 36, 58, 80];
-                    hue = earthHues[Math.floor(Math.random() * earthHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "ocean") {
-                    var oceanHues = [175, 192, 215, 232];
-                    hue = oceanHues[Math.floor(Math.random() * oceanHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "sunset") {
-                    var sunHues = [18, 32, 45, 310, 330];
-                    hue = sunHues[Math.floor(Math.random() * sunHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "neutral_accent") {
-                    hue = Math.floor(Math.random() * 360);
-                } else if (profile === "editorial") {
-                    var editHues = [18, 30, 44, 145, 175, 348];
-                    hue = editHues[Math.floor(Math.random() * editHues.length)] + (Math.random() * 14 - 7);
-                } else if (profile === "retro") {
-                    var retroHues = [26, 42, 78, 98, 178, 196];
-                    hue = retroHues[Math.floor(Math.random() * retroHues.length)] + (Math.random() * 16 - 8);
-                } else if (profile === "darkui") {
-                    var darkHues = [182, 198, 268, 282, 318];
-                    hue = darkHues[Math.floor(Math.random() * darkHues.length)] + (Math.random() * 16 - 8);
-                } else if (profile === "game_rpg" || profile === "fantasy_rpg") {
-                    var rpgHues = [42, 48, 350, 278, 155];
-                    hue = rpgHues[Math.floor(Math.random() * rpgHues.length)] + (Math.random() * 12 - 6);
-                } else if (profile === "game_cyberpunk" || profile === "scifi_hud") {
-                    var cyberGameHues = [188, 322, 118, 54];
-                    hue = cyberGameHues[Math.floor(Math.random() * cyberGameHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "game_arcade" || profile === "pixel_8bit") {
-                    var arcadeHues = [355, 212, 48, 122, 288];
-                    hue = arcadeHues[Math.floor(Math.random() * arcadeHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "game_fps" || profile === "tactical_mil") {
-                    var fpsHues = [132, 34, 210, 44];
-                    hue = fpsHues[Math.floor(Math.random() * fpsHues.length)] + (Math.random() * 8 - 4);
-                } else if (profile === "game_horror" || profile === "survival_horror") {
-                    var horrorHues = [350, 78, 170, 225];
-                    hue = horrorHues[Math.floor(Math.random() * horrorHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "game_cozy" || profile === "casual_mobile") {
-                    var cozyHues = [340, 46, 155, 205, 275];
-                    hue = cozyHues[Math.floor(Math.random() * cozyHues.length)] + (Math.random() * 14 - 7);
-                } else if (profile === "game_esports" || profile === "esports_arena") {
-                    var esportHues = [52, 358, 190, 265];
-                    hue = esportHues[Math.floor(Math.random() * esportHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "game_space" || profile === "deep_space") {
-                    var spaceHues = [176, 285, 26, 198];
-                    hue = spaceHues[Math.floor(Math.random() * spaceHues.length)] + (Math.random() * 12 - 6);
-                } else {
-                    hue = Math.floor(Math.random() * 360);
-                }
-                this.setHue((Math.round(hue) + 360) % 360);
-            }
+                    var chaos = options.chaos !== undefined ? options.chaos : (this.chaos || 1.0);
+                    var prof = oklch.OKLCH_PROFILES[profile] || oklch.OKLCH_PROFILES["saas"];
+                    this.currentProfileId = prof.id;
 
-            if (!this.lockedColors.sec) {
-                var models = ["triad", "tetrad", "analogcompl", "monocompl", "analog", "mono"];
-                if (profile === "saas") models = ["analogcompl", "monocompl", "triad"];
-                else if (profile === "minimal") models = ["mono", "monocompl"];
-                else if (profile === "monochrome") models = ["mono"];
-                else if (profile === "nature") models = ["analogcompl", "analog", "triad"];
-                else if (profile === "luxury") models = ["monocompl", "triadcompl"];
-                else if (profile === "playful") models = ["triad", "tetrad"];
-                else if (profile === "pastel") models = ["triad", "analogcompl", "mono"];
-                else if (profile === "cyberpunk") models = ["triad", "analogcompl"];
-                else if (profile === "earth") models = ["analogcompl", "triad"];
-                else if (profile === "ocean") models = ["analog", "analogcompl"];
-                else if (profile === "sunset") models = ["analogcompl", "triad"];
-                else if (profile === "neutral_accent") models = ["monocompl"];
-                else if (profile === "editorial") models = ["analogcompl", "triad"];
-                else if (profile === "retro") models = ["triad", "tetrad"];
-                else if (profile === "darkui") models = ["monocompl", "analogcompl", "triadcompl"];
-                else if (profile === "game_rpg" || profile === "fantasy_rpg") models = ["triadcompl", "analogcompl", "tetrad"];
-                else if (profile === "game_cyberpunk" || profile === "scifi_hud") models = ["triad", "analogcompl", "tetrad"];
-                else if (profile === "game_arcade" || profile === "pixel_8bit") models = ["triad", "tetrad"];
-                else if (profile === "game_fps" || profile === "tactical_mil") models = ["monocompl", "analogcompl"];
-                else if (profile === "game_horror" || profile === "survival_horror") models = ["monocompl", "triad"];
-                else if (profile === "game_cozy" || profile === "casual_mobile") models = ["triad", "tetrad", "analogcompl"];
-                else if (profile === "game_esports" || profile === "esports_arena") models = ["monocompl", "triad"];
-                else if (profile === "game_space" || profile === "deep_space") models = ["analogcompl", "triadcompl"];
-                this.setModel(models[Math.floor(Math.random() * models.length)]);
-                if (this.hasSecs()) {
-                    var angle = profile === "saas" || profile === "minimal" ? 30 : Math.floor(25 + Math.random() * 38);
-                    if (profile === "game_arcade" || profile === "game_esports") angle = Math.floor(35 + Math.random() * 25);
-                    this.setAngle(angle);
-                }
-            }
+                    if (!this.lastProfiles) this.lastProfiles = [];
+                    this.lastProfiles.unshift(prof.id);
+                    if (this.lastProfiles.length > 5) this.lastProfiles.pop();
 
-            var vals;
-            if (profile === "saas") {
-                vals = [[0.78, 0.95], [0.15, 0.98], [0.65, 0.60], [0.85, 0.22], [0.06, 0.99]];
-            } else if (profile === "minimal") {
-                vals = [[0.92, 0.88], [0.04, 0.98], [0.12, 0.88], [0.85, 0.32], [0.06, 0.14]];
-            } else if (profile === "nature") {
-                vals = [[0.52, 0.68], [0.22, 0.92], [0.58, 0.52], [0.68, 0.28], [0.14, 0.96]];
-            } else if (profile === "luxury") {
-                vals = [[0.72, 0.86], [0.10, 0.96], [0.80, 0.42], [0.88, 0.16], [0.04, 0.99]];
-            } else if (profile === "playful") {
-                vals = [[0.88, 0.96], [0.35, 0.96], [0.78, 0.72], [0.92, 0.45], [0.12, 0.99]];
-            } else if (profile === "pastel") {
-                vals = [[0.30, 0.94], [0.12, 0.98], [0.38, 0.84], [0.46, 0.62], [0.08, 0.99]];
-            } else if (profile === "monochrome") {
-                vals = [[0.70, 0.65], [0.18, 0.96], [0.45, 0.82], [0.82, 0.36], [0.94, 0.12]];
-            } else if (profile === "cyberpunk") {
-                vals = [[0.96, 0.98], [0.75, 0.92], [0.88, 0.50], [0.98, 0.10], [0.04, 0.99]];
-            } else if (profile === "earth") {
-                vals = [[0.62, 0.62], [0.22, 0.90], [0.68, 0.46], [0.76, 0.25], [0.14, 0.95]];
-            } else if (profile === "ocean") {
-                vals = [[0.78, 0.84], [0.20, 0.94], [0.68, 0.52], [0.88, 0.22], [0.06, 0.98]];
-            } else if (profile === "sunset") {
-                vals = [[0.84, 0.92], [0.26, 0.96], [0.75, 0.58], [0.88, 0.25], [0.08, 0.98]];
-            } else if (profile === "neutral_accent") {
-                vals = [[0.85, 0.90], [0.05, 0.96], [0.12, 0.75], [0.20, 0.25], [0.04, 0.99]];
-            } else if (profile === "editorial") {
-                vals = [[0.68, 0.72], [0.25, 0.92], [0.72, 0.48], [0.82, 0.28], [0.12, 0.96]];
-            } else if (profile === "retro") {
-                vals = [[0.58, 0.80], [0.30, 0.88], [0.62, 0.55], [0.70, 0.35], [0.20, 0.94]];
-            } else if (profile === "darkui") {
-                vals = [[0.85, 0.98], [0.70, 0.85], [0.60, 0.45], [0.95, 0.12], [0.05, 0.99]];
-            } else if (profile === "game_rpg" || profile === "fantasy_rpg") {
-                vals = [[0.82, 0.90], [0.12, 0.95], [0.85, 0.35], [0.95, 0.12], [0.03, 0.98]];
-            } else if (profile === "game_cyberpunk" || profile === "scifi_hud") {
-                vals = [[0.98, 0.98], [0.82, 0.95], [0.92, 0.45], [0.98, 0.08], [0.02, 0.99]];
-            } else if (profile === "game_arcade" || profile === "pixel_8bit") {
-                vals = [[0.95, 0.95], [0.35, 0.98], [0.88, 0.70], [0.95, 0.40], [0.05, 0.98]];
-            } else if (profile === "game_fps" || profile === "tactical_mil") {
-                vals = [[0.72, 0.85], [0.15, 0.92], [0.55, 0.45], [0.75, 0.18], [0.08, 0.96]];
-            } else if (profile === "game_horror" || profile === "survival_horror") {
-                vals = [[0.80, 0.65], [0.20, 0.88], [0.75, 0.35], [0.92, 0.10], [0.06, 0.94]];
-            } else if (profile === "game_cozy" || profile === "casual_mobile") {
-                vals = [[0.68, 0.95], [0.25, 0.98], [0.55, 0.85], [0.75, 0.55], [0.10, 0.99]];
-            } else if (profile === "game_esports" || profile === "esports_arena") {
-                vals = [[0.96, 0.95], [0.15, 0.98], [0.90, 0.55], [0.98, 0.12], [0.02, 0.99]];
-            } else if (profile === "game_space" || profile === "deep_space") {
-                vals = [[0.88, 0.92], [0.30, 0.95], [0.75, 0.50], [0.92, 0.15], [0.04, 0.98]];
-            }
+                    // 1. Primary Hue with Box-Muller Gaussian Jitter & Context-Aware Locking
+                    var baseH = this.hue;
+                    if (!this.lockedColors.pri) {
+                        var pickedBaseH = prof.hues[Math.floor(rng() * prof.hues.length)];
+                        var jitter = oklch.randomGaussian(rng, 0, 10 * chaos);
+                        baseH = Math.round((pickedBaseH + jitter + 360) % 360);
+                        this.setHue(baseH);
+                    } else {
+                        baseH = Math.round(this.hue);
+                    }
 
-            if (vals) {
-                if (this.varsMultiOn) {
-                    if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
-                    if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
+                    // 2. Harmony Model & Secondary Angle
+                    if (!this.lockedColors.sec) {
+                        var pickedModel = prof.models[Math.floor(rng() * prof.models.length)];
+                        this.setModel(pickedModel);
+                        if (this.hasSecs()) {
+                            var minA = prof.angle ? prof.angle[0] : 25;
+                            var maxA = prof.angle ? prof.angle[1] : 35;
+                            var midA = (minA + maxA) * 0.5;
+                            var aJitter = oklch.randomGaussian(rng, 0, 4 * chaos);
+                            var angle = Math.max(15, Math.min(75, Math.round(midA + aJitter)));
+                            this.setAngle(angle);
+                        }
+                    }
+
+                    // 3. OKLCH Perceptual Curve [L, C] & Gamut Mapping
+                    var targetRatio = options.targetRatio || 4.5;
+                    var curve = prof.curve;
+                    var self = this;
+
+                    var calcGroupVals = function(groupKey, gHue) {
+                        var rgbs = [];
+                        for (var s = 0; s < 5; s++) {
+                            var ptL = curve[s][0];
+                            var ptC = curve[s][1];
+                            var lJitter = oklch.randomGaussian(rng, 0, 0.015 * chaos);
+                            var cJitter = oklch.randomGaussian(rng, 0, 0.01 * chaos);
+                            var finalL = Math.max(0.02, Math.min(0.99, ptL + lJitter));
+                            var finalC = Math.max(0.005, Math.min(0.35, ptC + cJitter));
+                            rgbs[s] = oklch.oklchToSrgb(finalL, finalC, gHue);
+                        }
+
+                        // Exact WCAG Contrast Guarantee using fitContrast
+                        var bgRgb = rgbs[4];
+                        var textFit = oklch.fitContrast({ L: curve[3][0], C: curve[3][1], H: gHue }, bgRgb, targetRatio);
+                        rgbs[3] = textFit.rgb;
+
+                        var priMinRatio = (profile === "minimal" || profile === "saas") ? 3.0 : 2.5;
+                        var priFit = oklch.fitContrast({ L: curve[0][0], C: curve[0][1], H: gHue }, bgRgb, priMinRatio);
+                        rgbs[0] = priFit.rgb;
+
+                        // Map into Paletton internal [kS, kV]
+                        var groupVals = [];
+                        for (var k = 0; k < 5; k++) {
+                            var col = new o(gHue);
+                            col.setByRGB(rgbs[k]);
+                            groupVals[k] = [col.kS, col.kV];
+                        }
+                        return groupVals;
+                    };
+
+                    var priVals = calcGroupVals("pri", this.hue);
+
+                    if (this.varsMultiOn) {
+                        if (!this.lockedColors.pri) this.varsMulti.pri.setVals(priVals);
+                        if (!this.lockedColors.compl && this.hasCompl()) {
+                            this.varsMulti.compl.setVals(calcGroupVals("compl", this.hueCompl));
+                        }
+                        if (!this.lockedColors.sec && this.hasSecs()) {
+                            this.varsMulti.sec1.setVals(calcGroupVals("sec1", this.hueSec1));
+                            this.varsMulti.sec2.setVals(calcGroupVals("sec2", this.hueSec2));
+                        }
+                        this.varsActive = "pri";
+                        this.vars = this.varsMulti.pri;
+                    } else {
+                        this.vars.setVals(priVals);
+                    }
+
+                    if (prof.typoCategory && this.randomizeTypography) {
+                        this.randomizeTypography(prof.typoCategory);
+                    }
+
+                    this.locked = false;
+                    this.modelChanged();
+                    this.colorChanged();
+                    t.trigger("palette/seed/changed", { seed: this.currentSeed });
+                    return this.getContrastReport();
+                }, i.prototype.randomizeKeepMood = function(options) {
+                    options = options || {};
+                    this.locked = true;
+                    var rng = Math.random;
+
+                    if (!this.lockedColors.pri) {
+                        var step = 45 + Math.floor(rng() * 270);
+                        this.setHue((this.hue + step) % 360);
+                    }
                     if (!this.lockedColors.sec && this.hasSecs()) {
-                        this.varsMulti.sec1.setVals(vals);
-                        this.varsMulti.sec2.setVals(vals);
+                        var angle = Math.floor(20 + rng() * 45);
+                        this.setAngle(angle);
                     }
-                    this.varsActive = "pri";
-                    this.vars = this.varsMulti.pri;
-                } else {
-                    this.vars.setVals(vals);
-                }
-            }
 
-            this.locked = false;
-            this.modelChanged();
-            return this.colorChanged();
-        }, i.prototype.randomizeKeepMood = function() {
-            this.locked = true;
-            if (!this.lockedColors.pri) {
-                var step = 45 + Math.floor(Math.random() * 270);
-                this.setHue((this.hue + step) % 360);
-            }
-            if (!this.lockedColors.sec && this.hasSecs()) {
-                var angle = Math.floor(20 + Math.random() * 45);
-                this.setAngle(angle);
-            }
-            this.locked = false;
-            this.modelChanged();
-            return this.colorChanged();
-        }, i.prototype.randomizeVariations = function() {
-            this.locked = true;
-            if (!this.lockedColors.pri) {
-                var deltaH = Math.round((Math.random() * 24 - 12));
-                this.setHue((this.hue + deltaH + 360) % 360);
-            }
-            if (!this.lockedColors.sec && this.hasSecs()) {
-                var deltaA = Math.round((Math.random() * 12 - 6));
-                this.setAngle(Math.max(10, Math.min(80, this.angle + deltaA)));
-            }
-            var vals = this.vars.getVals();
-            for (var j = 0; j < vals.length; j++) {
-                vals[j][0] = Math.max(0.02, Math.min(1.0, vals[j][0] + (Math.random() * 0.08 - 0.04)));
-                vals[j][1] = Math.max(0.08, Math.min(1.0, vals[j][1] + (Math.random() * 0.08 - 0.04)));
-            }
-            if (this.varsMultiOn) {
-                if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
-                if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
-                if (!this.lockedColors.sec && this.hasSecs()) {
-                    this.varsMulti.sec1.setVals(vals);
-                    this.varsMulti.sec2.setVals(vals);
-                }
-                this.varsActive = "pri";
-                this.vars = this.varsMulti.pri;
-            } else {
-                this.vars.setVals(vals);
-            }
-            this.locked = false;
-            this.modelChanged();
-            return this.colorChanged();
-        }, i.prototype.generateMode = function(mode) {
-            this.locked = true;
-            var vals = null;
-            mode = (mode || "").toLowerCase();
+                    var groups = ["pri"];
+                    if (this.hasSecs()) groups.push("sec1", "sec2");
+                    if (this.hasCompl()) groups.push("compl");
 
-            switch (mode) {
-                case "monochromatic":
-                case "mono":
-                    this.setModel("mono");
+                    for (var g = 0; g < groups.length; g++) {
+                        var grp = groups[g];
+                        var varsObj = this.varsMultiOn ? this.varsMulti[grp] : this.vars;
+                        if (!varsObj) continue;
+
+                        var vals = varsObj.getVals();
+                        var gHue = (grp === "pri" ? this.hue : (grp === "compl" ? this.hueCompl : (grp === "sec1" ? this.hueSec1 : this.hueSec2))) || this.hue;
+
+                        for (var j = 0; j < vals.length; j++) {
+                            var col = new o(gHue);
+                            col.setSV(vals[j][0], vals[j][1]);
+                            var curOklch = oklch.srgbToOklch(col.rgb.r, col.rgb.g, col.rgb.b);
+                            var newRgb = oklch.oklchToSrgb(curOklch.L, curOklch.C, gHue);
+                            col.setByRGB(newRgb);
+                            vals[j] = [col.kS, col.kV];
+                        }
+                        varsObj.setVals(vals);
+                        if (!this.varsMultiOn) break;
+                    }
+
+                    this.locked = false;
+                    this.modelChanged();
+                    return this.colorChanged();
+                }, i.prototype.randomizeVariations = function(options) {
+                    options = options || {};
+                    this.locked = true;
+                    var chaos = options.chaos !== undefined ? options.chaos : (this.chaos || 1.0);
+                    var rng = Math.random;
+
                     if (!this.lockedColors.pri) {
-                        this.setHue(Math.floor(Math.random() * 360));
+                        var deltaH = Math.round(oklch.randomGaussian(rng, 0, 6 * chaos));
+                        this.setHue((this.hue + deltaH + 360) % 360);
                     }
-                    vals = [
-                        [0.72, 0.70],
-                        [0.18, 0.96],
-                        [0.46, 0.82],
-                        [0.82, 0.38],
-                        [0.94, 0.12]
-                    ];
-                    break;
-
-                case "analogous":
-                case "analog":
-                    this.setModel("analog");
-                    if (this.hasSecs()) {
-                        this.setAngle(Math.floor(25 + Math.random() * 15));
-                    }
-                    if (!this.lockedColors.pri) {
-                        this.setHue(Math.floor(Math.random() * 360));
-                    }
-                    vals = [
-                        [0.76, 0.82],
-                        [0.24, 0.94],
-                        [0.65, 0.54],
-                        [0.82, 0.28],
-                        [0.08, 0.98]
-                    ];
-                    break;
-
-                case "complementary":
-                case "compl":
-                    this.setModel("monocompl");
-                    if (!this.lockedColors.pri) {
-                        this.setHue(Math.floor(Math.random() * 360));
-                    }
-                    vals = [
-                        [0.82, 0.86],
-                        [0.22, 0.95],
-                        [0.68, 0.52],
-                        [0.88, 0.22],
-                        [0.06, 0.99]
-                    ];
-                    break;
-
-                case "split_complementary":
-                case "split":
-                    this.setModel("analogcompl");
-                    if (this.hasSecs()) {
-                        this.setAngle(Math.floor(25 + Math.random() * 12));
-                    }
-                    if (!this.lockedColors.pri) {
-                        this.setHue(Math.floor(Math.random() * 360));
-                    }
-                    vals = [
-                        [0.78, 0.84],
-                        [0.22, 0.94],
-                        [0.68, 0.52],
-                        [0.85, 0.26],
-                        [0.06, 0.98]
-                    ];
-                    break;
-
-                case "triadic":
-                case "triad":
-                    this.setModel("triad");
-                    if (this.hasSecs()) {
-                        this.setAngle(60);
-                    }
-                    if (!this.lockedColors.pri) {
-                        this.setHue(Math.floor(Math.random() * 360));
-                    }
-                    vals = [
-                        [0.78, 0.85],
-                        [0.26, 0.94],
-                        [0.66, 0.55],
-                        [0.84, 0.26],
-                        [0.07, 0.98]
-                    ];
-                    break;
-
-                case "tetradic":
-                case "tetrad":
-                    this.setModel("tetrad");
-                    if (this.hasSecs()) {
-                        this.setAngle(Math.floor(45 + Math.random() * 25));
-                    }
-                    if (!this.lockedColors.pri) {
-                        this.setHue(Math.floor(Math.random() * 360));
-                    }
-                    vals = [
-                        [0.75, 0.84],
-                        [0.25, 0.94],
-                        [0.66, 0.52],
-                        [0.84, 0.25],
-                        [0.07, 0.98]
-                    ];
-                    break;
-
-                case "double_complementary":
-                case "doublecompl":
-                    this.setModel("triadcompl");
-                    if (this.hasSecs()) {
-                        this.setAngle(Math.floor(30 + Math.random() * 15));
-                    }
-                    if (!this.lockedColors.pri) {
-                        this.setHue(Math.floor(Math.random() * 360));
-                    }
-                    vals = [
-                        [0.76, 0.85],
-                        [0.24, 0.94],
-                        [0.68, 0.52],
-                        [0.85, 0.24],
-                        [0.06, 0.98]
-                    ];
-                    break;
-
-                case "neutral_accent":
-                    this.setModel("mono");
-                    if (!this.lockedColors.pri) {
-                        this.setHue(Math.floor(Math.random() * 360));
-                    }
-                    vals = [
-                        [0.88, 0.92],
-                        [0.05, 0.96],
-                        [0.10, 0.76],
-                        [0.18, 0.22],
-                        [0.03, 0.99]
-                    ];
-                    break;
-
-                case "grayscale_accent":
-                    this.setModel("mono");
-                    if (!this.lockedColors.pri) {
-                        this.setHue(Math.floor(Math.random() * 360));
-                    }
-                    vals = [
-                        [0.96, 0.94],
-                        [0.01, 0.97],
-                        [0.02, 0.75],
-                        [0.03, 0.16],
-                        [0.00, 1.00]
-                    ];
-                    break;
-
-                case "warm":
-                    var warmRanges = [[345, 360], [0, 65]];
-                    var range = warmRanges[Math.floor(Math.random() * warmRanges.length)];
-                    var h = Math.floor(range[0] + Math.random() * (range[1] - range[0]));
-                    if (!this.lockedColors.pri) {
-                        this.setHue(h % 360);
-                    }
-                    var warmModels = ["analog", "monocompl", "triad", "mono"];
-                    this.setModel(warmModels[Math.floor(Math.random() * warmModels.length)]);
-                    if (this.hasSecs()) {
-                        this.setAngle(Math.floor(25 + Math.random() * 20));
-                    }
-                    vals = [
-                        [0.82, 0.88],
-                        [0.28, 0.96],
-                        [0.72, 0.58],
-                        [0.86, 0.25],
-                        [0.08, 0.98]
-                    ];
-                    break;
-
-                case "cool":
-                    var h = Math.floor(165 + Math.random() * 95);
-                    if (!this.lockedColors.pri) {
-                        this.setHue(h);
-                    }
-                    var coolModels = ["analog", "monocompl", "triad", "mono"];
-                    this.setModel(coolModels[Math.floor(Math.random() * coolModels.length)]);
-                    if (this.hasSecs()) {
-                        this.setAngle(Math.floor(25 + Math.random() * 20));
-                    }
-                    vals = [
-                        [0.78, 0.86],
-                        [0.20, 0.95],
-                        [0.68, 0.52],
-                        [0.88, 0.22],
-                        [0.06, 0.98]
-                    ];
-                    break;
-
-                case "high_saturation":
-                case "vibrant":
-                    if (!this.lockedColors.pri) {
-                        this.setHue(Math.floor(Math.random() * 360));
-                    }
-                    var vibModels = ["triad", "tetrad", "analogcompl", "monocompl"];
-                    this.setModel(vibModels[Math.floor(Math.random() * vibModels.length)]);
-                    if (this.hasSecs()) {
-                        this.setAngle(Math.floor(30 + Math.random() * 30));
-                    }
-                    vals = [
-                        [0.98, 0.98],
-                        [0.65, 0.95],
-                        [0.88, 0.52],
-                        [0.98, 0.16],
-                        [0.04, 0.99]
-                    ];
-                    break;
-
-                case "muted":
-                    if (!this.lockedColors.pri) {
-                        this.setHue(Math.floor(Math.random() * 360));
-                    }
-                    var mutModels = ["analog", "analogcompl", "triad", "mono"];
-                    this.setModel(mutModels[Math.floor(Math.random() * mutModels.length)]);
-                    if (this.hasSecs()) {
-                        this.setAngle(Math.floor(20 + Math.random() * 15));
-                    }
-                    vals = [
-                        [0.38, 0.74],
-                        [0.16, 0.92],
-                        [0.42, 0.58],
-                        [0.52, 0.30],
-                        [0.08, 0.96]
-                    ];
-                    break;
-
-                case "pastel":
-                    if (!this.lockedColors.pri) {
-                        this.setHue(Math.floor(Math.random() * 360));
-                    }
-                    var pasModels = ["mono", "analog", "triad", "analogcompl"];
-                    this.setModel(pasModels[Math.floor(Math.random() * pasModels.length)]);
-                    if (this.hasSecs()) {
-                        this.setAngle(Math.floor(25 + Math.random() * 20));
-                    }
-                    vals = [
-                        [0.32, 0.94],
-                        [0.14, 0.98],
-                        [0.28, 0.85],
-                        [0.42, 0.52],
-                        [0.05, 0.99]
-                    ];
-                    break;
-            }
-
-            if (vals) {
-                if (this.varsMultiOn) {
-                    if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
-                    if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
                     if (!this.lockedColors.sec && this.hasSecs()) {
-                        this.varsMulti.sec1.setVals(vals);
-                        this.varsMulti.sec2.setVals(vals);
+                        var deltaA = Math.round(oklch.randomGaussian(rng, 0, 4 * chaos));
+                        this.setAngle(Math.max(15, Math.min(75, this.angle + deltaA)));
                     }
-                    this.varsActive = "pri";
-                    this.vars = this.varsMulti.pri;
-                } else {
-                    this.vars.setVals(vals);
-                }
-            }
 
-            this.locked = false;
-            this.modelChanged();
-            return this.colorChanged();
-        }, i.prototype.regeneratePrimary = function() {
-            this.locked = true;
-            var newHue = Math.floor(Math.random() * 360);
-            this.setHue(newHue);
-            this.locked = false;
-            this.modelChanged();
-            return this.colorChanged();
-        }, i.prototype.regenerateSecondary = function() {
-            this.locked = true;
-            if (this.hasSecs()) {
-                var cur = this.angle || 0;
-                var delta, attempts = 0;
-                do {
-                    delta = Math.floor(15 + Math.random() * 55);
-                    attempts++;
-                } while (Math.abs(delta - cur) < 10 && attempts < 20);
-                this.setAngle(delta);
-            }
-            if (this.isModelFree()) {
-                if (this.hasCompl()) this.setHueCompl(Math.floor(Math.random() * 360), true);
-                if (this.hasSecs()) {
-                    this.setHueSec(Math.floor(Math.random() * 360), 1, true);
-                    this.setHueSec(Math.floor(Math.random() * 360), 2, true);
-                }
-            }
-            this.locked = false;
-            this.modelChanged();
-            return this.colorChanged();
-        }, i.prototype.randomizeMood = function(mood) {
-            return this.generateMode(mood);
-        }, i.prototype.setHarmonyMode = function(mode) {
-            return this.generateMode(mode);
-        }, i.prototype.randomizeQuick = function() {
-            var profiles = ["saas", "minimal", "nature", "luxury", "playful", "pastel", "monochrome", "cyberpunk", "earth", "ocean", "sunset", "editorial", "retro", "darkui"];
-            var p = profiles[Math.floor(Math.random() * profiles.length)];
-            return this.randomizeProfile(p);
-        }, i.prototype.randomizeWCAG = function(targetRatio) {
-            if (!targetRatio) targetRatio = 4.5;
-            this.locked = true;
-            if (!this.lockedColors.pri) {
-                var newHue = Math.floor(Math.random() * 360);
-                this.setHue(newHue);
-            }
-            if (!this.lockedColors.sec) {
-                var models = ["triad", "tetrad", "analogcompl", "monocompl", "analog", "mono"];
-                var mId = models[Math.floor(Math.random() * models.length)];
-                this.setModel(mId);
-                if (this.hasSecs()) {
-                    var angle = Math.floor(25 + Math.random() * 35);
-                    this.setAngle(angle);
-                }
-            }
-            var isAAA = targetRatio >= 7.0;
-            var darkVal = isAAA ? 0.10 : 0.16;
-            var lightVal = isAAA ? 0.99 : 0.96;
-            var lightSat = isAAA ? 0.08 : 0.18;
-            var baseSat = Math.round((0.65 + Math.random() * 0.25) * 1000) / 1000;
-            var baseVal = Math.round((0.65 + Math.random() * 0.25) * 1000) / 1000;
-            var vals = [
-                [baseSat, baseVal],
-                [0.32, 0.90],
-                [0.75, 0.42],
-                [0.92, darkVal],
-                [lightSat, lightVal]
-            ];
-            if (this.varsMultiOn) {
-                if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
-                if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
-                if (!this.lockedColors.sec && this.hasSecs()) {
-                    this.varsMulti.sec1.setVals(vals);
-                    this.varsMulti.sec2.setVals(vals);
-                }
-                this.varsActive = "pri";
-                this.vars = this.varsMulti.pri;
-            } else {
-                this.vars.setVals(vals);
-            }
-            this.locked = false;
-            this.modelChanged();
-            return this.colorChanged();
-        }, i.prototype.randomize = function(e, t, n, i) {
-            var o, u, a, f, l, c, h;
-            this.locked = !0, h = this;
-            if (e) {
-                a = m[this.modelID], f = r.rnd(1, 7);
-                while (f === a) f = r.rnd(1, 7);
-                this.setModel(v(f)), this.switchVars(r.rnd(1, 10) > 8)
-            }
-            return t && (u = r.rnd(t * 30, t * 180), c = r.rndSign(), this.addHue(u * c), this.isModelFree() && (this.hasCompl() && (u = r.rnd(t * 30, t * 180), c = r.rndSign(), this.setHueCompl(this.hueCompl + u * c, !0)), this.hasSecs() && (u = r.rnd(t * 30, t * 180), c = r.rndSign(), this.setHueSec(this.hueSec1 + u * c, 1, !0), u = r.rnd(t * 30, t * 180), c = r.rndSign(), this.setHueSec(this.hueSec2 + u * c, 2, !0)))), n && (this.isModelFree() || (o = r.rnd(n * 15, n * 120), c = r.rndSign(), this.setHueSec(this.hue + this.angle + o * c))), i && (l = function(e) {
-                var t, n, o, u;
-                return u = 50, i > .5 && (h.vars = e, n = s.getPresetCount(), f = r.rnd(0, n - 1), h.setPreset(s.getPresetId(f)), u = 20), o = r.rnd(-u * i, u * i), e.addSaturation(o / 100), o = r.rnd(-u * i, u * i), e.addBright(o / 100), t = (Math.random() * Math.PI - Math.PI / 2) * i, u = r.rnd(100 - 75 * i, 100 + 75 * i), e.rotate(t, u / 100)
-            }, this.varsMultiOn ? (l(this.varsMulti.pri), l(this.varsMulti.compl), l(this.varsMulti.sec1), l(this.varsMulti.sec2), this.varsActive = "pri", this.vars = this.varsMulti.pri) : l(this.vars)), this.locked = !1, e && this.modelChanged(), this.colorChanged()
-        }, i.prototype.getSerialized = function() {
-            var e, t, n, i, s;
-            i = "", s = m[this.modelID], n = s === 10, n && (s += this.hueCnt - 2), i += r.myB64.encodeInt(s, 1), i += r.myB64.encodeInt(Math.round(this.hue), 2);
-            if (n) {
-                if (this.hueCnt === 2 || this.hueCnt === 4) i += r.myB64.encodeInt(Math.round(this.hueCompl), 2);
-                this.hueCnt > 2 && (i += r.myB64.encodeInt(Math.round(this.hueSec1), 2), i += r.myB64.encodeInt(Math.round(this.hueSec2), 2))
-            } else i += r.myB64.encodeInt(Math.round(this.angle), 2);
-            return t = [this.varsMultiOn], i += r.myB64.encodeFlags(t), e = function(e) {
-                var t;
-                return t = e.getSerialized(), i += r.myB64.encodeInt(t.length, 1), i += t
-            }, this.varsMultiOn ? (e(this.varsMulti.pri), this.hasCompl() && e(this.varsMulti.compl), this.hasSecs() && (e(this.varsMulti.sec1), e(this.varsMulti.sec2))) : e(this.vars), i
-        }, i.prototype.setSerialized = function(e) {
-            var t, n, i, s, o, u, a, f, l;
-            if (!r.myB64.isValidString(e)) return !1;
-            a = this, i = !1, s = 0, u = e.substring(s, s + 1), f = r.myB64.decodeInt(u, 1);
-            if (f >= 10) i = !0, t = f - 10 + 2;
-            else {
-                this.setModel(v(f));
-                switch (f) {
-                    case 1:
-                        t = 1;
-                        break;
-                    case 2:
-                        t = 2;
-                        break;
-                    case 3:
-                    case 5:
-                        t = 3;
-                        break;
-                    default:
-                        t = 4
-                }
-            }
-            s += 1, u = e.substring(s, s + 2), f = r.myB64.decodeInt(u, 2), this.setHue(f), s += 2;
-            if (i) {
-                if (t === 2 || t === 4) u = e.substring(s, s + 2), f = r.myB64.decodeInt(u, 2), this.hueCompl = f, s += 2;
-                t > 2 && (u = e.substring(s, s + 2), f = r.myB64.decodeInt(u, 2), this.hueSec1 = f, s += 2, u = e.substring(s, s + 2), f = r.myB64.decodeInt(u, 2), this.hueSec2 = f, s += 2), this.setModelFree(t)
-            } else u = e.substring(s, s + 2), f = r.myB64.decodeInt(u, 2), f < 5 && (f = 5), f > 175 && (f = 175), this.setAngle(f), s += 2;
-            return u = e.substring(s, s + 1), l = r.myB64.decodeFlags(u), this.varsMultiOn = l[0], n = l[1], s += 1, o = function(t) {
-                var n;
-                return u = e.substring(s, s + 1), n = r.myB64.decodeInt(u, 1), s += 1, u = e.substring(s, s + n), t.setSerialized(u), s += n, t
-            }, this.varsMultiOn ? (o(this.varsMulti.pri), (t === 2 || t === 4) && o(this.varsMulti.compl), t > 2 && (o(this.varsMulti.sec1), o(this.varsMulti.sec2)), this.setVarsActive("pri")) : o(this.vars), !0
-        }, i.prototype.calcColorTable = function() {
-            var e, t, n;
-            return this.colorTable = {
-                byPalette: {},
-                sorted: {},
-                byLum: {}
-            }, n = this, t = function(e, t) {
-                var n, r;
-                return n = e.getLum(), r = t.getLum(), n < r ? 1 : n > r ? -1 : 0
-            }, e = function(e) {
-                var r, i, s, u, a, f, l, c;
-                r = n.col[e];
-                if (!r) return null;
-                a = [], f = [], l = [];
-                for (s = c = 0; c <= 4; s = ++c) i = new o(r.baseHSV.h), u = n.getVar(s, e), i.setSV(u[0], u[1]), a[s] = i, l[s] = i, s > 0 && f.push(i);
-                return f.sort(t), f.unshift(a[0]), l.sort(t), n.colorTable.byPalette[e] = a, n.colorTable.sorted[e] = f, n.colorTable.byLum[e] = l
-            }, e("pri"), e("sec1"), e("sec2"), e("compl")
-        }, i.prototype.getSimpleColorTable = function() {
-            var e, t, n;
-            return n = this, e = function(e) {
-                var t, r, i, s, o, u, a;
-                o = {}, a = n.colorTable[e];
-                for (s in a) {
-                    r = a[s], t = [];
-                    for (i = u = 0; u <= 4; i = ++u) t.push(r[i].rgb.getHex(!0));
-                    o[s] = t
-                }
-                return o
-            }, t = {}, t.byPalette = e("byPalette"), t.byLum = e("byLum"), t
-        }, i.prototype.getTonalScales = function(options) {
-            var res = {}, groups = ["pri"], idx, k, rgb;
-            this.hasSecs() && groups.push("sec1", "sec2");
-            this.hasCompl() && groups.push("compl");
-            for (idx = 0; idx < groups.length; idx++) {
-                k = groups[idx];
-                if (this.col[k] && this.col[k].rgb) {
-                    rgb = this.col[k].rgb;
-                    res[k] = oklch.generateTonalScale(rgb.r, rgb.g, rgb.b, options);
-                }
-            }
-            return res;
-        }, i.prototype.getColorCode = function(e, t, n, r, i) {
-            var s, o;
-            return this.col[e] || (e = "pri"), n || (n = "byPalette"), s = this.colorTable[n][e][t], o = s.rgb, r && this.converter && this.converter.on && (o = c.convert(o, this.converter)), i > 0 ? o.getCSS(i) : i < 0 ? o : o.getHex(!0)
-        }, i.prototype.colorize = function(e, t, n) {
-            var r, i, s, o, u, a, f, l, c, h, p, d, v, m, g;
-            if (!e || !e.length) return;
-            d = {
-                bgcol: "background",
-                col: "color",
-                bdcol: "border-color"
-            }, e.toggleClass("no-compl", !this.hasCompl()), e.toggleClass("no-secs", !this.hasSecs()), v = t ? "sorted" : "byPalette", g = ["pri", "sec1", "sec2", "compl"];
-            for (c in g) {
-                o = g[c], u = o;
-                for (l = m = 0; m <= 4; l = ++m) {
-                    i = this.getColorCode(u, l, v, n, -1), s = this.getColorCode(u, l, "byLum", n, -1), a = i.getHex(), f = s.getHex();
-                    for (h in d) p = d[h], r = e.find("." + h + "-" + o + "-" + l).css(p, "#" + a), h === "bgcol" && (r.prop("title", a), r.attr("col-data", a)), r = e.find("." + h + "-" + o + "-lum-" + l).css(p, "#" + f), h === "bgcol" && (r.prop("title", f), r.attr("col-data", f))
-                }
-            }
-            if (this.typography && e && e.length) {
-                try {
-                    var docElem = e[0].ownerDocument ? e[0].ownerDocument.documentElement : null;
-                    if (docElem && docElem.style) {
-                        var typo = this.typography;
-                        if (typo.heading) docElem.style.setProperty('--font-heading', typo.heading);
-                        if (typo.body) docElem.style.setProperty('--font-body', typo.body);
-                        if (typo.weightHeading) docElem.style.setProperty('--font-weight-heading', typo.weightHeading);
-                        if (typo.letterSpacing) docElem.style.setProperty('--letter-spacing-heading', typo.letterSpacing);
-                        if (typo.lineHeight) docElem.style.setProperty('--line-height-body', typo.lineHeight);
-                        if (typo.scale) docElem.style.setProperty('--type-scale-ratio', typo.scale);
+                    var groups = ["pri"];
+                    if (this.hasSecs()) groups.push("sec1", "sec2");
+                    if (this.hasCompl()) groups.push("compl");
+
+                    for (var g = 0; g < groups.length; g++) {
+                        var grp = groups[g];
+                        var varsObj = this.varsMultiOn ? this.varsMulti[grp] : this.vars;
+                        if (!varsObj) continue;
+                        if (this.lockedColors[grp]) continue;
+
+                        var vals = varsObj.getVals();
+                        var gHue = (grp === "pri" ? this.hue : (grp === "compl" ? this.hueCompl : (grp === "sec1" ? this.hueSec1 : this.hueSec2))) || this.hue;
+
+                        for (var j = 0; j < vals.length; j++) {
+                            var col = new o(gHue);
+                            col.setSV(vals[j][0], vals[j][1]);
+                            var curOklch = oklch.srgbToOklch(col.rgb.r, col.rgb.g, col.rgb.b);
+
+                            var dL = oklch.randomGaussian(rng, 0, 0.02 * chaos);
+                            var dC = oklch.randomGaussian(rng, 0, 0.015 * chaos);
+
+                            var newL = Math.max(0.02, Math.min(0.99, curOklch.L + dL));
+                            var newC = Math.max(0.005, Math.min(0.35, curOklch.C + dC));
+                            var newRgb = oklch.oklchToSrgb(newL, newC, curOklch.H);
+
+                            col.setByRGB(newRgb);
+                            vals[j] = [col.kS, col.kV];
+                        }
+                        varsObj.setVals(vals);
+                        if (!this.varsMultiOn) break;
                     }
-                } catch(err) {}
-            }
-            return !1
-        }, i.prototype.lessColorize = function(e, t, n) {
-            var r, i, s, o, u, a, f, l, c, h;
-            if (e == null || e.modifyVars == null) return;
-            f = {}, l = t ? "sorted" : "byPalette", h = ["pri", "compl", "sec1", "sec2"];
-            for (a in h) {
-                s = h[a], o = s;
-                for (u = c = 0; c <= 4; u = ++c) r = this.getColorCode(o, u, l, n), i = this.getColorCode(o, u, "byLum", n), f["@col-" + s + "-" + u] = r, f["@col-" + s + "-lum-" + u] = i
-            }
-            return e.modifyVars(f)
-        }, i.prototype["export"] = function(t) {
-            var i, s, o, u;
-            return u = this, t === "html" ? s = [1, 2, 0, 3, 4] : s = [0, 1, 2, 3, 4], i = function(e, t, n) {
-                var i, o, a, f, l;
-                f = '"' + t + '":{"ttl":"' + n + '","col":[';
-                for (i = l = 0; l <= 4; i = ++l) o = s[i], a = u.getColorCode(e, o, "byPalette", !1, -1), i > 0 && (f += ","), f += '{"idx":' + o + ',"hex":"' + a.getHex() + '","r":' + a.r + ',"g":' + a.g + ',"b":' + a.b + ',"r0":' + r.round(a.r / 255, 3) + ',"g0":' + r.round(a.g / 255, 3) + ',"b0":' + r.round(a.b / 255, 3) + "}";
-                return f += "]}", f
-            }, o = '{"type":"' + t + '","id":"' + this.uid + '","scheme":{', o += i("pri", "primary", n("color.pri")), this.hasSecs() && (o += "," + i("sec1", "secondary-1", n("color.sec") + " (1)"), o += "," + i("sec2", "secondary-2", n("color.sec") + " (2)")), this.hasCompl() && (o += "," + i("compl", "complement", n("color.compl"))), o += "}}", r.sendRequest(e.urls["export"].url, "POST", {
-                data: o
-            }, "_blank")
-        }, i.prototype.exportImg = function() {
-            return new h(this, $("body"))
-        }, i.prototype.copy = function(e) {
-            var t;
-            return this.isModelFree() ? (t = new i("mono", this.hue, 30, e), t.setModelFree(this.hueCnt), t.hueCompl = this.hueCompl, t.hueSec1 = this.hueSec1, t.hueSec2 = this.hueSec2, t.updateCompl(), t.updateSecs()) : t = new i(this.modelID, this.hue, this.angle, e), t.setVars(this.vars.values), t.colorChanged(), t
-        }, i.prototype.getTypographyPairs = function() {
-            return TYPOGRAPHY_PAIRS;
-        }, i.prototype.getTypography = function() {
-            return this.typography || TYPOGRAPHY_PAIRS[0];
-        }, i.prototype.setTypography = function(e) {
-            var typo = null;
-            if (typeof e === "string") {
-                for (var j = 0; j < TYPOGRAPHY_PAIRS.length; j++) {
-                    if (TYPOGRAPHY_PAIRS[j].id === e) {
-                        typo = TYPOGRAPHY_PAIRS[j];
-                        break;
+
+                    this.locked = false;
+                    this.modelChanged();
+                    return this.colorChanged();
+                }, i.prototype.generateMode = function(mode) {
+                    this.locked = true;
+                    var vals = null;
+                    mode = (mode || "").toLowerCase();
+
+                    switch (mode) {
+                        case "monochromatic":
+                        case "mono":
+                            this.setModel("mono");
+                            if (!this.lockedColors.pri) {
+                                this.setHue(Math.floor(Math.random() * 360));
+                            }
+                            vals = [
+                                [0.72, 0.70],
+                                [0.18, 0.96],
+                                [0.46, 0.82],
+                                [0.82, 0.38],
+                                [0.94, 0.12]
+                            ];
+                            break;
+
+                        case "analogous":
+                        case "analog":
+                            this.setModel("analog");
+                            if (this.hasSecs()) {
+                                this.setAngle(Math.floor(25 + Math.random() * 15));
+                            }
+                            if (!this.lockedColors.pri) {
+                                this.setHue(Math.floor(Math.random() * 360));
+                            }
+                            vals = [
+                                [0.76, 0.82],
+                                [0.24, 0.94],
+                                [0.65, 0.54],
+                                [0.82, 0.28],
+                                [0.08, 0.98]
+                            ];
+                            break;
+
+                        case "complementary":
+                        case "compl":
+                            this.setModel("monocompl");
+                            if (!this.lockedColors.pri) {
+                                this.setHue(Math.floor(Math.random() * 360));
+                            }
+                            vals = [
+                                [0.82, 0.86],
+                                [0.22, 0.95],
+                                [0.68, 0.52],
+                                [0.88, 0.22],
+                                [0.06, 0.99]
+                            ];
+                            break;
+
+                        case "split_complementary":
+                        case "split":
+                            this.setModel("analogcompl");
+                            if (this.hasSecs()) {
+                                this.setAngle(Math.floor(25 + Math.random() * 12));
+                            }
+                            if (!this.lockedColors.pri) {
+                                this.setHue(Math.floor(Math.random() * 360));
+                            }
+                            vals = [
+                                [0.78, 0.84],
+                                [0.22, 0.94],
+                                [0.68, 0.52],
+                                [0.85, 0.26],
+                                [0.06, 0.98]
+                            ];
+                            break;
+
+                        case "triadic":
+                        case "triad":
+                            this.setModel("triad");
+                            if (this.hasSecs()) {
+                                this.setAngle(60);
+                            }
+                            if (!this.lockedColors.pri) {
+                                this.setHue(Math.floor(Math.random() * 360));
+                            }
+                            vals = [
+                                [0.78, 0.85],
+                                [0.26, 0.94],
+                                [0.66, 0.55],
+                                [0.84, 0.26],
+                                [0.07, 0.98]
+                            ];
+                            break;
+
+                        case "tetradic":
+                        case "tetrad":
+                            this.setModel("tetrad");
+                            if (this.hasSecs()) {
+                                this.setAngle(Math.floor(45 + Math.random() * 25));
+                            }
+                            if (!this.lockedColors.pri) {
+                                this.setHue(Math.floor(Math.random() * 360));
+                            }
+                            vals = [
+                                [0.75, 0.84],
+                                [0.25, 0.94],
+                                [0.66, 0.52],
+                                [0.84, 0.25],
+                                [0.07, 0.98]
+                            ];
+                            break;
+
+                        case "double_complementary":
+                        case "doublecompl":
+                            this.setModel("triadcompl");
+                            if (this.hasSecs()) {
+                                this.setAngle(Math.floor(30 + Math.random() * 15));
+                            }
+                            if (!this.lockedColors.pri) {
+                                this.setHue(Math.floor(Math.random() * 360));
+                            }
+                            vals = [
+                                [0.76, 0.85],
+                                [0.24, 0.94],
+                                [0.68, 0.52],
+                                [0.85, 0.24],
+                                [0.06, 0.98]
+                            ];
+                            break;
+
+                        case "neutral_accent":
+                            this.setModel("mono");
+                            if (!this.lockedColors.pri) {
+                                this.setHue(Math.floor(Math.random() * 360));
+                            }
+                            vals = [
+                                [0.88, 0.92],
+                                [0.05, 0.96],
+                                [0.10, 0.76],
+                                [0.18, 0.22],
+                                [0.03, 0.99]
+                            ];
+                            break;
+
+                        case "grayscale_accent":
+                            this.setModel("mono");
+                            if (!this.lockedColors.pri) {
+                                this.setHue(Math.floor(Math.random() * 360));
+                            }
+                            vals = [
+                                [0.96, 0.94],
+                                [0.01, 0.97],
+                                [0.02, 0.75],
+                                [0.03, 0.16],
+                                [0.00, 1.00]
+                            ];
+                            break;
+
+                        case "warm":
+                            var warmRanges = [[345, 360], [0, 65]];
+                            var range = warmRanges[Math.floor(Math.random() * warmRanges.length)];
+                            var h = Math.floor(range[0] + Math.random() * (range[1] - range[0]));
+                            if (!this.lockedColors.pri) {
+                                this.setHue(h % 360);
+                            }
+                            var warmModels = ["analog", "monocompl", "triad", "mono"];
+                            this.setModel(warmModels[Math.floor(Math.random() * warmModels.length)]);
+                            if (this.hasSecs()) {
+                                this.setAngle(Math.floor(25 + Math.random() * 20));
+                            }
+                            vals = [
+                                [0.82, 0.88],
+                                [0.28, 0.96],
+                                [0.72, 0.58],
+                                [0.86, 0.25],
+                                [0.08, 0.98]
+                            ];
+                            break;
+
+                        case "cool":
+                            var h = Math.floor(165 + Math.random() * 95);
+                            if (!this.lockedColors.pri) {
+                                this.setHue(h);
+                            }
+                            var coolModels = ["analog", "monocompl", "triad", "mono"];
+                            this.setModel(coolModels[Math.floor(Math.random() * coolModels.length)]);
+                            if (this.hasSecs()) {
+                                this.setAngle(Math.floor(25 + Math.random() * 20));
+                            }
+                            vals = [
+                                [0.78, 0.86],
+                                [0.20, 0.95],
+                                [0.68, 0.52],
+                                [0.88, 0.22],
+                                [0.06, 0.98]
+                            ];
+                            break;
+
+                        case "high_saturation":
+                        case "vibrant":
+                            if (!this.lockedColors.pri) {
+                                this.setHue(Math.floor(Math.random() * 360));
+                            }
+                            var vibModels = ["triad", "tetrad", "analogcompl", "monocompl"];
+                            this.setModel(vibModels[Math.floor(Math.random() * vibModels.length)]);
+                            if (this.hasSecs()) {
+                                this.setAngle(Math.floor(30 + Math.random() * 30));
+                            }
+                            vals = [
+                                [0.98, 0.98],
+                                [0.65, 0.95],
+                                [0.88, 0.52],
+                                [0.98, 0.16],
+                                [0.04, 0.99]
+                            ];
+                            break;
+
+                        case "muted":
+                            if (!this.lockedColors.pri) {
+                                this.setHue(Math.floor(Math.random() * 360));
+                            }
+                            var mutModels = ["analog", "analogcompl", "triad", "mono"];
+                            this.setModel(mutModels[Math.floor(Math.random() * mutModels.length)]);
+                            if (this.hasSecs()) {
+                                this.setAngle(Math.floor(20 + Math.random() * 15));
+                            }
+                            vals = [
+                                [0.38, 0.74],
+                                [0.16, 0.92],
+                                [0.42, 0.58],
+                                [0.52, 0.30],
+                                [0.08, 0.96]
+                            ];
+                            break;
+
+                        case "pastel":
+                            if (!this.lockedColors.pri) {
+                                this.setHue(Math.floor(Math.random() * 360));
+                            }
+                            var pasModels = ["mono", "analog", "triad", "analogcompl"];
+                            this.setModel(pasModels[Math.floor(Math.random() * pasModels.length)]);
+                            if (this.hasSecs()) {
+                                this.setAngle(Math.floor(25 + Math.random() * 20));
+                            }
+                            vals = [
+                                [0.32, 0.94],
+                                [0.14, 0.98],
+                                [0.28, 0.85],
+                                [0.42, 0.52],
+                                [0.05, 0.99]
+                            ];
+                            break;
                     }
-                }
-            } else if (e && e.heading) {
-                typo = e;
-            }
-            if (!typo) typo = TYPOGRAPHY_PAIRS[0];
-            this.typography = typo;
-            t.trigger("palette/typography/changed", this.typography);
-            return this.typography;
-        }, i.prototype.generateWildTypography = function(preferredCategory) {
-            var headingList = [
-                { name: "Press Start 2P", font: "'Press Start 2P', 'VT323', monospace", weights: ["400"] },
-                { name: "Orbitron", font: "'Orbitron', 'Impact', sans-serif", weights: ["700", "800", "900"] },
-                { name: "Cinzel", font: "'Cinzel', 'Georgia', serif", weights: ["700", "800"] },
-                { name: "Black Ops One", font: "'Black Ops One', 'Impact', monospace, sans-serif", weights: ["800"] },
-                { name: "Russo One", font: "'Russo One', 'Impact', sans-serif", weights: ["900"] },
-                { name: "Fredoka", font: "'Fredoka', 'Century Gothic', cursive, sans-serif", weights: ["600", "700"] },
-                { name: "Share Tech Mono", font: "'Share Tech Mono', 'Courier New', monospace", weights: ["700"] },
-                { name: "VT323", font: "'VT323', monospace", weights: ["400"] },
-                { name: "Nosifer Horror", font: "'Nosifer', 'Creepster', Georgia, serif", weights: ["700"] },
-                { name: "M PLUS Rounded", font: "'M PLUS Rounded 1c', 'Century Gothic', sans-serif", weights: ["700", "800"] },
-                { name: "Impact", font: "Impact, 'Arial Black', sans-serif", weights: ["900"] },
-                { name: "Georgia", font: "Georgia, 'Times New Roman', serif", weights: ["700"] },
-                { name: "Helvetica Neue", font: "'Helvetica Neue', Arial, sans-serif", weights: ["700", "800"] },
-                { name: "Playfair Display", font: "'Playfair Display', Georgia, serif", weights: ["700", "800"] },
-                { name: "Trebuchet MS", font: "'Trebuchet MS', 'Segoe UI', sans-serif", weights: ["700"] },
-                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace", weights: ["700"] },
-                { name: "Didot", font: "Didot, 'Bodoni MT', serif", weights: ["600", "700"] },
-                { name: "Century Gothic", font: "'Century Gothic', sans-serif", weights: ["700"] }
-            ];
 
-            var bodyList = [
-                { name: "Rajdhani", font: "'Rajdhani', -apple-system, sans-serif" },
-                { name: "VT323", font: "'VT323', monospace" },
-                { name: "Share Tech Mono", font: "'Share Tech Mono', monospace" },
-                { name: "System Sans", font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
-                { name: "Nunito", font: "'Nunito', -apple-system, sans-serif" },
-                { name: "Cormorant", font: "'Cormorant Garamond', Georgia, serif" },
-                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace" },
-                { name: "Open Sans", font: "'Open Sans', 'Segoe UI', Arial, sans-serif" },
-                { name: "Charter Serif", font: "'Charter', Georgia, serif" },
-                { name: "Helvetica", font: "'Helvetica Neue', Helvetica, Arial, sans-serif" },
-                { name: "Roboto", font: "Roboto, 'Segoe UI', sans-serif" }
-            ];
+                    if (vals) {
+                        if (this.varsMultiOn) {
+                            if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
+                            if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
+                            if (!this.lockedColors.sec && this.hasSecs()) {
+                                this.varsMulti.sec1.setVals(vals);
+                                this.varsMulti.sec2.setVals(vals);
+                            }
+                            this.varsActive = "pri";
+                            this.vars = this.varsMulti.pri;
+                        } else {
+                            this.vars.setVals(vals);
+                        }
+                    }
 
-            var scales = ["1.2", "1.25", "1.3", "1.333", "1.414", "1.5", "1.618"];
-            var letterSpacings = ["-0.03em", "-0.01em", "0", "0.02em", "0.05em", "0.08em"];
-            var lineHeights = ["1.35", "1.4", "1.45", "1.5", "1.55", "1.6", "1.65"];
+                    this.locked = false;
+                    this.modelChanged();
+                    return this.colorChanged();
+                }, i.prototype.regeneratePrimary = function() {
+                    this.locked = true;
+                    var newHue = Math.floor(Math.random() * 360);
+                    this.setHue(newHue);
+                    this.locked = false;
+                    this.modelChanged();
+                    return this.colorChanged();
+                }, i.prototype.regenerateSecondary = function() {
+                    this.locked = true;
+                    if (this.hasSecs()) {
+                        var cur = this.angle || 0;
+                        var delta, attempts = 0;
+                        do {
+                            delta = Math.floor(15 + Math.random() * 55);
+                            attempts++;
+                        } while (Math.abs(delta - cur) < 10 && attempts < 20);
+                        this.setAngle(delta);
+                    }
+                    if (this.isModelFree()) {
+                        if (this.hasCompl()) this.setHueCompl(Math.floor(Math.random() * 360), true);
+                        if (this.hasSecs()) {
+                            this.setHueSec(Math.floor(Math.random() * 360), 1, true);
+                            this.setHueSec(Math.floor(Math.random() * 360), 2, true);
+                        }
+                    }
+                    this.locked = false;
+                    this.modelChanged();
+                    return this.colorChanged();
+                }, i.prototype.randomizeMood = function(mood) {
+                    return this.generateMode(mood);
+                }, i.prototype.setHarmonyMode = function(mode) {
+                    return this.generateMode(mode);
+                }, i.prototype.randomizeQuick = function() {
+                    var allProfiles = Object.keys(oklch.OKLCH_PROFILES);
+                    var last = (this.lastProfiles && this.lastProfiles[0]) ? this.lastProfiles[0] : "";
+                    var pool = allProfiles.filter(function(k) { return k !== last; });
+                    if (!pool.length) pool = allProfiles;
+                    var p = pool[Math.floor(Math.random() * pool.length)];
+                    return this.randomizeProfile(p, { seed: oklch.generateSeed() });
+                }, i.prototype.randomizeWCAG = function(targetRatio) {
+                    targetRatio = targetRatio || 4.5;
+                    this.locked = true;
 
-            var pickedH = headingList[Math.floor(Math.random() * headingList.length)];
-            var pickedB = bodyList[Math.floor(Math.random() * bodyList.length)];
-            var weightH = pickedH.weights[Math.floor(Math.random() * pickedH.weights.length)];
-            var scale = scales[Math.floor(Math.random() * scales.length)];
-            var ls = letterSpacings[Math.floor(Math.random() * letterSpacings.length)];
-            var lh = lineHeights[Math.floor(Math.random() * lineHeights.length)];
+                    var newSeed = oklch.generateSeed();
+                    this.currentSeed = newSeed;
+                    var rng = oklch.mulberry32(oklch.stringToSeed(newSeed));
 
-            return {
-                id: "wild_" + Math.random().toString(36).substr(2, 6),
-                category: "wild",
-                name: "⚡ " + pickedH.name + " + " + pickedB.name + " (" + scale + "x)",
-                heading: pickedH.font,
-                body: pickedB.font,
-                weightHeading: weightH,
-                scale: scale,
-                letterSpacing: ls,
-                lineHeight: lh
-            };
-        }, i.prototype.randomizeTypography = function(type) {
-            type = (type || "").toLowerCase();
-            var curId = this.typography ? this.typography.id : "";
+                    if (!this.lockedColors.pri) {
+                        var newHue = Math.floor(rng() * 360);
+                        this.setHue(newHue);
+                    }
+                    if (!this.lockedColors.sec) {
+                        var models = ["triad", "tetrad", "analogcompl", "monocompl", "analog", "mono"];
+                        var mId = models[Math.floor(rng() * models.length)];
+                        this.setModel(mId);
+                        if (this.hasSecs()) {
+                            var angle = Math.floor(25 + rng() * 35);
+                            this.setAngle(angle);
+                        }
+                    }
 
-            if (type === "wild") {
-                return this.setTypography(this.generateWildTypography());
-            }
+                    var isAAA = targetRatio >= 7.0;
+                    var bgL = isAAA ? 0.99 : 0.96;
+                    var textL = isAAA ? 0.12 : 0.20;
+                    var priL = isAAA ? 0.40 : 0.52;
 
-            var pool = TYPOGRAPHY_PAIRS;
-            if (type === "game" || type === "gaming") {
-                pool = TYPOGRAPHY_PAIRS.filter(function(p) { return p.category === "game"; });
-            } else if (type === "ui" || type === "web") {
-                pool = TYPOGRAPHY_PAIRS.filter(function(p) { return p.category === "ui"; });
-            } else if (type === "editorial") {
-                pool = TYPOGRAPHY_PAIRS.filter(function(p) { return p.category === "editorial"; });
-            }
+                    var curve = [
+                        [priL, 0.18],
+                        [0.93, 0.04],
+                        [0.68, 0.14],
+                        [textL, 0.04],
+                        [bgL, 0.005]
+                    ];
 
-            if (!type || type === "all") {
-                if (Math.random() < 0.35) {
-                    return this.setTypography(this.generateWildTypography());
-                }
-            }
+                    var calcGroupVals = function(gHue) {
+                        var rgbs = [];
+                        for (var s = 0; s < 5; s++) {
+                            rgbs[s] = oklch.oklchToSrgb(curve[s][0], curve[s][1], gHue);
+                        }
+                        var bgRgb = rgbs[4];
+                        var fittedText = oklch.fitContrast({ L: curve[3][0], C: curve[3][1], H: gHue }, bgRgb, targetRatio);
+                        rgbs[3] = fittedText.rgb;
 
-            var available = pool.filter(function(p) { return p.id !== curId; });
-            if (!available.length) available = pool;
-            var picked = available[Math.floor(Math.random() * available.length)];
-            return this.setTypography(picked);
-        }, i
-    }(), p
-});
+                        var priTarget = isAAA ? 4.5 : 3.0;
+                        var fittedPri = oklch.fitContrast({ L: curve[0][0], C: curve[0][1], H: gHue }, bgRgb, priTarget);
+                        rgbs[0] = fittedPri.rgb;
+
+                        var res = [];
+                        for (var k = 0; k < 5; k++) {
+                            var col = new o(gHue);
+                            col.setByRGB(rgbs[k]);
+                            res[k] = [col.kS, col.kV];
+                        }
+                        return res;
+                    };
+
+                    var priVals = calcGroupVals(this.hue);
+                    if (this.varsMultiOn) {
+                        if (!this.lockedColors.pri) this.varsMulti.pri.setVals(priVals);
+                        if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(calcGroupVals(this.hueCompl));
+                        if (!this.lockedColors.sec && this.hasSecs()) {
+                            this.varsMulti.sec1.setVals(calcGroupVals(this.hueSec1));
+                            this.varsMulti.sec2.setVals(calcGroupVals(this.hueSec2));
+                        }
+                        this.varsActive = "pri";
+                        this.vars = this.varsMulti.pri;
+                    } else {
+                        this.vars.setVals(priVals);
+                    }
+
+                    this.locked = false;
+                    this.modelChanged();
+                    this.colorChanged();
+                    t.trigger("palette/seed/changed", { seed: this.currentSeed });
+                    return this.getContrastReport();
+                }, i.prototype.randomize = function(e, t, n, i) {
+                    var o, u, a, f, l, c, h;
+                    this.locked = !0, h = this;
+                    if (e) {
+                        a = m[this.modelID], f = r.rnd(1, 7);
+                        while (f === a) f = r.rnd(1, 7);
+                        this.setModel(v(f)), this.switchVars(r.rnd(1, 10) > 8)
+                    }
+                    return t && (u = r.rnd(t * 30, t * 180), c = r.rndSign(), this.addHue(u * c), this.isModelFree() && (this.hasCompl() && (u = r.rnd(t * 30, t * 180), c = r.rndSign(), this.setHueCompl(this.hueCompl + u * c, !0)), this.hasSecs() && (u = r.rnd(t * 30, t * 180), c = r.rndSign(), this.setHueSec(this.hueSec1 + u * c, 1, !0), u = r.rnd(t * 30, t * 180), c = r.rndSign(), this.setHueSec(this.hueSec2 + u * c, 2, !0)))), n && (this.isModelFree() || (o = r.rnd(n * 15, n * 120), c = r.rndSign(), this.setHueSec(this.hue + this.angle + o * c))), i && (l = function(e) {
+                        var t, n, o, u;
+                        return u = 50, i > .5 && (h.vars = e, n = s.getPresetCount(), f = r.rnd(0, n - 1), h.setPreset(s.getPresetId(f)), u = 20), o = r.rnd(-u * i, u * i), e.addSaturation(o / 100), o = r.rnd(-u * i, u * i), e.addBright(o / 100), t = (Math.random() * Math.PI - Math.PI / 2) * i, u = r.rnd(100 - 75 * i, 100 + 75 * i), e.rotate(t, u / 100)
+                    }, this.varsMultiOn ? (l(this.varsMulti.pri), l(this.varsMulti.compl), l(this.varsMulti.sec1), l(this.varsMulti.sec2), this.varsActive = "pri", this.vars = this.varsMulti.pri) : l(this.vars)), this.locked = !1, e && this.modelChanged(), this.colorChanged()
+                }, i.prototype.getSerialized = function() {
+                    var e, t, n, i, s;
+                    i = "", s = m[this.modelID], n = s === 10, n && (s += this.hueCnt - 2), i += r.myB64.encodeInt(s, 1), i += r.myB64.encodeInt(Math.round(this.hue), 2);
+                    if (n) {
+                        if (this.hueCnt === 2 || this.hueCnt === 4) i += r.myB64.encodeInt(Math.round(this.hueCompl), 2);
+                        this.hueCnt > 2 && (i += r.myB64.encodeInt(Math.round(this.hueSec1), 2), i += r.myB64.encodeInt(Math.round(this.hueSec2), 2))
+                    } else i += r.myB64.encodeInt(Math.round(this.angle), 2);
+                    return t = [this.varsMultiOn], i += r.myB64.encodeFlags(t), e = function(e) {
+                        var t;
+                        return t = e.getSerialized(), i += r.myB64.encodeInt(t.length, 1), i += t
+                    }, this.varsMultiOn ? (e(this.varsMulti.pri), this.hasCompl() && e(this.varsMulti.compl), this.hasSecs() && (e(this.varsMulti.sec1), e(this.varsMulti.sec2))) : e(this.vars), i
+                }, i.prototype.setSerialized = function(e) {
+                    var t, n, i, s, o, u, a, f, l;
+                    if (!r.myB64.isValidString(e)) return !1;
+                    a = this, i = !1, s = 0, u = e.substring(s, s + 1), f = r.myB64.decodeInt(u, 1);
+                    if (f >= 10) i = !0, t = f - 10 + 2;
+                    else {
+                        this.setModel(v(f));
+                        switch (f) {
+                            case 1:
+                                t = 1;
+                                break;
+                            case 2:
+                                t = 2;
+                                break;
+                            case 3:
+                            case 5:
+                                t = 3;
+                                break;
+                            default:
+                                t = 4
+                        }
+                    }
+                    s += 1, u = e.substring(s, s + 2), f = r.myB64.decodeInt(u, 2), this.setHue(f), s += 2;
+                    if (i) {
+                        if (t === 2 || t === 4) u = e.substring(s, s + 2), f = r.myB64.decodeInt(u, 2), this.hueCompl = f, s += 2;
+                        t > 2 && (u = e.substring(s, s + 2), f = r.myB64.decodeInt(u, 2), this.hueSec1 = f, s += 2, u = e.substring(s, s + 2), f = r.myB64.decodeInt(u, 2), this.hueSec2 = f, s += 2), this.setModelFree(t)
+                    } else u = e.substring(s, s + 2), f = r.myB64.decodeInt(u, 2), f < 5 && (f = 5), f > 175 && (f = 175), this.setAngle(f), s += 2;
+                    return u = e.substring(s, s + 1), l = r.myB64.decodeFlags(u), this.varsMultiOn = l[0], n = l[1], s += 1, o = function(t) {
+                        var n;
+                        return u = e.substring(s, s + 1), n = r.myB64.decodeInt(u, 1), s += 1, u = e.substring(s, s + n), t.setSerialized(u), s += n, t
+                    }, this.varsMultiOn ? (o(this.varsMulti.pri), (t === 2 || t === 4) && o(this.varsMulti.compl), t > 2 && (o(this.varsMulti.sec1), o(this.varsMulti.sec2)), this.setVarsActive("pri")) : o(this.vars), !0
+                }, i.prototype.calcColorTable = function() {
+                    var e, t, n;
+                    return this.colorTable = {
+                        byPalette: {},
+                        sorted: {},
+                        byLum: {}
+                    }, n = this, t = function(e, t) {
+                        var n, r;
+                        return n = e.getLum(), r = t.getLum(), n < r ? 1 : n > r ? -1 : 0
+                    }, e = function(e) {
+                        var r, i, s, u, a, f, l, c;
+                        r = n.col[e];
+                        if (!r) return null;
+                        a = [], f = [], l = [];
+                        for (s = c = 0; c <= 4; s = ++c) i = new o(r.baseHSV.h), u = n.getVar(s, e), i.setSV(u[0], u[1]), a[s] = i, l[s] = i, s > 0 && f.push(i);
+                        return f.sort(t), f.unshift(a[0]), l.sort(t), n.colorTable.byPalette[e] = a, n.colorTable.sorted[e] = f, n.colorTable.byLum[e] = l
+                    }, e("pri"), e("sec1"), e("sec2"), e("compl")
+                }, i.prototype.getSimpleColorTable = function() {
+                    var e, t, n;
+                    return n = this, e = function(e) {
+                        var t, r, i, s, o, u, a;
+                        o = {}, a = n.colorTable[e];
+                        for (s in a) {
+                            r = a[s], t = [];
+                            for (i = u = 0; u <= 4; i = ++u) t.push(r[i].rgb.getHex(!0));
+                            o[s] = t
+                        }
+                        return o
+                    }, t = {}, t.byPalette = e("byPalette"), t.byLum = e("byLum"), t
+                }, i.prototype.getTonalScales = function(options) {
+                    var res = {}, groups = ["pri"], idx, k, rgb;
+                    this.hasSecs() && groups.push("sec1", "sec2");
+                    this.hasCompl() && groups.push("compl");
+                    for (idx = 0; idx < groups.length; idx++) {
+                        k = groups[idx];
+                        if (this.col[k] && this.col[k].rgb) {
+                            rgb = this.col[k].rgb;
+                            res[k] = oklch.generateTonalScale(rgb.r, rgb.g, rgb.b, options);
+                        }
+                    }
+                    return res;
+                }, i.prototype.getColorCode = function(e, t, n, r, i) {
+                    var s, o;
+                    return this.col[e] || (e = "pri"), n || (n = "byPalette"), s = this.colorTable[n][e][t], o = s.rgb, r && this.converter && this.converter.on && (o = c.convert(o, this.converter)), i > 0 ? o.getCSS(i) : i < 0 ? o : o.getHex(!0)
+                }, i.prototype.colorize = function(e, t, n) {
+                    var r, i, s, o, u, a, f, l, c, h, p, d, v, m, g;
+                    if (!e || !e.length) return;
+                    d = {
+                        bgcol: "background",
+                        col: "color",
+                        bdcol: "border-color"
+                    }, e.toggleClass("no-compl", !this.hasCompl()), e.toggleClass("no-secs", !this.hasSecs()), v = t ? "sorted" : "byPalette", g = ["pri", "sec1", "sec2", "compl"];
+                    for (c in g) {
+                        o = g[c], u = o;
+                        for (l = m = 0; m <= 4; l = ++m) {
+                            i = this.getColorCode(u, l, v, n, -1), s = this.getColorCode(u, l, "byLum", n, -1), a = i.getHex(), f = s.getHex();
+                            for (h in d) p = d[h], r = e.find("." + h + "-" + o + "-" + l).css(p, "#" + a), h === "bgcol" && (r.prop("title", a), r.attr("col-data", a)), r = e.find("." + h + "-" + o + "-lum-" + l).css(p, "#" + f), h === "bgcol" && (r.prop("title", f), r.attr("col-data", f))
+                        }
+                    }
+                    if (this.typography && e && e.length) {
+                        try {
+                            var docElem = e[0].ownerDocument ? e[0].ownerDocument.documentElement : null;
+                            if (docElem && docElem.style) {
+                                var typo = this.typography;
+                                if (typo.heading) docElem.style.setProperty('--font-heading', typo.heading);
+                                if (typo.body) docElem.style.setProperty('--font-body', typo.body);
+                                if (typo.weightHeading) docElem.style.setProperty('--font-weight-heading', typo.weightHeading);
+                                if (typo.letterSpacing) docElem.style.setProperty('--letter-spacing-heading', typo.letterSpacing);
+                                if (typo.lineHeight) docElem.style.setProperty('--line-height-body', typo.lineHeight);
+                                if (typo.scale) docElem.style.setProperty('--type-scale-ratio', typo.scale);
+                            }
+                        } catch(err) {}
+                    }
+                    return !1
+                }, i.prototype.lessColorize = function(e, t, n) {
+                    var r, i, s, o, u, a, f, l, c, h;
+                    if (e == null || e.modifyVars == null) return;
+                    f = {}, l = t ? "sorted" : "byPalette", h = ["pri", "compl", "sec1", "sec2"];
+                    for (a in h) {
+                        s = h[a], o = s;
+                        for (u = c = 0; c <= 4; u = ++c) r = this.getColorCode(o, u, l, n), i = this.getColorCode(o, u, "byLum", n), f["@col-" + s + "-" + u] = r, f["@col-" + s + "-lum-" + u] = i
+                    }
+                    return e.modifyVars(f)
+                }, i.prototype["export"] = function(t) {
+                    var i, s, o, u;
+                    return u = this, t === "html" ? s = [1, 2, 0, 3, 4] : s = [0, 1, 2, 3, 4], i = function(e, t, n) {
+                        var i, o, a, f, l;
+                        f = '"' + t + '":{"ttl":"' + n + '","col":[';
+                        for (i = l = 0; l <= 4; i = ++l) o = s[i], a = u.getColorCode(e, o, "byPalette", !1, -1), i > 0 && (f += ","), f += '{"idx":' + o + ',"hex":"' + a.getHex() + '","r":' + a.r + ',"g":' + a.g + ',"b":' + a.b + ',"r0":' + r.round(a.r / 255, 3) + ',"g0":' + r.round(a.g / 255, 3) + ',"b0":' + r.round(a.b / 255, 3) + "}";
+                        return f += "]}", f
+                    }, o = '{"type":"' + t + '","id":"' + this.uid + '","scheme":{', o += i("pri", "primary", n("color.pri")), this.hasSecs() && (o += "," + i("sec1", "secondary-1", n("color.sec") + " (1)"), o += "," + i("sec2", "secondary-2", n("color.sec") + " (2)")), this.hasCompl() && (o += "," + i("compl", "complement", n("color.compl"))), o += "}}", r.sendRequest(e.urls["export"].url, "POST", {
+                        data: o
+                    }, "_blank")
+                }, i.prototype.exportImg = function() {
+                    return new h(this, $("body"))
+                }, i.prototype.copy = function(e) {
+                    var t;
+                    return this.isModelFree() ? (t = new i("mono", this.hue, 30, e), t.setModelFree(this.hueCnt), t.hueCompl = this.hueCompl, t.hueSec1 = this.hueSec1, t.hueSec2 = this.hueSec2, t.updateCompl(), t.updateSecs()) : t = new i(this.modelID, this.hue, this.angle, e), t.setVars(this.vars.values), t.colorChanged(), t
+                }, i.prototype.getTypographyPairs = function() {
+                    return TYPOGRAPHY_PAIRS;
+                }, i.prototype.getTypography = function() {
+                    return this.typography || TYPOGRAPHY_PAIRS[0];
+                }, i.prototype.setTypography = function(e) {
+                    var typo = null;
+                    if (typeof e === "string") {
+                        for (var j = 0; j < TYPOGRAPHY_PAIRS.length; j++) {
+                            if (TYPOGRAPHY_PAIRS[j].id === e) {
+                                typo = TYPOGRAPHY_PAIRS[j];
+                                break;
+                            }
+                        }
+                    } else if (e && e.heading) {
+                        typo = e;
+                    }
+                    if (!typo) typo = TYPOGRAPHY_PAIRS[0];
+                    this.typography = typo;
+                    t.trigger("palette/typography/changed", this.typography);
+                    return this.typography;
+                }, i.prototype.generateWildTypography = function(preferredCategory) {
+                    var headingList = [
+                        { name: "Press Start 2P", font: "'Press Start 2P', 'VT323', monospace", weights: ["400"] },
+                        { name: "Orbitron", font: "'Orbitron', 'Impact', sans-serif", weights: ["700", "800", "900"] },
+                        { name: "Cinzel", font: "'Cinzel', 'Georgia', serif", weights: ["700", "800"] },
+                        { name: "Black Ops One", font: "'Black Ops One', 'Impact', monospace, sans-serif", weights: ["800"] },
+                        { name: "Russo One", font: "'Russo One', 'Impact', sans-serif", weights: ["900"] },
+                        { name: "Fredoka", font: "'Fredoka', 'Century Gothic', cursive, sans-serif", weights: ["600", "700"] },
+                        { name: "Share Tech Mono", font: "'Share Tech Mono', 'Courier New', monospace", weights: ["700"] },
+                        { name: "VT323", font: "'VT323', monospace", weights: ["400"] },
+                        { name: "Nosifer Horror", font: "'Nosifer', 'Creepster', Georgia, serif", weights: ["700"] },
+                        { name: "M PLUS Rounded", font: "'M PLUS Rounded 1c', 'Century Gothic', sans-serif", weights: ["700", "800"] },
+                        { name: "Impact", font: "Impact, 'Arial Black', sans-serif", weights: ["900"] },
+                        { name: "Georgia", font: "Georgia, 'Times New Roman', serif", weights: ["700"] },
+                        { name: "Helvetica Neue", font: "'Helvetica Neue', Arial, sans-serif", weights: ["700", "800"] },
+                        { name: "Playfair Display", font: "'Playfair Display', Georgia, serif", weights: ["700", "800"] },
+                        { name: "Trebuchet MS", font: "'Trebuchet MS', 'Segoe UI', sans-serif", weights: ["700"] },
+                        { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace", weights: ["700"] },
+                        { name: "Didot", font: "Didot, 'Bodoni MT', serif", weights: ["600", "700"] },
+                        { name: "Century Gothic", font: "'Century Gothic', sans-serif", weights: ["700"] }
+                    ];
+
+                    var bodyList = [
+                        { name: "Rajdhani", font: "'Rajdhani', -apple-system, sans-serif" },
+                        { name: "VT323", font: "'VT323', monospace" },
+                        { name: "Share Tech Mono", font: "'Share Tech Mono', monospace" },
+                        { name: "System Sans", font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
+                        { name: "Nunito", font: "'Nunito', -apple-system, sans-serif" },
+                        { name: "Cormorant", font: "'Cormorant Garamond', Georgia, serif" },
+                        { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace" },
+                        { name: "Open Sans", font: "'Open Sans', 'Segoe UI', Arial, sans-serif" },
+                        { name: "Charter Serif", font: "'Charter', Georgia, serif" },
+                        { name: "Helvetica", font: "'Helvetica Neue', Helvetica, Arial, sans-serif" },
+                        { name: "Roboto", font: "Roboto, 'Segoe UI', sans-serif" }
+                    ];
+
+                    var scales = ["1.2", "1.25", "1.3", "1.333", "1.414", "1.5", "1.618"];
+                    var letterSpacings = ["-0.03em", "-0.01em", "0", "0.02em", "0.05em", "0.08em"];
+                    var lineHeights = ["1.35", "1.4", "1.45", "1.5", "1.55", "1.6", "1.65"];
+
+                    var pickedH = headingList[Math.floor(Math.random() * headingList.length)];
+                    var pickedB = bodyList[Math.floor(Math.random() * bodyList.length)];
+                    var weightH = pickedH.weights[Math.floor(Math.random() * pickedH.weights.length)];
+                    var scale = scales[Math.floor(Math.random() * scales.length)];
+                    var ls = letterSpacings[Math.floor(Math.random() * letterSpacings.length)];
+                    var lh = lineHeights[Math.floor(Math.random() * lineHeights.length)];
+
+                    return {
+                        id: "wild_" + Math.random().toString(36).substr(2, 6),
+                        category: "wild",
+                        name: "⚡ " + pickedH.name + " + " + pickedB.name + " (" + scale + "x)",
+                        heading: pickedH.font,
+                        body: pickedB.font,
+                        weightHeading: weightH,
+                        scale: scale,
+                        letterSpacing: ls,
+                        lineHeight: lh
+                    };
+                }, i.prototype.randomizeTypography = function(type) {
+                    type = (type || "").toLowerCase();
+                    var curId = this.typography ? this.typography.id : "";
+
+                    if (type === "wild") {
+                        return this.setTypography(this.generateWildTypography());
+                    }
+
+                    var pool = TYPOGRAPHY_PAIRS;
+                    if (type === "game" || type === "gaming") {
+                        pool = TYPOGRAPHY_PAIRS.filter(function(p) { return p.category === "game"; });
+                    } else if (type === "ui" || type === "web") {
+                        pool = TYPOGRAPHY_PAIRS.filter(function(p) { return p.category === "ui"; });
+                    } else if (type === "editorial") {
+                        pool = TYPOGRAPHY_PAIRS.filter(function(p) { return p.category === "editorial"; });
+                    }
+
+                    if (!type || type === "all") {
+                        if (Math.random() < 0.35) {
+                            return this.setTypography(this.generateWildTypography());
+                        }
+                    }
+
+                    var available = pool.filter(function(p) { return p.id !== curId; });
+                    if (!available.length) available = pool;
+                    var picked = available[Math.floor(Math.random() * available.length)];
+                    return this.setTypography(picked);
+                }, i
+            }(), p
+        });
     }.call(this),
     function() {
         define("ui.control.button.class", ["app.events", "util", "ui.control.dialog.class"], function(e, t, n) {
@@ -4210,662 +4641,744 @@
     }.call(this),
     function() {
         define("ui.control.randomizer.class", ["app.ini", "app.events", "app.locale", "ui.control.button.class", "ui.control.dialog.class", "util"], function(e, t, n, r, i, s) {
-    var o, events = t;
-    return o = function() {
-        function r(e, t, n, r) {
-            var i, o;
-            this.$button = e, this.palette = t, this.$parent = n, i = {
-                className: "",
-                width: 330,
-                positionMy: "left top",
-                positionAt: "left top",
-                positionOf: null
-            };
-            if (!this.$parent) return;
-            o = this, this.options = s.objMerge(i, r), this.$button.click(function(e) {
-                return e.preventDefault(), o.openDlg()
-            });
-
-            // Global Spacebar shortcut
-            $(document).on("keydown.randomizer", function(ev) {
-                if (ev.keyCode === 32 || ev.key === " ") {
-                    var tag = (ev.target && ev.target.tagName ? ev.target.tagName.toLowerCase() : "");
-                    if (tag !== "input" && tag !== "textarea" && tag !== "select" && !$(ev.target).is("[contenteditable]")) {
-                        ev.preventDefault();
-                        o.palette.randomizeQuick();
-                        events.trigger("randomizer/changed");
-                    }
-                }
-            });
-        }
-        return r.prototype.openDlg = function() {
-            var e, r, pal;
-            r = this, pal = this.palette, this.close();
-            e = $("<DIV>", {
-                "class": "control control-random " + this.options.className
-            }).css({
-                width: "100%",
-                maxHeight: "560px",
-                overflowY: "auto",
-                paddingRight: "6px",
-                boxSizing: "border-box"
-            }).data("control", this);
-
-            // Contrast Report Box
-            var $contrastBox = $("<DIV>").addClass("rand-contrast-box");
-            var updateContrastBadge = function() {
-                var rep = pal.getContrastReport();
-                $contrastBox.empty();
-                if (rep) {
-                    var isAA = rep.passesAA;
-                    var badgeBg = isAA ? "#194d33" : "#5a3a10";
-                    var badgeColor = isAA ? "#75fbc0" : "#ffb74d";
-                    var badgeText = isAA ? (n("random.contrastPassed") || "AA Passed ✓") : (n("random.contrastWarning") || "Low Contrast ⚠");
-                    $("<span>").css({ color: "#aaa" }).html("Primary: <b>" + rep.priBgRatio + ":1</b> • Text: <b>" + rep.textBgRatio + ":1</b>").appendTo($contrastBox);
-                    $("<span>").addClass("rand-contrast-badge").css({
-                        background: badgeBg,
-                        color: badgeColor,
-                        border: "1px solid " + badgeColor
-                    }).text(badgeText).appendTo($contrastBox);
-                }
-            };
-            updateContrastBadge();
-            e.append($contrastBox);
-
-            // Smart Actions (Keep Character & Variations)
-            $("<DIV>").addClass("rand-section-title").text(n("random.actionsTitle") || "Smart Randomize").appendTo(e);
-
-            var $btnKeep = $("<BUTTON>").addClass("rand-btn-action").html(n("random.btnKeepMood") || "⚡ Keep Character<small>rotate hues, keep contrast & style</small>").click(function() {
-                r.randomizeKeepMood();
-                updateContrastBadge();
-            });
-            e.append($btnKeep);
-
-            var $btnVar = $("<BUTTON>").addClass("rand-btn-action").css({
-                background: "linear-gradient(135deg, #1f2d3d 0%, #263c52 100%)",
-                borderColor: "#60a5fa",
-                color: "#bfdbfe"
-            }).html(n("random.btnVariations") || "✨ Variations<small>subtle hue & saturation shift</small>").click(function() {
-                r.randomizeVariations();
-                updateContrastBadge();
-            });
-            e.append($btnVar);
-
-            // WCAG Contrast Fix Buttons
-            var $wcagRow = $("<DIV>").css({ display: "flex", gap: "6px", marginBottom: "8px" });
-            $("<BUTTON>").addClass("rand-btn-action").css({
-                flex: "1",
-                marginBottom: "0",
-                background: "#16382a",
-                borderColor: "#22c55e",
-                color: "#86efac"
-            }).html(n("random.btnFixContrastAA") || "Fix Contrast AA<small>≥ 4.5:1</small>").click(function() {
-                r.fixContrast(4.5);
-                updateContrastBadge();
-            }).appendTo($wcagRow);
-
-            $("<BUTTON>").addClass("rand-btn-action").css({
-                flex: "1",
-                marginBottom: "0",
-                background: "#1b2a40",
-                borderColor: "#38bdf8",
-                color: "#7dd3fc"
-            }).html(n("random.btnFixContrastAAA") || "Fix Contrast AAA<small>≥ 7.0:1</small>").click(function() {
-                r.fixContrast(7.0);
-                updateContrastBadge();
-            }).appendTo($wcagRow);
-            e.append($wcagRow);
-
-            // Designer Profiles: UI & Product
-            $("<DIV>").addClass("rand-section-title").text("UI & Product Profiles").appendTo(e);
-            var $uiProfiles = $("<DIV>").addClass("rand-btn-grid");
-            var addProfileBtn = function(container, profileKey, label) {
-                $("<BUTTON>").addClass("rand-btn-pill").text(label).click(function() {
-                    r.randomizeProfile(profileKey);
-                    updateContrastBadge();
-                }).appendTo(container);
-            };
-            addProfileBtn($uiProfiles, "saas", "SaaS UI");
-            addProfileBtn($uiProfiles, "minimal", "Minimal (Swiss)");
-            addProfileBtn($uiProfiles, "darkui", "Dark UI");
-            addProfileBtn($uiProfiles, "neutral_accent", "Neutral + Pop");
-            e.append($uiProfiles);
-
-            // Designer Profiles: Gaming & Entertainment
-            $("<DIV>").addClass("rand-section-title").text(n("random.gamingGroup") || "Gaming & Entertainment (8 Profiles)").appendTo(e);
-            var $gameProfiles = $("<DIV>").addClass("rand-btn-grid");
-            addProfileBtn($gameProfiles, "game_rpg", "Dark Fantasy RPG");
-            addProfileBtn($gameProfiles, "game_cyberpunk", "Cyberpunk HUD");
-            addProfileBtn($gameProfiles, "game_arcade", "8-Bit Retro Arcade");
-            addProfileBtn($gameProfiles, "game_fps", "Tactical Military FPS");
-            addProfileBtn($gameProfiles, "game_horror", "Survival Horror");
-            addProfileBtn($gameProfiles, "game_cozy", "Cozy / Casual Mobile");
-            addProfileBtn($gameProfiles, "game_esports", "Esports Arena");
-            addProfileBtn($gameProfiles, "game_space", "Deep Space Sci-Fi");
-            e.append($gameProfiles);
-
-            // Designer Profiles: Aesthetics
-            $("<DIV>").addClass("rand-section-title").text("Aesthetic Profiles").appendTo(e);
-            var $aesProfiles = $("<DIV>").addClass("rand-btn-grid");
-            addProfileBtn($aesProfiles, "luxury", "Luxury");
-            addProfileBtn($aesProfiles, "editorial", "Editorial");
-            addProfileBtn($aesProfiles, "retro", "Retro");
-            addProfileBtn($aesProfiles, "cyberpunk", "Cyberpunk");
-            e.append($aesProfiles);
-
-            // Designer Profiles: Nature & Mood
-            $("<DIV>").addClass("rand-section-title").text("Nature & Mood Profiles").appendTo(e);
-            var $natProfiles = $("<DIV>").addClass("rand-btn-grid");
-            addProfileBtn($natProfiles, "nature", "Nature (Sage/Clay)");
-            addProfileBtn($natProfiles, "pastel", "Pastel");
-            addProfileBtn($natProfiles, "playful", "Playful");
-            addProfileBtn($natProfiles, "earth", "Material / Earth");
-            addProfileBtn($natProfiles, "ocean", "Ocean Marine");
-            addProfileBtn($natProfiles, "sunset", "Sunset Twilight");
-            e.append($natProfiles);
-
-            // Selective Regeneration & Color Locks
-            $("<DIV>").addClass("rand-section-title").text(n("random.locksTitle") || "Selective Regeneration & Locks").appendTo(e);
-            
-            var $regenRow = $("<DIV>").css({ display: "flex", gap: "6px", marginBottom: "8px" });
-            $("<BUTTON>").addClass("rand-btn-pill").css({
-                flex: "1",
-                background: "#1c2b3d",
-                borderColor: "#38bdf8",
-                color: "#bae6fd",
-                padding: "6px 8px"
-            }).html(n("random.regenPrimary") || "↻ Primary Only").click(function() {
-                r.regeneratePrimary();
-                updateContrastBadge();
-            }).appendTo($regenRow);
-
-            $("<BUTTON>").addClass("rand-btn-pill").css({
-                flex: "1",
-                background: "#242038",
-                borderColor: "#a78bfa",
-                color: "#ddd6fe",
-                padding: "6px 8px"
-            }).html(n("random.regenSecondary") || "↻ Accents Only").click(function() {
-                r.regenerateSecondary();
-                updateContrastBadge();
-            }).appendTo($regenRow);
-            e.append($regenRow);
-
-            var $locks = $("<DIV>").css({ fontSize: "11px", color: "#ccc", padding: "2px 0 10px", display: "flex", gap: "10px", justifyContent: "space-between" });
-            var createLock = function(key, label) {
-                var $lbl = $("<LABEL>").css({ display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" });
-                var $chk = $("<INPUT>", { type: "checkbox" }).prop("checked", pal.isColorLocked(key));
-                $chk.change(function() {
-                    pal.toggleColorLock(key);
-                });
-                $lbl.append($chk).append(" " + label);
-                $locks.append($lbl);
-            };
-            createLock("pri", "Lock Primary");
-            createLock("sec", "Lock Secondary");
-            createLock("compl", "Lock Complement");
-            e.append($locks);
-
-            // Generation Modes: Harmonies (7 modes)
-            $("<DIV>").addClass("rand-section-title").text(n("random.harmoniesGroup") || "Harmonies (7 Modes)").appendTo(e);
-            var $harmonies = $("<DIV>").addClass("rand-btn-grid");
-            var addGenBtn = function(container, modeKey, label) {
-                $("<BUTTON>").addClass("rand-btn-pill compact").text(label).click(function() {
-                    r.generateMode(modeKey);
-                    updateContrastBadge();
-                }).appendTo(container);
-            };
-            addGenBtn($harmonies, "mono", "Monochromatic");
-            addGenBtn($harmonies, "analog", "Analogous");
-            addGenBtn($harmonies, "compl", "Complementary");
-            addGenBtn($harmonies, "split", "Split Compl.");
-            addGenBtn($harmonies, "triad", "Triadic");
-            addGenBtn($harmonies, "tetrad", "Tetradic");
-            addGenBtn($harmonies, "doublecompl", "Double Compl.");
-            e.append($harmonies);
-
-            // Generation Modes: Style & Contrast (5 modes)
-            $("<DIV>").addClass("rand-section-title").text(n("random.styleGroup") || "Contrast & Style (5 Modes)").appendTo(e);
-            var $styles = $("<DIV>").addClass("rand-btn-grid");
-            addGenBtn($styles, "neutral_accent", "Neutral + Accent");
-            addGenBtn($styles, "grayscale_accent", "Grayscale + Accent");
-            addGenBtn($styles, "high_saturation", "High Saturation");
-            addGenBtn($styles, "muted", "Muted");
-            addGenBtn($styles, "pastel", "Pastel");
-            e.append($styles);
-
-            // Generation Modes: Temperature (2 modes)
-            $("<DIV>").addClass("rand-section-title").text(n("random.tempGroup") || "Temperature (2 Modes)").appendTo(e);
-            var $temps = $("<DIV>").addClass("rand-btn-grid");
-            addGenBtn($temps, "warm", "Warm (Sun & Clay)");
-            addGenBtn($temps, "cool", "Cool (Sky & Marine)");
-            e.append($temps);
-
-            // Favorites & Bookmarking Row
-            var $favRow = $("<DIV>").css({ display: "flex", gap: "6px", marginBottom: "10px" });
-            $("<BUTTON>").addClass("rand-btn-pill").css({
-                flex: "1",
-                background: "#2d2416",
-                borderColor: "#b45309",
-                color: "#fcd34d"
-            }).html(n("random.btnSaveFav") || "★ Add to Favorites").click(function() {
-                var ok = pal.saveFavorite();
-                if (ok) {
-                    var $toast = $(".global-copy-toast");
-                    if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
-                    $toast.html("&#9733; Saved to Favorites!").addClass("show");
-                    setTimeout(function() { $toast.removeClass("show"); }, 2000);
-                }
-            }).appendTo($favRow);
-
-            $("<BUTTON>").addClass("rand-btn-pill").css({
-                flex: "1",
-                background: "#182836",
-                borderColor: "#38bdf8",
-                color: "#7dd3fc"
-            }).html(n("random.btnViewFavs") || "📂 Saved Palettes").click(function() {
-                r.openFavoritesDlg();
-            }).appendTo($favRow);
-            e.append($favRow);
-
-            // Typography & Font Pairings
-            $("<DIV>").addClass("rand-section-title").text(n("random.typoTitle") || "Typography & Font Pairings").appendTo(e);
-            var $typoBox = $("<DIV>").addClass("rand-typo-box").css({
-                background: "#161d27",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: "6px",
-                padding: "8px 10px",
-                marginBottom: "10px"
-            });
-
-            // Active Typography Badge
-            var $typoCurrentBadge = $("<DIV>").addClass("rand-typo-badge").css({
-                fontSize: "11px",
-                color: "#94a3b8",
-                marginBottom: "8px",
-                padding: "4px 8px",
-                background: "rgba(0,0,0,0.25)",
-                borderRadius: "4px",
-                border: "1px solid rgba(255,255,255,0.05)",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap"
-            });
-            $typoBox.append($typoCurrentBadge);
-
-            // 3 Action Buttons: Random All | 🎮 Game Font | ⚡ Wild Gen
-            var $typoActionsRow = $("<DIV>").css({
-                display: "flex",
-                gap: "5px",
-                marginBottom: "8px"
-            });
-
-            var triggerTypoToast = function(typoObj) {
-                var $toast = $(".global-copy-toast");
-                if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
-                $toast.html("&#9998; Typography: <b>" + (typoObj ? typoObj.name : "Pairing") + "</b>").addClass("show");
-                setTimeout(function() { $toast.removeClass("show"); }, 2000);
-            };
-
-            var createTypoActionBtn = function(label, bg, border, color, onClick) {
-                return $("<BUTTON>").addClass("rand-btn-pill").css({
-                    flex: "1",
-                    background: bg,
-                    borderColor: border,
-                    color: color,
-                    fontWeight: "600",
-                    fontSize: "10px",
-                    padding: "5px 4px",
-                    cursor: "pointer",
-                    textAlign: "center",
-                    whiteSpace: "nowrap"
-                }).html(label).click(onClick);
-            };
-
-            $typoActionsRow.append(
-                createTypoActionBtn(n("random.btnRandTypo") || "🎲 Random All", "linear-gradient(135deg, #1e3a5f, #0f2744)", "#38bdf8", "#e0f2fe", function() {
-                    var res = r.randomizeTypography("all");
-                    updateTypoBadge();
-                    triggerTypoToast(res);
-                })
-            );
-
-            $typoActionsRow.append(
-                createTypoActionBtn(n("random.btnRandGameTypo") || "🎮 Game Font", "linear-gradient(135deg, #3b1d54, #1e1136)", "#c084fc", "#f3e8ff", function() {
-                    var res = r.randomizeTypography("game");
-                    updateTypoBadge();
-                    triggerTypoToast(res);
-                })
-            );
-
-            $typoActionsRow.append(
-                createTypoActionBtn(n("random.btnWildTypo") || "⚡ Wild Gen", "linear-gradient(135deg, #451a03, #290f02)", "#f59e0b", "#fef3c7", function() {
-                    var res = r.randomizeTypography("wild");
-                    updateTypoBadge();
-                    triggerTypoToast(res);
-                })
-            );
-
-            $typoBox.append($typoActionsRow);
-
-            // Category Filter Tabs
-            var currentCategory = "all";
-            var $typoCatRow = $("<DIV>").css({
-                display: "flex",
-                gap: "4px",
-                marginBottom: "8px",
-                borderBottom: "1px solid rgba(255,255,255,0.08)",
-                paddingBottom: "6px"
-            });
-
-            var $typoGrid = $("<DIV>").addClass("rand-btn-grid");
-
-            var pairs = pal.getTypographyPairs ? pal.getTypographyPairs() : [];
-
-            var renderCategoryTabs = function() {
-                $typoCatRow.empty();
-                var cats = [
-                    { id: "all", label: n("random.catAll") || "All" },
-                    { id: "game", label: n("random.catGame") || "🎮 Gaming" },
-                    { id: "ui", label: n("random.catUI") || "UI & Web" },
-                    { id: "editorial", label: n("random.catEditorial") || "Editorial" }
-                ];
-                cats.forEach(function(c) {
-                    var isAct = currentCategory === c.id;
-                    $("<BUTTON>").addClass("rand-btn-pill compact").css({
-                        fontSize: "9px",
-                        padding: "2px 6px",
-                        background: isAct ? "rgba(56,189,248,0.2)" : "transparent",
-                        borderColor: isAct ? "#38bdf8" : "rgba(255,255,255,0.1)",
-                        color: isAct ? "#38bdf8" : "#94a3b8",
-                        fontWeight: isAct ? "bold" : "normal"
-                    }).text(c.label).click(function() {
-                        currentCategory = c.id;
-                        renderCategoryTabs();
-                        renderPresets();
-                    }).appendTo($typoCatRow);
-                });
-            };
-
-            var renderPresets = function() {
-                $typoGrid.empty();
-                var filtered = pairs.filter(function(pair) {
-                    if (currentCategory === "all") return true;
-                    return pair.category === currentCategory;
-                });
-                filtered.forEach(function(pair) {
-                    var $pBtn = $("<BUTTON>").addClass("rand-btn-pill compact").attr("data-typo-id", pair.id).text(pair.name).css({
-                        fontSize: "10px",
-                        padding: "4px 6px"
-                    }).click(function() {
-                        r.setTypography(pair.id);
-                        updateTypoBadge();
-                        triggerTypoToast(pair);
+            var o, events = t;
+            return o = function() {
+                function r(e, t, n, r) {
+                    var i, o;
+                    this.$button = e, this.palette = t, this.$parent = n, i = {
+                        className: "",
+                        width: 330,
+                        positionMy: "left top",
+                        positionAt: "left top",
+                        positionOf: null
+                    };
+                    if (!this.$parent) return;
+                    o = this, this.options = s.objMerge(i, r), this.$button.click(function(e) {
+                        return e.preventDefault(), o.openDlg()
                     });
-                    $typoGrid.append($pBtn);
-                });
-                updateTypoBadge();
-            };
 
-            var updateTypoBadge = function() {
-                var cur = pal.getTypography ? pal.getTypography() : null;
-                if (cur) {
-                    var tag = cur.category === "game" ? "🎮 " : (cur.category === "wild" ? "⚡ " : "");
-                    $typoCurrentBadge.html('<span style="color:#64748b">' + (n("random.typoCurrent") || "Active:") + '</span> <b style="color:#38bdf8;font-family:' + cur.heading + '">' + tag + cur.name + '</b>');
-                    $typoGrid.find(".rand-btn-pill").each(function() {
-                        var $btn = $(this);
-                        if ($btn.attr("data-typo-id") === cur.id) {
-                            $btn.css({ borderColor: "#38bdf8", color: "#38bdf8", fontWeight: "700", background: "rgba(56,189,248,0.14)" });
-                        } else {
-                            $btn.css({ borderColor: "rgba(255,255,255,0.12)", color: "#cbd5e1", fontWeight: "normal", background: "transparent" });
+                    // Global Spacebar shortcut
+                    $(document).on("keydown.randomizer", function(ev) {
+                        if (ev.keyCode === 32 || ev.key === " ") {
+                            var tag = (ev.target && ev.target.tagName ? ev.target.tagName.toLowerCase() : "");
+                            if (tag !== "input" && tag !== "textarea" && tag !== "select" && !$(ev.target).is("[contenteditable]")) {
+                                ev.preventDefault();
+                                o.palette.randomizeQuick();
+                                events.trigger("randomizer/changed");
+                            }
                         }
                     });
                 }
-            };
+                return r.prototype.openDlg = function() {
+                    var e, r, pal;
+                    r = this, pal = this.palette, this.close();
+                    e = $("<DIV>", {
+                        "class": "control control-random " + this.options.className
+                    }).css({
+                        width: "100%",
+                        maxHeight: "560px",
+                        overflowY: "auto",
+                        paddingRight: "6px",
+                        boxSizing: "border-box"
+                    }).data("control", this);
 
-            renderCategoryTabs();
-            renderPresets();
-
-            $typoBox.append($typoCatRow);
-            $typoBox.append($typoGrid);
-            e.append($typoBox);
-
-            updateTypoBadge();
-
-            // Classic random 4 buttons (compact)
-            $("<DIV>").addClass("rand-section-title").text("Classic Randomizer").appendTo(e);
-            var $classic = $("<DIV>").css({ overflow: "hidden", marginBottom: "6px" });
-            var tBtn;
-            tBtn = $("<BUTTON>").addClass("btn-0-1").text(n("random.btn01")).click(function() { return r.randomize(0, 1) });
-            $classic.append(tBtn);
-            tBtn = $("<BUTTON>").addClass("btn-1-1").text(n("random.btn11")).click(function() { return r.randomize(1, 1) });
-            $classic.append(tBtn);
-            tBtn = $("<BUTTON>").addClass("btn-0-0").text(n("random.btn00")).click(function() { return r.randomize(0, 0) });
-            $classic.append(tBtn);
-            tBtn = $("<BUTTON>").addClass("btn-1-0").text(n("random.btn10")).click(function() { return r.randomize(1, 0) });
-            $classic.append(tBtn);
-            e.append($classic);
-
-            // Space shortcut hint
-            $("<DIV>").css({
-                clear: "both",
-                padding: "6px 0 2px",
-                fontSize: "10px",
-                color: "#888",
-                textAlign: "center"
-            }).text("Tip: Press Spacebar for instant quick randomize").appendTo(e);
-
-            this.dlg = new i(this.$parent, e, {
-                className: "dlg-random",
-                title: n("random.title") || "Color Engine & Presets",
-                modal: !1,
-                width: 360,
-                height: 580,
-                destroyOnClose: !0,
-                position: {
-                    my: r.options.positionMy,
-                    at: r.options.positionAt,
-                    of: r.options.positionOf || r.$button
-                }
-            });
-        }, r.prototype.openFavoritesDlg = function() {
-            var r = this, pal = this.palette;
-            var $c = $("<div>").addClass("dlg-favs-container").css({
-                padding: "8px",
-                maxHeight: "380px",
-                overflowY: "auto",
-                fontFamily: "sans-serif"
-            });
-
-            var renderList = function() {
-                $c.empty();
-                var currentFavs = pal.getFavorites();
-                if (!currentFavs || currentFavs.length === 0) {
-                    $("<div>").css({
-                        padding: "30px 10px",
-                        textAlign: "center",
-                        color: "#888",
-                        fontSize: "12px",
-                        lineHeight: "1.5"
-                    }).html(n("random.favEmpty") || "No saved palettes yet.").appendTo($c);
-                    return;
-                }
-
-                currentFavs.forEach(function(item) {
-                    var $item = $("<div>").addClass("rand-fav-item").css({
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
+                    // Seed & Chaos Control Box
+                    var $seedBox = $("<DIV>").css({
+                        background: "#161b22",
+                        border: "1px solid #30363d",
+                        borderRadius: "6px",
                         padding: "8px 10px",
-                        margin: "0 0 8px 0",
-                        background: "#182836",
-                        border: "1px solid #233e54",
-                        borderRadius: "5px"
-                    });
-
-                    // Swatches
-                    var $swatches = $("<div>").css({
+                        marginBottom: "10px",
                         display: "flex",
-                        gap: "4px",
-                        marginRight: "10px"
+                        flexDirection: "column",
+                        gap: "8px"
                     });
-                    if (item.hexes && item.hexes.length) {
-                        item.hexes.forEach(function(h) {
-                            $("<div>").css({
-                                width: "22px",
-                                height: "22px",
-                                background: "#" + h.replace(/^#/, ""),
-                                borderRadius: "3px",
-                                border: "1px solid rgba(0,0,0,0.25)"
-                            }).attr("title", "#" + h.replace(/^#/, "")).appendTo($swatches);
-                        });
-                    }
-                    $item.append($swatches);
 
-                    // Info
-                    var $info = $("<div>").css({ flex: "1", fontSize: "11px", color: "#e0e0e0" });
-                    $("<div>").css({ fontWeight: "bold", color: "#61b5ff" }).text(item.name || "Palette").appendTo($info);
-                    $("<div>").css({ fontSize: "10px", color: "#888" }).text((item.model || "").toUpperCase() + " • " + item.hue + "°").appendTo($info);
-                    $item.append($info);
-
-                    // Actions
-                    var $btns = $("<div>").css({ display: "flex", gap: "6px" });
-                    $("<button>").css({
-                        background: "#0d6efd",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "3px",
-                        padding: "4px 9px",
+                    var $seedRow = $("<DIV>").css({ display: "flex", alignItems: "center", gap: "6px" });
+                    $("<span>").css({ fontSize: "11px", fontWeight: "700", color: "#8b949e", width: "42px" }).text("Seed:").appendTo($seedRow);
+                    var $seedInput = $("<INPUT>", { type: "text" }).css({
+                        flex: "1",
+                        background: "#0d1117",
+                        border: "1px solid #30363d",
+                        borderRadius: "4px",
+                        color: "#e6edf3",
+                        fontFamily: "monospace",
                         fontSize: "11px",
-                        cursor: "pointer",
-                        fontWeight: "600"
-                    }).text(n("random.favApply") || "Load").click(function() {
-                        window.location.hash = "#uid=" + item.uid;
-                        events.trigger("randomizer/changed");
+                        padding: "3px 6px"
+                    }).val(pal.getSeed ? pal.getSeed() : "").appendTo($seedRow);
+
+                    $("<BUTTON>").addClass("rand-btn-pill").css({
+                        padding: "3px 8px",
+                        fontSize: "10px",
+                        background: "#21262d",
+                        borderColor: "#38bdf8",
+                        color: "#38bdf8"
+                    }).text("Apply").click(function() {
+                        var s = $seedInput.val().trim();
+                        if (s && pal.setSeed) {
+                            pal.setSeed(s);
+                            r.randomizeProfile(pal.currentProfileId || "saas", { seed: s });
+                            updateContrastBadge();
+                        }
+                    }).appendTo($seedRow);
+
+                    $("<BUTTON>").addClass("rand-btn-pill").css({
+                        padding: "3px 8px",
+                        fontSize: "10px",
+                        background: "#21262d",
+                        borderColor: "#6e7681",
+                        color: "#c9d1d9"
+                    }).text("Copy").click(function() {
+                        var curSeed = pal.getSeed ? pal.getSeed() : $seedInput.val();
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(curSeed).catch(function(){});
+                        }
+                        var btn = $(this);
+                        var oldText = btn.text();
+                        btn.text("Copied! ✓");
+                        setTimeout(function() { btn.text(oldText); }, 1200);
+                    }).appendTo($seedRow);
+
+                    $seedBox.append($seedRow);
+
+                    var $chaosRow = $("<DIV>").css({ display: "flex", alignItems: "center", gap: "8px" });
+                    var curChaos = pal.getChaos ? pal.getChaos() : 1.0;
+                    var $chaosLabel = $("<span>").css({ fontSize: "11px", color: "#8b949e", width: "85px" }).text("Chaos: " + curChaos.toFixed(1) + "x");
+                    $("<INPUT>", {
+                        type: "range",
+                        min: "0.1",
+                        max: "2.0",
+                        step: "0.1"
+                    }).css({ flex: "1", cursor: "pointer" }).val(curChaos).on("input change", function() {
+                        var val = parseFloat($(this).val());
+                        if (pal.setChaos) pal.setChaos(val);
+                        $chaosLabel.text("Chaos: " + val.toFixed(1) + "x");
+                    }).appendTo($chaosRow);
+                    $chaosRow.append($chaosLabel);
+                    $seedBox.append($chaosRow);
+                    e.append($seedBox);
+
+                    events.register("palette/seed/changed", function(ev, data) {
+                        if ($seedInput && data && data.seed) $seedInput.val(data.seed);
+                    });
+
+                    // Contrast Report Box
+                    var $contrastBox = $("<DIV>").addClass("rand-contrast-box");
+                    var updateContrastBadge = function() {
+                        var rep = pal.getContrastReport();
+                        $contrastBox.empty();
+                        if (rep) {
+                            var isAA = rep.passesAA;
+                            var isAAA = rep.passesAAA;
+                            var badgeBg = isAAA ? "#133827" : (isAA ? "#194d33" : "#5a3a10");
+                            var badgeColor = isAAA ? "#4ade80" : (isAA ? "#75fbc0" : "#ffb74d");
+                            var badgeText = isAAA ? "AAA Passed ★" : (isAA ? (n("random.contrastPassed") || "AA Passed ✓") : (n("random.contrastWarning") || "Low Contrast ⚠"));
+                            var apcaTxt = rep.apcaText ? (" • APCA: <b>" + rep.apcaText + " Lc</b>") : "";
+                            $("<span>").css({ color: "#aaa" }).html("Primary: <b>" + rep.priBgRatio + ":1</b> • Text: <b>" + rep.textBgRatio + ":1</b>" + apcaTxt).appendTo($contrastBox);
+                            $("<span>").addClass("rand-contrast-badge").css({
+                                background: badgeBg,
+                                color: badgeColor,
+                                border: "1px solid " + badgeColor
+                            }).text(badgeText).appendTo($contrastBox);
+                        }
+                    };
+                    updateContrastBadge();
+                    e.append($contrastBox);
+
+                    // Smart Actions (Keep Character & Variations)
+                    $("<DIV>").addClass("rand-section-title").text(n("random.actionsTitle") || "Smart Randomize").appendTo(e);
+
+                    var $btnKeep = $("<BUTTON>").addClass("rand-btn-action").html(n("random.btnKeepMood") || "⚡ Keep Character<small>rotate hues, keep contrast & style</small>").click(function() {
+                        r.randomizeKeepMood();
+                        updateContrastBadge();
+                    });
+                    e.append($btnKeep);
+
+                    var $btnVar = $("<BUTTON>").addClass("rand-btn-action").css({
+                        background: "linear-gradient(135deg, #1f2d3d 0%, #263c52 100%)",
+                        borderColor: "#60a5fa",
+                        color: "#bfdbfe"
+                    }).html(n("random.btnVariations") || "✨ Variations<small>subtle hue & saturation shift</small>").click(function() {
+                        r.randomizeVariations();
+                        updateContrastBadge();
+                    });
+                    e.append($btnVar);
+
+                    // WCAG Contrast Fix Buttons
+                    var $wcagRow = $("<DIV>").css({ display: "flex", gap: "6px", marginBottom: "8px" });
+                    $("<BUTTON>").addClass("rand-btn-action").css({
+                        flex: "1",
+                        marginBottom: "0",
+                        background: "#16382a",
+                        borderColor: "#22c55e",
+                        color: "#86efac"
+                    }).html(n("random.btnFixContrastAA") || "Fix Contrast AA<small>≥ 4.5:1</small>").click(function() {
+                        r.fixContrast(4.5);
+                        updateContrastBadge();
+                    }).appendTo($wcagRow);
+
+                    $("<BUTTON>").addClass("rand-btn-action").css({
+                        flex: "1",
+                        marginBottom: "0",
+                        background: "#1b2a40",
+                        borderColor: "#38bdf8",
+                        color: "#7dd3fc"
+                    }).html(n("random.btnFixContrastAAA") || "Fix Contrast AAA<small>≥ 7.0:1</small>").click(function() {
+                        r.fixContrast(7.0);
+                        updateContrastBadge();
+                    }).appendTo($wcagRow);
+                    e.append($wcagRow);
+
+                    // Designer Profiles: UI & Product
+                    $("<DIV>").addClass("rand-section-title").text("UI & Product Profiles").appendTo(e);
+                    var $uiProfiles = $("<DIV>").addClass("rand-btn-grid");
+                    var addProfileBtn = function(container, profileKey, label) {
+                        $("<BUTTON>").addClass("rand-btn-pill").text(label).click(function() {
+                            r.randomizeProfile(profileKey);
+                            updateContrastBadge();
+                        }).appendTo(container);
+                    };
+                    addProfileBtn($uiProfiles, "saas", "SaaS UI");
+                    addProfileBtn($uiProfiles, "minimal", "Minimal (Swiss)");
+                    addProfileBtn($uiProfiles, "darkui", "Dark UI");
+                    addProfileBtn($uiProfiles, "neutral_accent", "Neutral + Pop");
+                    e.append($uiProfiles);
+
+                    // Designer Profiles: Gaming & Entertainment
+                    $("<DIV>").addClass("rand-section-title").text(n("random.gamingGroup") || "Gaming & Entertainment (8 Profiles)").appendTo(e);
+                    var $gameProfiles = $("<DIV>").addClass("rand-btn-grid");
+                    addProfileBtn($gameProfiles, "game_rpg", "Dark Fantasy RPG");
+                    addProfileBtn($gameProfiles, "game_cyberpunk", "Cyberpunk HUD");
+                    addProfileBtn($gameProfiles, "game_arcade", "8-Bit Retro Arcade");
+                    addProfileBtn($gameProfiles, "game_fps", "Tactical Military FPS");
+                    addProfileBtn($gameProfiles, "game_horror", "Survival Horror");
+                    addProfileBtn($gameProfiles, "game_cozy", "Cozy / Casual Mobile");
+                    addProfileBtn($gameProfiles, "game_esports", "Esports Arena");
+                    addProfileBtn($gameProfiles, "game_space", "Deep Space Sci-Fi");
+                    e.append($gameProfiles);
+
+                    // Designer Profiles: Aesthetics
+                    $("<DIV>").addClass("rand-section-title").text("Aesthetic Profiles").appendTo(e);
+                    var $aesProfiles = $("<DIV>").addClass("rand-btn-grid");
+                    addProfileBtn($aesProfiles, "luxury", "Luxury");
+                    addProfileBtn($aesProfiles, "editorial", "Editorial");
+                    addProfileBtn($aesProfiles, "retro", "Retro");
+                    addProfileBtn($aesProfiles, "cyberpunk", "Cyberpunk");
+                    e.append($aesProfiles);
+
+                    // Designer Profiles: Nature & Mood
+                    $("<DIV>").addClass("rand-section-title").text("Nature & Mood Profiles").appendTo(e);
+                    var $natProfiles = $("<DIV>").addClass("rand-btn-grid");
+                    addProfileBtn($natProfiles, "nature", "Nature (Sage/Clay)");
+                    addProfileBtn($natProfiles, "pastel", "Pastel");
+                    addProfileBtn($natProfiles, "playful", "Playful");
+                    addProfileBtn($natProfiles, "earth", "Material / Earth");
+                    addProfileBtn($natProfiles, "ocean", "Ocean Marine");
+                    addProfileBtn($natProfiles, "sunset", "Sunset Twilight");
+                    e.append($natProfiles);
+
+                    // Selective Regeneration & Color Locks
+                    $("<DIV>").addClass("rand-section-title").text(n("random.locksTitle") || "Selective Regeneration & Locks").appendTo(e);
+
+                    var $regenRow = $("<DIV>").css({ display: "flex", gap: "6px", marginBottom: "8px" });
+                    $("<BUTTON>").addClass("rand-btn-pill").css({
+                        flex: "1",
+                        background: "#1c2b3d",
+                        borderColor: "#38bdf8",
+                        color: "#bae6fd",
+                        padding: "6px 8px"
+                    }).html(n("random.regenPrimary") || "↻ Primary Only").click(function() {
+                        r.regeneratePrimary();
+                        updateContrastBadge();
+                    }).appendTo($regenRow);
+
+                    $("<BUTTON>").addClass("rand-btn-pill").css({
+                        flex: "1",
+                        background: "#242038",
+                        borderColor: "#a78bfa",
+                        color: "#ddd6fe",
+                        padding: "6px 8px"
+                    }).html(n("random.regenSecondary") || "↻ Accents Only").click(function() {
+                        r.regenerateSecondary();
+                        updateContrastBadge();
+                    }).appendTo($regenRow);
+                    e.append($regenRow);
+
+                    var $locks = $("<DIV>").css({ fontSize: "11px", color: "#ccc", padding: "2px 0 10px", display: "flex", gap: "10px", justifyContent: "space-between" });
+                    var createLock = function(key, label) {
+                        var $lbl = $("<LABEL>").css({ display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer" });
+                        var $chk = $("<INPUT>", { type: "checkbox" }).prop("checked", pal.isColorLocked(key));
+                        $chk.change(function() {
+                            pal.toggleColorLock(key);
+                        });
+                        $lbl.append($chk).append(" " + label);
+                        $locks.append($lbl);
+                    };
+                    createLock("pri", "Lock Primary");
+                    createLock("sec", "Lock Secondary");
+                    createLock("compl", "Lock Complement");
+                    e.append($locks);
+
+                    // Generation Modes: Harmonies (7 modes)
+                    $("<DIV>").addClass("rand-section-title").text(n("random.harmoniesGroup") || "Harmonies (7 Modes)").appendTo(e);
+                    var $harmonies = $("<DIV>").addClass("rand-btn-grid");
+                    var addGenBtn = function(container, modeKey, label) {
+                        $("<BUTTON>").addClass("rand-btn-pill compact").text(label).click(function() {
+                            r.generateMode(modeKey);
+                            updateContrastBadge();
+                        }).appendTo(container);
+                    };
+                    addGenBtn($harmonies, "mono", "Monochromatic");
+                    addGenBtn($harmonies, "analog", "Analogous");
+                    addGenBtn($harmonies, "compl", "Complementary");
+                    addGenBtn($harmonies, "split", "Split Compl.");
+                    addGenBtn($harmonies, "triad", "Triadic");
+                    addGenBtn($harmonies, "tetrad", "Tetradic");
+                    addGenBtn($harmonies, "doublecompl", "Double Compl.");
+                    e.append($harmonies);
+
+                    // Generation Modes: Style & Contrast (5 modes)
+                    $("<DIV>").addClass("rand-section-title").text(n("random.styleGroup") || "Contrast & Style (5 Modes)").appendTo(e);
+                    var $styles = $("<DIV>").addClass("rand-btn-grid");
+                    addGenBtn($styles, "neutral_accent", "Neutral + Accent");
+                    addGenBtn($styles, "grayscale_accent", "Grayscale + Accent");
+                    addGenBtn($styles, "high_saturation", "High Saturation");
+                    addGenBtn($styles, "muted", "Muted");
+                    addGenBtn($styles, "pastel", "Pastel");
+                    e.append($styles);
+
+                    // Generation Modes: Temperature (2 modes)
+                    $("<DIV>").addClass("rand-section-title").text(n("random.tempGroup") || "Temperature (2 Modes)").appendTo(e);
+                    var $temps = $("<DIV>").addClass("rand-btn-grid");
+                    addGenBtn($temps, "warm", "Warm (Sun & Clay)");
+                    addGenBtn($temps, "cool", "Cool (Sky & Marine)");
+                    e.append($temps);
+
+                    // Favorites & Bookmarking Row
+                    var $favRow = $("<DIV>").css({ display: "flex", gap: "6px", marginBottom: "10px" });
+                    $("<BUTTON>").addClass("rand-btn-pill").css({
+                        flex: "1",
+                        background: "#2d2416",
+                        borderColor: "#b45309",
+                        color: "#fcd34d"
+                    }).html(n("random.btnSaveFav") || "★ Add to Favorites").click(function() {
+                        var ok = pal.saveFavorite();
+                        if (ok) {
+                            var $toast = $(".global-copy-toast");
+                            if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
+                            $toast.html("&#9733; Saved to Favorites!").addClass("show");
+                            setTimeout(function() { $toast.removeClass("show"); }, 2000);
+                        }
+                    }).appendTo($favRow);
+
+                    $("<BUTTON>").addClass("rand-btn-pill").css({
+                        flex: "1",
+                        background: "#182836",
+                        borderColor: "#38bdf8",
+                        color: "#7dd3fc"
+                    }).html(n("random.btnViewFavs") || "📂 Saved Palettes").click(function() {
+                        r.openFavoritesDlg();
+                    }).appendTo($favRow);
+                    e.append($favRow);
+
+                    // Typography & Font Pairings
+                    $("<DIV>").addClass("rand-section-title").text(n("random.typoTitle") || "Typography & Font Pairings").appendTo(e);
+                    var $typoBox = $("<DIV>").addClass("rand-typo-box").css({
+                        background: "#161d27",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: "6px",
+                        padding: "8px 10px",
+                        marginBottom: "10px"
+                    });
+
+                    // Active Typography Badge
+                    var $typoCurrentBadge = $("<DIV>").addClass("rand-typo-badge").css({
+                        fontSize: "11px",
+                        color: "#94a3b8",
+                        marginBottom: "8px",
+                        padding: "4px 8px",
+                        background: "rgba(0,0,0,0.25)",
+                        borderRadius: "4px",
+                        border: "1px solid rgba(255,255,255,0.05)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap"
+                    });
+                    $typoBox.append($typoCurrentBadge);
+
+                    // 3 Action Buttons: Random All | 🎮 Game Font | ⚡ Wild Gen
+                    var $typoActionsRow = $("<DIV>").css({
+                        display: "flex",
+                        gap: "5px",
+                        marginBottom: "8px"
+                    });
+
+                    var triggerTypoToast = function(typoObj) {
                         var $toast = $(".global-copy-toast");
                         if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
-                        $toast.html("&#10003; " + (item.name || "Palette") + " loaded!").addClass("show");
+                        $toast.html("&#9998; Typography: <b>" + (typoObj ? typoObj.name : "Pairing") + "</b>").addClass("show");
                         setTimeout(function() { $toast.removeClass("show"); }, 2000);
-                    }).appendTo($btns);
+                    };
 
-                    $("<button>").css({
-                        background: "#34222a",
-                        color: "#ff8da1",
-                        border: "1px solid #5a2e3b",
-                        borderRadius: "3px",
-                        padding: "4px 8px",
-                        fontSize: "11px",
-                        cursor: "pointer"
-                    }).html("&times;").attr("title", n("random.favDelete") || "Delete").click(function() {
-                        pal.removeFavorite(item.uid);
-                        renderList();
-                    }).appendTo($btns);
+                    var createTypoActionBtn = function(label, bg, border, color, onClick) {
+                        return $("<BUTTON>").addClass("rand-btn-pill").css({
+                            flex: "1",
+                            background: bg,
+                            borderColor: border,
+                            color: color,
+                            fontWeight: "600",
+                            fontSize: "10px",
+                            padding: "5px 4px",
+                            cursor: "pointer",
+                            textAlign: "center",
+                            whiteSpace: "nowrap"
+                        }).html(label).click(onClick);
+                    };
 
-                    $item.append($btns);
-                    $c.append($item);
-                });
-            };
+                    $typoActionsRow.append(
+                        createTypoActionBtn(n("random.btnRandTypo") || "🎲 Random All", "linear-gradient(135deg, #1e3a5f, #0f2744)", "#38bdf8", "#e0f2fe", function() {
+                            var res = r.randomizeTypography("all");
+                            updateTypoBadge();
+                            triggerTypoToast(res);
+                        })
+                    );
 
-            renderList();
+                    $typoActionsRow.append(
+                        createTypoActionBtn(n("random.btnRandGameTypo") || "🎮 Game Font", "linear-gradient(135deg, #3b1d54, #1e1136)", "#c084fc", "#f3e8ff", function() {
+                            var res = r.randomizeTypography("game");
+                            updateTypoBadge();
+                            triggerTypoToast(res);
+                        })
+                    );
 
-            new i(this.$parent, $c, {
-                className: "dlg-favorites",
-                title: n("random.favTitle") || "Favorite Palettes",
-                modal: !1,
-                width: 360,
-                height: 380,
-                destroyOnClose: !0,
-                position: {
-                    my: "center top",
-                    at: "center top+50",
-                    of: window
-                }
-            });
-        }, r.prototype.close = function() {
-            var e;
-            return (e = this.dlg) != null ? e.close() : void 0
-        }, r.prototype.randomize = function(n, r) {
-            var i, o, u, a;
-            return u = r ? s.rndBool() : !1, o = n ? 1 : .05, i = n ? 1 : .25, a = r ? 1 : .15, this.palette.randomize(u, o, i, a), t.trigger("randomizer/changed"), t.trigger("ga/event", {
-                key: e.GA.event.randomize,
-                value: "" + n + r
-            })
-        }, r.prototype.randomizeWCAG = function(n) {
-            return this.palette.randomizeWCAG(n), t.trigger("randomizer/changed"), t.trigger("ga/event", {
-                key: e.GA.event.randomize,
-                value: "wcag-" + n
-            })
-        }, r.prototype.randomizeProfile = function(p) {
-            return this.palette.randomizeProfile(p), t.trigger("randomizer/changed"), t.trigger("ga/event", {
-                key: e.GA.event.randomize,
-                value: "profile-" + p
-            })
-        }, r.prototype.randomizeKeepMood = function() {
-            return this.palette.randomizeKeepMood(), t.trigger("randomizer/changed"), t.trigger("ga/event", {
-                key: e.GA.event.randomize,
-                value: "keep-mood"
-            })
-        }, r.prototype.randomizeVariations = function() {
-            return this.palette.randomizeVariations(), t.trigger("randomizer/changed"), t.trigger("ga/event", {
-                key: e.GA.event.randomize,
-                value: "variations"
-            })
-        }, r.prototype.randomizeMood = function(m) {
-            return this.palette.randomizeMood(m), t.trigger("randomizer/changed"), t.trigger("ga/event", {
-                key: e.GA.event.randomize,
-                value: "mood-" + m
-            })
-        }, r.prototype.generateMode = function(m) {
-            return this.palette.generateMode(m), t.trigger("randomizer/changed"), t.trigger("ga/event", {
-                key: e.GA.event.randomize,
-                value: "genmode-" + m
-            })
-        }, r.prototype.regeneratePrimary = function() {
-            return this.palette.regeneratePrimary(), t.trigger("randomizer/changed"), t.trigger("ga/event", {
-                key: e.GA.event.randomize,
-                value: "regen-pri"
-            })
-        }, r.prototype.regenerateSecondary = function() {
-            return this.palette.regenerateSecondary(), t.trigger("randomizer/changed"), t.trigger("ga/event", {
-                key: e.GA.event.randomize,
-                value: "regen-sec"
-            })
-        }, r.prototype.setHarmonyMode = function(h) {
-            return this.palette.generateMode(h), t.trigger("randomizer/changed"), t.trigger("ga/event", {
-                key: e.GA.event.randomize,
-                value: "harmony-" + h
-            })
-        }, r.prototype.fixContrast = function(targetRatio) {
-            var res = this.palette.fixContrast(targetRatio);
-            t.trigger("randomizer/changed");
-            var $toast = $(".global-copy-toast");
-            if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
-            $toast.html("&#10003; Contrast adjusted: <b>" + (res ? res.priBgRatio : targetRatio) + ":1</b>").addClass("show");
-            setTimeout(function() { $toast.removeClass("show"); }, 2500);
-            return res;
-        }, r.prototype.randomizeTypography = function(type) {
-            var res = this.palette.randomizeTypography(type);
-            t.trigger("randomizer/changed");
-            t.trigger("ga/event", {
-                key: e.GA.event.randomize,
-                value: "typo-" + (res ? res.id : "")
-            });
-            return res;
-        }, r.prototype.randomizeGameTypography = function() {
-            return this.randomizeTypography("game");
-        }, r.prototype.randomizeWildTypography = function() {
-            return this.randomizeTypography("wild");
-        }, r.prototype.setTypography = function(id) {
-            var res = this.palette.setTypography(id);
-            t.trigger("randomizer/changed");
-            t.trigger("ga/event", {
-                key: e.GA.event.randomize,
-                value: "typo-set-" + (res ? res.id : "")
-            });
-            return res;
-        }, r
-    }(), o
-});
+                    $typoActionsRow.append(
+                        createTypoActionBtn(n("random.btnWildTypo") || "⚡ Wild Gen", "linear-gradient(135deg, #451a03, #290f02)", "#f59e0b", "#fef3c7", function() {
+                            var res = r.randomizeTypography("wild");
+                            updateTypoBadge();
+                            triggerTypoToast(res);
+                        })
+                    );
+
+                    $typoBox.append($typoActionsRow);
+
+                    // Category Filter Tabs
+                    var currentCategory = "all";
+                    var $typoCatRow = $("<DIV>").css({
+                        display: "flex",
+                        gap: "4px",
+                        marginBottom: "8px",
+                        borderBottom: "1px solid rgba(255,255,255,0.08)",
+                        paddingBottom: "6px"
+                    });
+
+                    var $typoGrid = $("<DIV>").addClass("rand-btn-grid");
+
+                    var pairs = pal.getTypographyPairs ? pal.getTypographyPairs() : [];
+
+                    var renderCategoryTabs = function() {
+                        $typoCatRow.empty();
+                        var cats = [
+                            { id: "all", label: n("random.catAll") || "All" },
+                            { id: "game", label: n("random.catGame") || "🎮 Gaming" },
+                            { id: "ui", label: n("random.catUI") || "UI & Web" },
+                            { id: "editorial", label: n("random.catEditorial") || "Editorial" }
+                        ];
+                        cats.forEach(function(c) {
+                            var isAct = currentCategory === c.id;
+                            $("<BUTTON>").addClass("rand-btn-pill compact").css({
+                                fontSize: "9px",
+                                padding: "2px 6px",
+                                background: isAct ? "rgba(56,189,248,0.2)" : "transparent",
+                                borderColor: isAct ? "#38bdf8" : "rgba(255,255,255,0.1)",
+                                color: isAct ? "#38bdf8" : "#94a3b8",
+                                fontWeight: isAct ? "bold" : "normal"
+                            }).text(c.label).click(function() {
+                                currentCategory = c.id;
+                                renderCategoryTabs();
+                                renderPresets();
+                            }).appendTo($typoCatRow);
+                        });
+                    };
+
+                    var renderPresets = function() {
+                        $typoGrid.empty();
+                        var filtered = pairs.filter(function(pair) {
+                            if (currentCategory === "all") return true;
+                            return pair.category === currentCategory;
+                        });
+                        filtered.forEach(function(pair) {
+                            var $pBtn = $("<BUTTON>").addClass("rand-btn-pill compact").attr("data-typo-id", pair.id).text(pair.name).css({
+                                fontSize: "10px",
+                                padding: "4px 6px"
+                            }).click(function() {
+                                r.setTypography(pair.id);
+                                updateTypoBadge();
+                                triggerTypoToast(pair);
+                            });
+                            $typoGrid.append($pBtn);
+                        });
+                        updateTypoBadge();
+                    };
+
+                    var updateTypoBadge = function() {
+                        var cur = pal.getTypography ? pal.getTypography() : null;
+                        if (cur) {
+                            var tag = cur.category === "game" ? "🎮 " : (cur.category === "wild" ? "⚡ " : "");
+                            $typoCurrentBadge.html('<span style="color:#64748b">' + (n("random.typoCurrent") || "Active:") + '</span> <b style="color:#38bdf8;font-family:' + cur.heading + '">' + tag + cur.name + '</b>');
+                            $typoGrid.find(".rand-btn-pill").each(function() {
+                                var $btn = $(this);
+                                if ($btn.attr("data-typo-id") === cur.id) {
+                                    $btn.css({ borderColor: "#38bdf8", color: "#38bdf8", fontWeight: "700", background: "rgba(56,189,248,0.14)" });
+                                } else {
+                                    $btn.css({ borderColor: "rgba(255,255,255,0.12)", color: "#cbd5e1", fontWeight: "normal", background: "transparent" });
+                                }
+                            });
+                        }
+                    };
+
+                    renderCategoryTabs();
+                    renderPresets();
+
+                    $typoBox.append($typoCatRow);
+                    $typoBox.append($typoGrid);
+                    e.append($typoBox);
+
+                    updateTypoBadge();
+
+                    // Classic random 4 buttons (compact)
+                    $("<DIV>").addClass("rand-section-title").text("Classic Randomizer").appendTo(e);
+                    var $classic = $("<DIV>").css({ overflow: "hidden", marginBottom: "6px" });
+                    var tBtn;
+                    tBtn = $("<BUTTON>").addClass("btn-0-1").text(n("random.btn01")).click(function() { return r.randomize(0, 1) });
+                    $classic.append(tBtn);
+                    tBtn = $("<BUTTON>").addClass("btn-1-1").text(n("random.btn11")).click(function() { return r.randomize(1, 1) });
+                    $classic.append(tBtn);
+                    tBtn = $("<BUTTON>").addClass("btn-0-0").text(n("random.btn00")).click(function() { return r.randomize(0, 0) });
+                    $classic.append(tBtn);
+                    tBtn = $("<BUTTON>").addClass("btn-1-0").text(n("random.btn10")).click(function() { return r.randomize(1, 0) });
+                    $classic.append(tBtn);
+                    e.append($classic);
+
+                    // Space shortcut hint
+                    $("<DIV>").css({
+                        clear: "both",
+                        padding: "6px 0 2px",
+                        fontSize: "10px",
+                        color: "#888",
+                        textAlign: "center"
+                    }).text("Tip: Press Spacebar for instant quick randomize").appendTo(e);
+
+                    this.dlg = new i(this.$parent, e, {
+                        className: "dlg-random",
+                        title: n("random.title") || "Color Engine & Presets",
+                        modal: !1,
+                        width: 360,
+                        height: 580,
+                        destroyOnClose: !0,
+                        position: {
+                            my: r.options.positionMy,
+                            at: r.options.positionAt,
+                            of: r.options.positionOf || r.$button
+                        }
+                    });
+                }, r.prototype.openFavoritesDlg = function() {
+                    var r = this, pal = this.palette;
+                    var $c = $("<div>").addClass("dlg-favs-container").css({
+                        padding: "8px",
+                        maxHeight: "380px",
+                        overflowY: "auto",
+                        fontFamily: "sans-serif"
+                    });
+
+                    var renderList = function() {
+                        $c.empty();
+                        var currentFavs = pal.getFavorites();
+                        if (!currentFavs || currentFavs.length === 0) {
+                            $("<div>").css({
+                                padding: "30px 10px",
+                                textAlign: "center",
+                                color: "#888",
+                                fontSize: "12px",
+                                lineHeight: "1.5"
+                            }).html(n("random.favEmpty") || "No saved palettes yet.").appendTo($c);
+                            return;
+                        }
+
+                        currentFavs.forEach(function(item) {
+                            var $item = $("<div>").addClass("rand-fav-item").css({
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                padding: "8px 10px",
+                                margin: "0 0 8px 0",
+                                background: "#182836",
+                                border: "1px solid #233e54",
+                                borderRadius: "5px"
+                            });
+
+                            // Swatches
+                            var $swatches = $("<div>").css({
+                                display: "flex",
+                                gap: "4px",
+                                marginRight: "10px"
+                            });
+                            if (item.hexes && item.hexes.length) {
+                                item.hexes.forEach(function(h) {
+                                    $("<div>").css({
+                                        width: "22px",
+                                        height: "22px",
+                                        background: "#" + h.replace(/^#/, ""),
+                                        borderRadius: "3px",
+                                        border: "1px solid rgba(0,0,0,0.25)"
+                                    }).attr("title", "#" + h.replace(/^#/, "")).appendTo($swatches);
+                                });
+                            }
+                            $item.append($swatches);
+
+                            // Info
+                            var $info = $("<div>").css({ flex: "1", fontSize: "11px", color: "#e0e0e0" });
+                            $("<div>").css({ fontWeight: "bold", color: "#61b5ff" }).text(item.name || "Palette").appendTo($info);
+                            $("<div>").css({ fontSize: "10px", color: "#888" }).text((item.model || "").toUpperCase() + " • " + item.hue + "°").appendTo($info);
+                            $item.append($info);
+
+                            // Actions
+                            var $btns = $("<div>").css({ display: "flex", gap: "6px" });
+                            $("<button>").css({
+                                background: "#0d6efd",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: "3px",
+                                padding: "4px 9px",
+                                fontSize: "11px",
+                                cursor: "pointer",
+                                fontWeight: "600"
+                            }).text(n("random.favApply") || "Load").click(function() {
+                                window.location.hash = "#uid=" + item.uid;
+                                events.trigger("randomizer/changed");
+                                var $toast = $(".global-copy-toast");
+                                if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
+                                $toast.html("&#10003; " + (item.name || "Palette") + " loaded!").addClass("show");
+                                setTimeout(function() { $toast.removeClass("show"); }, 2000);
+                            }).appendTo($btns);
+
+                            $("<button>").css({
+                                background: "#34222a",
+                                color: "#ff8da1",
+                                border: "1px solid #5a2e3b",
+                                borderRadius: "3px",
+                                padding: "4px 8px",
+                                fontSize: "11px",
+                                cursor: "pointer"
+                            }).html("&times;").attr("title", n("random.favDelete") || "Delete").click(function() {
+                                pal.removeFavorite(item.uid);
+                                renderList();
+                            }).appendTo($btns);
+
+                            $item.append($btns);
+                            $c.append($item);
+                        });
+                    };
+
+                    renderList();
+
+                    new i(this.$parent, $c, {
+                        className: "dlg-favorites",
+                        title: n("random.favTitle") || "Favorite Palettes",
+                        modal: !1,
+                        width: 360,
+                        height: 380,
+                        destroyOnClose: !0,
+                        position: {
+                            my: "center top",
+                            at: "center top+50",
+                            of: window
+                        }
+                    });
+                }, r.prototype.close = function() {
+                    var e;
+                    return (e = this.dlg) != null ? e.close() : void 0
+                }, r.prototype.randomize = function(n, r) {
+                    var i, o, u, a;
+                    return u = r ? s.rndBool() : !1, o = n ? 1 : .05, i = n ? 1 : .25, a = r ? 1 : .15, this.palette.randomize(u, o, i, a), t.trigger("randomizer/changed"), t.trigger("ga/event", {
+                        key: e.GA.event.randomize,
+                        value: "" + n + r
+                    })
+                }, r.prototype.randomizeWCAG = function(n) {
+                    return this.palette.randomizeWCAG(n), t.trigger("randomizer/changed"), t.trigger("ga/event", {
+                        key: e.GA.event.randomize,
+                        value: "wcag-" + n
+                    })
+                }, r.prototype.randomizeProfile = function(p) {
+                    return this.palette.randomizeProfile(p), t.trigger("randomizer/changed"), t.trigger("ga/event", {
+                        key: e.GA.event.randomize,
+                        value: "profile-" + p
+                    })
+                }, r.prototype.randomizeKeepMood = function() {
+                    return this.palette.randomizeKeepMood(), t.trigger("randomizer/changed"), t.trigger("ga/event", {
+                        key: e.GA.event.randomize,
+                        value: "keep-mood"
+                    })
+                }, r.prototype.randomizeVariations = function() {
+                    return this.palette.randomizeVariations(), t.trigger("randomizer/changed"), t.trigger("ga/event", {
+                        key: e.GA.event.randomize,
+                        value: "variations"
+                    })
+                }, r.prototype.randomizeMood = function(m) {
+                    return this.palette.randomizeMood(m), t.trigger("randomizer/changed"), t.trigger("ga/event", {
+                        key: e.GA.event.randomize,
+                        value: "mood-" + m
+                    })
+                }, r.prototype.generateMode = function(m) {
+                    return this.palette.generateMode(m), t.trigger("randomizer/changed"), t.trigger("ga/event", {
+                        key: e.GA.event.randomize,
+                        value: "genmode-" + m
+                    })
+                }, r.prototype.regeneratePrimary = function() {
+                    return this.palette.regeneratePrimary(), t.trigger("randomizer/changed"), t.trigger("ga/event", {
+                        key: e.GA.event.randomize,
+                        value: "regen-pri"
+                    })
+                }, r.prototype.regenerateSecondary = function() {
+                    return this.palette.regenerateSecondary(), t.trigger("randomizer/changed"), t.trigger("ga/event", {
+                        key: e.GA.event.randomize,
+                        value: "regen-sec"
+                    })
+                }, r.prototype.setHarmonyMode = function(h) {
+                    return this.palette.generateMode(h), t.trigger("randomizer/changed"), t.trigger("ga/event", {
+                        key: e.GA.event.randomize,
+                        value: "harmony-" + h
+                    })
+                }, r.prototype.fixContrast = function(targetRatio) {
+                    var res = this.palette.fixContrast(targetRatio);
+                    t.trigger("randomizer/changed");
+                    var $toast = $(".global-copy-toast");
+                    if (!$toast.length) $toast = $("<div>").addClass("global-copy-toast").appendTo("body");
+                    $toast.html("&#10003; Contrast adjusted: <b>" + (res ? res.priBgRatio : targetRatio) + ":1</b>").addClass("show");
+                    setTimeout(function() { $toast.removeClass("show"); }, 2500);
+                    return res;
+                }, r.prototype.randomizeTypography = function(type) {
+                    var res = this.palette.randomizeTypography(type);
+                    t.trigger("randomizer/changed");
+                    t.trigger("ga/event", {
+                        key: e.GA.event.randomize,
+                        value: "typo-" + (res ? res.id : "")
+                    });
+                    return res;
+                }, r.prototype.randomizeGameTypography = function() {
+                    return this.randomizeTypography("game");
+                }, r.prototype.randomizeWildTypography = function() {
+                    return this.randomizeTypography("wild");
+                }, r.prototype.setTypography = function(id) {
+                    var res = this.palette.setTypography(id);
+                    t.trigger("randomizer/changed");
+                    t.trigger("ga/event", {
+                        key: e.GA.event.randomize,
+                        value: "typo-set-" + (res ? res.id : "")
+                    });
+                    return res;
+                }, r
+            }(), o
+        });
     }.call(this),
     function() {
         define("ui.control.btnedit.class", ["app.events", "app.locale", "util", "ui.control.dialog.class"], function(e, t, n, r) {

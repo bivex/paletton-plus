@@ -252,7 +252,7 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
                 on: !1,
                 type: "none",
                 amount: 1
-            }, this.typography = TYPOGRAPHY_PAIRS[0], this.inited = !0, this.unlock(), this.modelChanged(), this.colorChanged(), s = this, this.hidden || (t.register("history/changed", function(e, t) {
+            }, this.typography = TYPOGRAPHY_PAIRS[0], this.currentSeed = oklch.generateSeed(), this.chaos = 1.0, this.lastProfiles = [], this.inited = !0, this.unlock(), this.modelChanged(), this.colorChanged(), s = this, this.hidden || (t.register("history/changed", function(e, t) {
                 return s.loadPalette(t.data)
             }), t.register("palette/load", function(e, t) {
                 return s.loadPalette(t)
@@ -558,291 +558,265 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
                 if (favs[idx].uid === this.uid) return true;
             }
             return false;
+        }, i.prototype.getSeed = function() {
+            return this.currentSeed || (this.currentSeed = oklch.generateSeed());
+        }, i.prototype.setSeed = function(seed) {
+            if (!seed) return this.getSeed();
+            this.currentSeed = String(seed).trim();
+            t.trigger("palette/seed/changed", { seed: this.currentSeed });
+            return this.currentSeed;
+        }, i.prototype.getChaos = function() {
+            return this.chaos !== undefined ? this.chaos : 1.0;
+        }, i.prototype.setChaos = function(val) {
+            var c = parseFloat(val);
+            if (!isNaN(c) && c >= 0.1 && c <= 2.5) {
+                this.chaos = Math.round(c * 10) / 10;
+                t.trigger("palette/chaos/changed", { chaos: this.chaos });
+            }
+            return this.chaos;
         }, i.prototype.getContrastReport = function() {
             var cTable = this.colorTable && this.colorTable.byPalette && this.colorTable.byPalette.pri;
             if (!cTable || cTable.length < 5) return null;
             var baseRgb = cTable[0] ? cTable[0].rgb : null;
             var lightBgRgb = cTable[4] ? cTable[4].rgb : null;
             var darkTextRgb = cTable[3] ? cTable[3].rgb : null;
+            var secRgb = (this.colorTable.byPalette && this.colorTable.byPalette.sec1 && this.colorTable.byPalette.sec1[0]) ? this.colorTable.byPalette.sec1[0].rgb : null;
             if (!baseRgb || !lightBgRgb || !darkTextRgb) return null;
-            var textBgRatio = oklch.calcWcagContrast(darkTextRgb, lightBgRgb);
-            var priBgRatio = oklch.calcWcagContrast(baseRgb, lightBgRgb);
-            var apcaText = oklch.calcAPCA ? oklch.calcAPCA(darkTextRgb, lightBgRgb) : 0;
-            var apcaPri = oklch.calcAPCA ? oklch.calcAPCA(baseRgb, lightBgRgb) : 0;
-            return {
-                textBgRatio: textBgRatio,
-                priBgRatio: priBgRatio,
-                apcaText: apcaText,
-                apcaPri: apcaPri,
-                passesAA: priBgRatio >= 4.5 || textBgRatio >= 4.5,
-                passesAAA: textBgRatio >= 7.0
-            };
+            return oklch.auditSemanticContrast(baseRgb, lightBgRgb, darkTextRgb, secRgb);
         }, i.prototype.fixContrast = function(targetRatio) {
             targetRatio = targetRatio || 4.5;
             this.locked = true;
-            var vals = this.vars.getVals();
-            // Shade 4: light background
-            vals[4][0] = Math.min(vals[4][0], 0.05);
-            vals[4][1] = 0.99;
-            // Shade 1: light surface
-            vals[1][0] = Math.min(vals[1][0], 0.12);
-            vals[1][1] = 0.95;
-            // Shade 3: dark text
-            vals[3][0] = Math.max(vals[3][0], 0.70);
-            vals[3][1] = targetRatio >= 7.0 ? 0.08 : 0.14;
+            var cTable = this.colorTable && this.colorTable.byPalette && this.colorTable.byPalette.pri;
+            var bgRgb = (cTable && cTable[4] && cTable[4].rgb) ? cTable[4].rgb : { r: 255, g: 255, b: 255 };
 
-            // Shade 0: Base primary accent - ensure target ratio against light background
-            var baseSat = vals[0][0];
-            var baseVal = vals[0][1];
-            var h = this.hue;
-            var bgRgb = { r: 250, g: 250, b: 250 };
-            var colObj = new o(h);
-            colObj.setSV(baseSat, baseVal);
-            var testRgb = colObj.rgb;
-            var ratio = oklch.calcWcagContrast(testRgb, bgRgb);
-            if (ratio < targetRatio) {
-                while (baseVal > 0.20 && ratio < targetRatio) {
-                    baseVal -= 0.03;
-                    colObj.setSV(baseSat, baseVal);
-                    testRgb = colObj.rgb;
-                    ratio = oklch.calcWcagContrast(testRgb, bgRgb);
-                }
-                vals[0][1] = Math.round(baseVal * 100) / 100;
-            }
+            var groups = ["pri"];
+            if (this.hasSecs()) groups.push("sec1", "sec2");
+            if (this.hasCompl()) groups.push("compl");
 
-            if (this.varsMultiOn) {
-                if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
-                if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
-                if (!this.lockedColors.sec && this.hasSecs()) {
-                    this.varsMulti.sec1.setVals(vals);
-                    this.varsMulti.sec2.setVals(vals);
-                }
-                this.varsActive = "pri";
-                this.vars = this.varsMulti.pri;
-            } else {
-                this.vars.setVals(vals);
+            for (var g = 0; g < groups.length; g++) {
+                var grp = groups[g];
+                var varsObj = this.varsMultiOn ? this.varsMulti[grp] : this.vars;
+                if (!varsObj) continue;
+                if (this.lockedColors[grp]) continue;
+
+                var vals = varsObj.getVals();
+                var gHue = (grp === "pri" ? this.hue : (grp === "compl" ? this.hueCompl : (grp === "sec1" ? this.hueSec1 : this.hueSec2))) || this.hue;
+
+                // Slot 3 (Text): guarantee targetRatio against background
+                var colText = new o(gHue);
+                colText.setSV(vals[3][0], vals[3][1]);
+                var textOklch = oklch.srgbToOklch(colText.rgb.r, colText.rgb.g, colText.rgb.b);
+                var fittedText = oklch.fitContrast(textOklch, bgRgb, targetRatio);
+                colText.setByRGB(fittedText.rgb);
+                vals[3] = [colText.kS, colText.kV];
+
+                // Slot 0 (Primary brand button / accent): guarantee contrast
+                var colPri = new o(gHue);
+                colPri.setSV(vals[0][0], vals[0][1]);
+                var priOklch = oklch.srgbToOklch(colPri.rgb.r, colPri.rgb.g, colPri.rgb.b);
+                var priTarget = targetRatio >= 7.0 ? 4.5 : 3.0;
+                var fittedPri = oklch.fitContrast(priOklch, bgRgb, priTarget);
+                colPri.setByRGB(fittedPri.rgb);
+                vals[0] = [colPri.kS, colPri.kV];
+
+                varsObj.setVals(vals);
+                if (!this.varsMultiOn) break;
             }
             this.locked = false;
-            this.modelChanged();
             this.colorChanged();
             return this.getContrastReport();
-        }, i.prototype.randomizeProfile = function(profile) {
+        }, i.prototype.randomizeProfile = function(profile, options) {
+            options = options || {};
             this.locked = true;
+
+            var seedStr = options.seed || oklch.generateSeed();
+            this.currentSeed = String(seedStr);
+            var seedNum = oklch.stringToSeed(this.currentSeed);
+            var rng = oklch.mulberry32(seedNum);
+
+            var chaos = options.chaos !== undefined ? options.chaos : (this.chaos || 1.0);
+            var prof = oklch.OKLCH_PROFILES[profile] || oklch.OKLCH_PROFILES["saas"];
+            this.currentProfileId = prof.id;
+
+            if (!this.lastProfiles) this.lastProfiles = [];
+            this.lastProfiles.unshift(prof.id);
+            if (this.lastProfiles.length > 5) this.lastProfiles.pop();
+
+            // 1. Primary Hue with Box-Muller Gaussian Jitter & Context-Aware Locking
+            var baseH = this.hue;
             if (!this.lockedColors.pri) {
-                var hue = 0;
-                if (profile === "saas") {
-                    var techHues = [205, 215, 225, 235, 255, 275, 160, 180];
-                    hue = techHues[Math.floor(Math.random() * techHues.length)] + (Math.random() * 16 - 8);
-                } else if (profile === "minimal") {
-                    var swissHues = [358, 2, 218, 38, 205];
-                    hue = swissHues[Math.floor(Math.random() * swissHues.length)] + (Math.random() * 8 - 4);
-                } else if (profile === "nature") {
-                    var natHues = [138, 148, 158, 32, 44, 75];
-                    hue = natHues[Math.floor(Math.random() * natHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "luxury") {
-                    var luxHues = [42, 46, 350, 215];
-                    hue = luxHues[Math.floor(Math.random() * luxHues.length)] + (Math.random() * 8 - 4);
-                } else if (profile === "playful") {
-                    var playHues = [45, 175, 280, 345];
-                    hue = playHues[Math.floor(Math.random() * playHues.length)] + (Math.random() * 12 - 6);
-                } else if (profile === "pastel") {
-                    var pastHues = [195, 265, 335, 145];
-                    hue = pastHues[Math.floor(Math.random() * pastHues.length)] + (Math.random() * 14 - 7);
-                } else if (profile === "monochrome") {
-                    hue = Math.floor(Math.random() * 360);
-                } else if (profile === "cyberpunk") {
-                    var cyberHues = [188, 322, 118];
-                    hue = cyberHues[Math.floor(Math.random() * cyberHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "earth") {
-                    var earthHues = [20, 36, 58, 80];
-                    hue = earthHues[Math.floor(Math.random() * earthHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "ocean") {
-                    var oceanHues = [175, 192, 215, 232];
-                    hue = oceanHues[Math.floor(Math.random() * oceanHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "sunset") {
-                    var sunHues = [18, 32, 45, 310, 330];
-                    hue = sunHues[Math.floor(Math.random() * sunHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "neutral_accent") {
-                    hue = Math.floor(Math.random() * 360);
-                } else if (profile === "editorial") {
-                    var editHues = [18, 30, 44, 145, 175, 348];
-                    hue = editHues[Math.floor(Math.random() * editHues.length)] + (Math.random() * 14 - 7);
-                } else if (profile === "retro") {
-                    var retroHues = [26, 42, 78, 98, 178, 196];
-                    hue = retroHues[Math.floor(Math.random() * retroHues.length)] + (Math.random() * 16 - 8);
-                } else if (profile === "darkui") {
-                    var darkHues = [182, 198, 268, 282, 318];
-                    hue = darkHues[Math.floor(Math.random() * darkHues.length)] + (Math.random() * 16 - 8);
-                } else if (profile === "game_rpg" || profile === "fantasy_rpg") {
-                    var rpgHues = [42, 48, 350, 278, 155];
-                    hue = rpgHues[Math.floor(Math.random() * rpgHues.length)] + (Math.random() * 12 - 6);
-                } else if (profile === "game_cyberpunk" || profile === "scifi_hud") {
-                    var cyberGameHues = [188, 322, 118, 54];
-                    hue = cyberGameHues[Math.floor(Math.random() * cyberGameHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "game_arcade" || profile === "pixel_8bit") {
-                    var arcadeHues = [355, 212, 48, 122, 288];
-                    hue = arcadeHues[Math.floor(Math.random() * arcadeHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "game_fps" || profile === "tactical_mil") {
-                    var fpsHues = [132, 34, 210, 44];
-                    hue = fpsHues[Math.floor(Math.random() * fpsHues.length)] + (Math.random() * 8 - 4);
-                } else if (profile === "game_horror" || profile === "survival_horror") {
-                    var horrorHues = [350, 78, 170, 225];
-                    hue = horrorHues[Math.floor(Math.random() * horrorHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "game_cozy" || profile === "casual_mobile") {
-                    var cozyHues = [340, 46, 155, 205, 275];
-                    hue = cozyHues[Math.floor(Math.random() * cozyHues.length)] + (Math.random() * 14 - 7);
-                } else if (profile === "game_esports" || profile === "esports_arena") {
-                    var esportHues = [52, 358, 190, 265];
-                    hue = esportHues[Math.floor(Math.random() * esportHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "game_space" || profile === "deep_space") {
-                    var spaceHues = [176, 285, 26, 198];
-                    hue = spaceHues[Math.floor(Math.random() * spaceHues.length)] + (Math.random() * 12 - 6);
-                } else {
-                    hue = Math.floor(Math.random() * 360);
-                }
-                this.setHue((Math.round(hue) + 360) % 360);
+                var pickedBaseH = prof.hues[Math.floor(rng() * prof.hues.length)];
+                var jitter = oklch.randomGaussian(rng, 0, 10 * chaos);
+                baseH = Math.round((pickedBaseH + jitter + 360) % 360);
+                this.setHue(baseH);
+            } else {
+                baseH = Math.round(this.hue);
             }
 
+            // 2. Harmony Model & Secondary Angle
             if (!this.lockedColors.sec) {
-                var models = ["triad", "tetrad", "analogcompl", "monocompl", "analog", "mono"];
-                if (profile === "saas") models = ["analogcompl", "monocompl", "triad"];
-                else if (profile === "minimal") models = ["mono", "monocompl"];
-                else if (profile === "monochrome") models = ["mono"];
-                else if (profile === "nature") models = ["analogcompl", "analog", "triad"];
-                else if (profile === "luxury") models = ["monocompl", "triadcompl"];
-                else if (profile === "playful") models = ["triad", "tetrad"];
-                else if (profile === "pastel") models = ["triad", "analogcompl", "mono"];
-                else if (profile === "cyberpunk") models = ["triad", "analogcompl"];
-                else if (profile === "earth") models = ["analogcompl", "triad"];
-                else if (profile === "ocean") models = ["analog", "analogcompl"];
-                else if (profile === "sunset") models = ["analogcompl", "triad"];
-                else if (profile === "neutral_accent") models = ["monocompl"];
-                else if (profile === "editorial") models = ["analogcompl", "triad"];
-                else if (profile === "retro") models = ["triad", "tetrad"];
-                else if (profile === "darkui") models = ["monocompl", "analogcompl", "triadcompl"];
-                else if (profile === "game_rpg" || profile === "fantasy_rpg") models = ["triadcompl", "analogcompl", "tetrad"];
-                else if (profile === "game_cyberpunk" || profile === "scifi_hud") models = ["triad", "analogcompl", "tetrad"];
-                else if (profile === "game_arcade" || profile === "pixel_8bit") models = ["triad", "tetrad"];
-                else if (profile === "game_fps" || profile === "tactical_mil") models = ["monocompl", "analogcompl"];
-                else if (profile === "game_horror" || profile === "survival_horror") models = ["monocompl", "triad"];
-                else if (profile === "game_cozy" || profile === "casual_mobile") models = ["triad", "tetrad", "analogcompl"];
-                else if (profile === "game_esports" || profile === "esports_arena") models = ["monocompl", "triad"];
-                else if (profile === "game_space" || profile === "deep_space") models = ["analogcompl", "triadcompl"];
-                this.setModel(models[Math.floor(Math.random() * models.length)]);
+                var pickedModel = prof.models[Math.floor(rng() * prof.models.length)];
+                this.setModel(pickedModel);
                 if (this.hasSecs()) {
-                    var angle = profile === "saas" || profile === "minimal" ? 30 : Math.floor(25 + Math.random() * 38);
-                    if (profile === "game_arcade" || profile === "game_esports") angle = Math.floor(35 + Math.random() * 25);
+                    var minA = prof.angle ? prof.angle[0] : 25;
+                    var maxA = prof.angle ? prof.angle[1] : 35;
+                    var midA = (minA + maxA) * 0.5;
+                    var aJitter = oklch.randomGaussian(rng, 0, 4 * chaos);
+                    var angle = Math.max(15, Math.min(75, Math.round(midA + aJitter)));
                     this.setAngle(angle);
                 }
             }
 
-            var vals;
-            if (profile === "saas") {
-                vals = [[0.78, 0.95], [0.15, 0.98], [0.65, 0.60], [0.85, 0.22], [0.06, 0.99]];
-            } else if (profile === "minimal") {
-                vals = [[0.92, 0.88], [0.04, 0.98], [0.12, 0.88], [0.85, 0.32], [0.06, 0.14]];
-            } else if (profile === "nature") {
-                vals = [[0.52, 0.68], [0.22, 0.92], [0.58, 0.52], [0.68, 0.28], [0.14, 0.96]];
-            } else if (profile === "luxury") {
-                vals = [[0.72, 0.86], [0.10, 0.96], [0.80, 0.42], [0.88, 0.16], [0.04, 0.99]];
-            } else if (profile === "playful") {
-                vals = [[0.88, 0.96], [0.35, 0.96], [0.78, 0.72], [0.92, 0.45], [0.12, 0.99]];
-            } else if (profile === "pastel") {
-                vals = [[0.30, 0.94], [0.12, 0.98], [0.38, 0.84], [0.46, 0.62], [0.08, 0.99]];
-            } else if (profile === "monochrome") {
-                vals = [[0.70, 0.65], [0.18, 0.96], [0.45, 0.82], [0.82, 0.36], [0.94, 0.12]];
-            } else if (profile === "cyberpunk") {
-                vals = [[0.96, 0.98], [0.75, 0.92], [0.88, 0.50], [0.98, 0.10], [0.04, 0.99]];
-            } else if (profile === "earth") {
-                vals = [[0.62, 0.62], [0.22, 0.90], [0.68, 0.46], [0.76, 0.25], [0.14, 0.95]];
-            } else if (profile === "ocean") {
-                vals = [[0.78, 0.84], [0.20, 0.94], [0.68, 0.52], [0.88, 0.22], [0.06, 0.98]];
-            } else if (profile === "sunset") {
-                vals = [[0.84, 0.92], [0.26, 0.96], [0.75, 0.58], [0.88, 0.25], [0.08, 0.98]];
-            } else if (profile === "neutral_accent") {
-                vals = [[0.85, 0.90], [0.05, 0.96], [0.12, 0.75], [0.20, 0.25], [0.04, 0.99]];
-            } else if (profile === "editorial") {
-                vals = [[0.68, 0.72], [0.25, 0.92], [0.72, 0.48], [0.82, 0.28], [0.12, 0.96]];
-            } else if (profile === "retro") {
-                vals = [[0.58, 0.80], [0.30, 0.88], [0.62, 0.55], [0.70, 0.35], [0.20, 0.94]];
-            } else if (profile === "darkui") {
-                vals = [[0.85, 0.98], [0.70, 0.85], [0.60, 0.45], [0.95, 0.12], [0.05, 0.99]];
-            } else if (profile === "game_rpg" || profile === "fantasy_rpg") {
-                vals = [[0.82, 0.90], [0.12, 0.95], [0.85, 0.35], [0.95, 0.12], [0.03, 0.98]];
-            } else if (profile === "game_cyberpunk" || profile === "scifi_hud") {
-                vals = [[0.98, 0.98], [0.82, 0.95], [0.92, 0.45], [0.98, 0.08], [0.02, 0.99]];
-            } else if (profile === "game_arcade" || profile === "pixel_8bit") {
-                vals = [[0.95, 0.95], [0.35, 0.98], [0.88, 0.70], [0.95, 0.40], [0.05, 0.98]];
-            } else if (profile === "game_fps" || profile === "tactical_mil") {
-                vals = [[0.72, 0.85], [0.15, 0.92], [0.55, 0.45], [0.75, 0.18], [0.08, 0.96]];
-            } else if (profile === "game_horror" || profile === "survival_horror") {
-                vals = [[0.80, 0.65], [0.20, 0.88], [0.75, 0.35], [0.92, 0.10], [0.06, 0.94]];
-            } else if (profile === "game_cozy" || profile === "casual_mobile") {
-                vals = [[0.68, 0.95], [0.25, 0.98], [0.55, 0.85], [0.75, 0.55], [0.10, 0.99]];
-            } else if (profile === "game_esports" || profile === "esports_arena") {
-                vals = [[0.96, 0.95], [0.15, 0.98], [0.90, 0.55], [0.98, 0.12], [0.02, 0.99]];
-            } else if (profile === "game_space" || profile === "deep_space") {
-                vals = [[0.88, 0.92], [0.30, 0.95], [0.75, 0.50], [0.92, 0.15], [0.04, 0.98]];
-            }
+            // 3. OKLCH Perceptual Curve [L, C] & Gamut Mapping
+            var targetRatio = options.targetRatio || 4.5;
+            var curve = prof.curve;
+            var self = this;
 
-            if (vals) {
-                if (this.varsMultiOn) {
-                    if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
-                    if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
-                    if (!this.lockedColors.sec && this.hasSecs()) {
-                        this.varsMulti.sec1.setVals(vals);
-                        this.varsMulti.sec2.setVals(vals);
-                    }
-                    this.varsActive = "pri";
-                    this.vars = this.varsMulti.pri;
-                } else {
-                    this.vars.setVals(vals);
+            var calcGroupVals = function(groupKey, gHue) {
+                var rgbs = [];
+                for (var s = 0; s < 5; s++) {
+                    var ptL = curve[s][0];
+                    var ptC = curve[s][1];
+                    var lJitter = oklch.randomGaussian(rng, 0, 0.015 * chaos);
+                    var cJitter = oklch.randomGaussian(rng, 0, 0.01 * chaos);
+                    var finalL = Math.max(0.02, Math.min(0.99, ptL + lJitter));
+                    var finalC = Math.max(0.005, Math.min(0.35, ptC + cJitter));
+                    rgbs[s] = oklch.oklchToSrgb(finalL, finalC, gHue);
                 }
-            }
 
-            this.locked = false;
-            this.modelChanged();
-            return this.colorChanged();
-        }, i.prototype.randomizeKeepMood = function() {
-            this.locked = true;
-            if (!this.lockedColors.pri) {
-                var step = 45 + Math.floor(Math.random() * 270);
-                this.setHue((this.hue + step) % 360);
-            }
-            if (!this.lockedColors.sec && this.hasSecs()) {
-                var angle = Math.floor(20 + Math.random() * 45);
-                this.setAngle(angle);
-            }
-            this.locked = false;
-            this.modelChanged();
-            return this.colorChanged();
-        }, i.prototype.randomizeVariations = function() {
-            this.locked = true;
-            if (!this.lockedColors.pri) {
-                var deltaH = Math.round((Math.random() * 24 - 12));
-                this.setHue((this.hue + deltaH + 360) % 360);
-            }
-            if (!this.lockedColors.sec && this.hasSecs()) {
-                var deltaA = Math.round((Math.random() * 12 - 6));
-                this.setAngle(Math.max(10, Math.min(80, this.angle + deltaA)));
-            }
-            var vals = this.vars.getVals();
-            for (var j = 0; j < vals.length; j++) {
-                vals[j][0] = Math.max(0.02, Math.min(1.0, vals[j][0] + (Math.random() * 0.08 - 0.04)));
-                vals[j][1] = Math.max(0.08, Math.min(1.0, vals[j][1] + (Math.random() * 0.08 - 0.04)));
-            }
+                // Exact WCAG Contrast Guarantee using fitContrast
+                var bgRgb = rgbs[4];
+                var textFit = oklch.fitContrast({ L: curve[3][0], C: curve[3][1], H: gHue }, bgRgb, targetRatio);
+                rgbs[3] = textFit.rgb;
+
+                var priMinRatio = (profile === "minimal" || profile === "saas") ? 3.0 : 2.5;
+                var priFit = oklch.fitContrast({ L: curve[0][0], C: curve[0][1], H: gHue }, bgRgb, priMinRatio);
+                rgbs[0] = priFit.rgb;
+
+                // Map into Paletton internal [kS, kV]
+                var groupVals = [];
+                for (var k = 0; k < 5; k++) {
+                    var col = new o(gHue);
+                    col.setByRGB(rgbs[k]);
+                    groupVals[k] = [col.kS, col.kV];
+                }
+                return groupVals;
+            };
+
+            var priVals = calcGroupVals("pri", this.hue);
+
             if (this.varsMultiOn) {
-                if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
-                if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
+                if (!this.lockedColors.pri) this.varsMulti.pri.setVals(priVals);
+                if (!this.lockedColors.compl && this.hasCompl()) {
+                    this.varsMulti.compl.setVals(calcGroupVals("compl", this.hueCompl));
+                }
                 if (!this.lockedColors.sec && this.hasSecs()) {
-                    this.varsMulti.sec1.setVals(vals);
-                    this.varsMulti.sec2.setVals(vals);
+                    this.varsMulti.sec1.setVals(calcGroupVals("sec1", this.hueSec1));
+                    this.varsMulti.sec2.setVals(calcGroupVals("sec2", this.hueSec2));
                 }
                 this.varsActive = "pri";
                 this.vars = this.varsMulti.pri;
             } else {
-                this.vars.setVals(vals);
+                this.vars.setVals(priVals);
             }
+
+            if (prof.typoCategory && this.randomizeTypography) {
+                this.randomizeTypography(prof.typoCategory);
+            }
+
+            this.locked = false;
+            this.modelChanged();
+            this.colorChanged();
+            t.trigger("palette/seed/changed", { seed: this.currentSeed });
+            return this.getContrastReport();
+        }, i.prototype.randomizeKeepMood = function(options) {
+            options = options || {};
+            this.locked = true;
+            var rng = Math.random;
+
+            if (!this.lockedColors.pri) {
+                var step = 45 + Math.floor(rng() * 270);
+                this.setHue((this.hue + step) % 360);
+            }
+            if (!this.lockedColors.sec && this.hasSecs()) {
+                var angle = Math.floor(20 + rng() * 45);
+                this.setAngle(angle);
+            }
+
+            var groups = ["pri"];
+            if (this.hasSecs()) groups.push("sec1", "sec2");
+            if (this.hasCompl()) groups.push("compl");
+
+            for (var g = 0; g < groups.length; g++) {
+                var grp = groups[g];
+                var varsObj = this.varsMultiOn ? this.varsMulti[grp] : this.vars;
+                if (!varsObj) continue;
+
+                var vals = varsObj.getVals();
+                var gHue = (grp === "pri" ? this.hue : (grp === "compl" ? this.hueCompl : (grp === "sec1" ? this.hueSec1 : this.hueSec2))) || this.hue;
+
+                for (var j = 0; j < vals.length; j++) {
+                    var col = new o(gHue);
+                    col.setSV(vals[j][0], vals[j][1]);
+                    var curOklch = oklch.srgbToOklch(col.rgb.r, col.rgb.g, col.rgb.b);
+                    var newRgb = oklch.oklchToSrgb(curOklch.L, curOklch.C, gHue);
+                    col.setByRGB(newRgb);
+                    vals[j] = [col.kS, col.kV];
+                }
+                varsObj.setVals(vals);
+                if (!this.varsMultiOn) break;
+            }
+
+            this.locked = false;
+            this.modelChanged();
+            return this.colorChanged();
+        }, i.prototype.randomizeVariations = function(options) {
+            options = options || {};
+            this.locked = true;
+            var chaos = options.chaos !== undefined ? options.chaos : (this.chaos || 1.0);
+            var rng = Math.random;
+
+            if (!this.lockedColors.pri) {
+                var deltaH = Math.round(oklch.randomGaussian(rng, 0, 6 * chaos));
+                this.setHue((this.hue + deltaH + 360) % 360);
+            }
+            if (!this.lockedColors.sec && this.hasSecs()) {
+                var deltaA = Math.round(oklch.randomGaussian(rng, 0, 4 * chaos));
+                this.setAngle(Math.max(15, Math.min(75, this.angle + deltaA)));
+            }
+
+            var groups = ["pri"];
+            if (this.hasSecs()) groups.push("sec1", "sec2");
+            if (this.hasCompl()) groups.push("compl");
+
+            for (var g = 0; g < groups.length; g++) {
+                var grp = groups[g];
+                var varsObj = this.varsMultiOn ? this.varsMulti[grp] : this.vars;
+                if (!varsObj) continue;
+                if (this.lockedColors[grp]) continue;
+
+                var vals = varsObj.getVals();
+                var gHue = (grp === "pri" ? this.hue : (grp === "compl" ? this.hueCompl : (grp === "sec1" ? this.hueSec1 : this.hueSec2))) || this.hue;
+
+                for (var j = 0; j < vals.length; j++) {
+                    var col = new o(gHue);
+                    col.setSV(vals[j][0], vals[j][1]);
+                    var curOklch = oklch.srgbToOklch(col.rgb.r, col.rgb.g, col.rgb.b);
+
+                    var dL = oklch.randomGaussian(rng, 0, 0.02 * chaos);
+                    var dC = oklch.randomGaussian(rng, 0, 0.015 * chaos);
+
+                    var newL = Math.max(0.02, Math.min(0.99, curOklch.L + dL));
+                    var newC = Math.max(0.005, Math.min(0.35, curOklch.C + dC));
+                    var newRgb = oklch.oklchToSrgb(newL, newC, curOklch.H);
+
+                    col.setByRGB(newRgb);
+                    vals[j] = [col.kS, col.kV];
+                }
+                varsObj.setVals(vals);
+                if (!this.varsMultiOn) break;
+            }
+
             this.locked = false;
             this.modelChanged();
             return this.colorChanged();
@@ -1147,53 +1121,88 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
         }, i.prototype.setHarmonyMode = function(mode) {
             return this.generateMode(mode);
         }, i.prototype.randomizeQuick = function() {
-            var profiles = ["saas", "minimal", "nature", "luxury", "playful", "pastel", "monochrome", "cyberpunk", "earth", "ocean", "sunset", "editorial", "retro", "darkui"];
-            var p = profiles[Math.floor(Math.random() * profiles.length)];
-            return this.randomizeProfile(p);
+            var allProfiles = Object.keys(oklch.OKLCH_PROFILES);
+            var last = (this.lastProfiles && this.lastProfiles[0]) ? this.lastProfiles[0] : "";
+            var pool = allProfiles.filter(function(k) { return k !== last; });
+            if (!pool.length) pool = allProfiles;
+            var p = pool[Math.floor(Math.random() * pool.length)];
+            return this.randomizeProfile(p, { seed: oklch.generateSeed() });
         }, i.prototype.randomizeWCAG = function(targetRatio) {
-            if (!targetRatio) targetRatio = 4.5;
+            targetRatio = targetRatio || 4.5;
             this.locked = true;
+
+            var newSeed = oklch.generateSeed();
+            this.currentSeed = newSeed;
+            var rng = oklch.mulberry32(oklch.stringToSeed(newSeed));
+
             if (!this.lockedColors.pri) {
-                var newHue = Math.floor(Math.random() * 360);
+                var newHue = Math.floor(rng() * 360);
                 this.setHue(newHue);
             }
             if (!this.lockedColors.sec) {
                 var models = ["triad", "tetrad", "analogcompl", "monocompl", "analog", "mono"];
-                var mId = models[Math.floor(Math.random() * models.length)];
+                var mId = models[Math.floor(rng() * models.length)];
                 this.setModel(mId);
                 if (this.hasSecs()) {
-                    var angle = Math.floor(25 + Math.random() * 35);
+                    var angle = Math.floor(25 + rng() * 35);
                     this.setAngle(angle);
                 }
             }
+
             var isAAA = targetRatio >= 7.0;
-            var darkVal = isAAA ? 0.10 : 0.16;
-            var lightVal = isAAA ? 0.99 : 0.96;
-            var lightSat = isAAA ? 0.08 : 0.18;
-            var baseSat = Math.round((0.65 + Math.random() * 0.25) * 1000) / 1000;
-            var baseVal = Math.round((0.65 + Math.random() * 0.25) * 1000) / 1000;
-            var vals = [
-                [baseSat, baseVal],
-                [0.32, 0.90],
-                [0.75, 0.42],
-                [0.92, darkVal],
-                [lightSat, lightVal]
+            var bgL = isAAA ? 0.99 : 0.96;
+            var textL = isAAA ? 0.12 : 0.20;
+            var priL = isAAA ? 0.40 : 0.52;
+
+            var curve = [
+                [priL, 0.18],
+                [0.93, 0.04],
+                [0.68, 0.14],
+                [textL, 0.04],
+                [bgL, 0.005]
             ];
+
+            var calcGroupVals = function(gHue) {
+                var rgbs = [];
+                for (var s = 0; s < 5; s++) {
+                    rgbs[s] = oklch.oklchToSrgb(curve[s][0], curve[s][1], gHue);
+                }
+                var bgRgb = rgbs[4];
+                var fittedText = oklch.fitContrast({ L: curve[3][0], C: curve[3][1], H: gHue }, bgRgb, targetRatio);
+                rgbs[3] = fittedText.rgb;
+
+                var priTarget = isAAA ? 4.5 : 3.0;
+                var fittedPri = oklch.fitContrast({ L: curve[0][0], C: curve[0][1], H: gHue }, bgRgb, priTarget);
+                rgbs[0] = fittedPri.rgb;
+
+                var res = [];
+                for (var k = 0; k < 5; k++) {
+                    var col = new o(gHue);
+                    col.setByRGB(rgbs[k]);
+                    res[k] = [col.kS, col.kV];
+                }
+                return res;
+            };
+
+            var priVals = calcGroupVals(this.hue);
             if (this.varsMultiOn) {
-                if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
-                if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
+                if (!this.lockedColors.pri) this.varsMulti.pri.setVals(priVals);
+                if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(calcGroupVals(this.hueCompl));
                 if (!this.lockedColors.sec && this.hasSecs()) {
-                    this.varsMulti.sec1.setVals(vals);
-                    this.varsMulti.sec2.setVals(vals);
+                    this.varsMulti.sec1.setVals(calcGroupVals(this.hueSec1));
+                    this.varsMulti.sec2.setVals(calcGroupVals(this.hueSec2));
                 }
                 this.varsActive = "pri";
                 this.vars = this.varsMulti.pri;
             } else {
-                this.vars.setVals(vals);
+                this.vars.setVals(priVals);
             }
+
             this.locked = false;
             this.modelChanged();
-            return this.colorChanged();
+            this.colorChanged();
+            t.trigger("palette/seed/changed", { seed: this.currentSeed });
+            return this.getContrastReport();
         }, i.prototype.randomize = function(e, t, n, i) {
             var o, u, a, f, l, c, h;
             this.locked = !0, h = this;

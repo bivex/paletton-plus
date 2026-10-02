@@ -404,6 +404,420 @@
         return null;
     }
 
+    // === Seed-based PRNG & Gaussian Distribution ===
+    function mulberry32(seed) {
+        var s = (seed >>> 0);
+        return function() {
+            var t = s += 0x6D2B79F5;
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+    }
+
+    function stringToSeed(str) {
+        if (typeof str === "number") return str >>> 0;
+        if (!str) return (Math.random() * 0xFFFFFFFF) >>> 0;
+        var hash = 0;
+        for (var i = 0; i < str.length; i++) {
+            hash = Math.imul(31, hash) + str.charCodeAt(i) | 0;
+        }
+        return hash >>> 0;
+    }
+
+    function generateSeed() {
+        return Math.random().toString(36).substring(2, 10);
+    }
+
+    // Box-Muller Gaussian Jitter
+    function randomGaussian(rng, mean, stdDev) {
+        var u1 = rng();
+        var u2 = rng();
+        while (u1 <= 1e-7) u1 = rng();
+        var z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+        return (mean || 0) + z0 * (stdDev !== undefined ? stdDev : 1);
+    }
+
+    /**
+     * Binary search on OKLCH Lightness L to guarantee WCAG targetRatio (e.g. 4.5 or 7.0).
+     * Preserves H, applies gamut mapping on C at each step, and returns optimal readable L.
+     */
+    function fitContrast(fgOklch, bgRgb, targetRatio, options) {
+        options = options || {};
+        targetRatio = targetRatio || 4.5;
+        if (!bgRgb) bgRgb = { r: 255, g: 255, b: 255 };
+        var bgLum = getRelativeLuminance(bgRgb.r, bgRgb.g, bgRgb.b);
+
+        var curRgb = oklchToSrgb(fgOklch.L, fgOklch.C, fgOklch.H);
+        var curRatio = calcWcagContrast(curRgb, bgRgb);
+        if (curRatio >= targetRatio) {
+            return {
+                L: fgOklch.L,
+                C: fgOklch.C,
+                H: fgOklch.H,
+                rgb: curRgb,
+                ratio: curRatio,
+                passed: true
+            };
+        }
+
+        var maxDarkRatio = (bgLum + 0.05) / 0.05;
+        var maxLightRatio = 1.05 / (bgLum + 0.05);
+        var goDark = (bgLum >= 0.179 && maxDarkRatio >= targetRatio) || (maxLightRatio < targetRatio);
+
+        var lo = goDark ? 0.0 : Math.min(0.99, fgOklch.L);
+        var hi = goDark ? Math.max(0.01, fgOklch.L) : 1.0;
+
+        var bestL = goDark ? 0.0 : 1.0;
+        var bestRgb = oklchToSrgb(bestL, fgOklch.C, fgOklch.H);
+        var bestRatio = calcWcagContrast(bestRgb, bgRgb);
+
+        for (var i = 0; i < 20; i++) {
+            var mid = (lo + hi) * 0.5;
+            var testRgb = oklchToSrgb(mid, fgOklch.C, fgOklch.H);
+            var ratio = calcWcagContrast(testRgb, bgRgb);
+
+            if (goDark) {
+                if (ratio >= targetRatio) {
+                    bestL = mid;
+                    bestRgb = testRgb;
+                    bestRatio = ratio;
+                    lo = mid;
+                } else {
+                    hi = mid;
+                }
+            } else {
+                if (ratio >= targetRatio) {
+                    bestL = mid;
+                    bestRgb = testRgb;
+                    bestRatio = ratio;
+                    hi = mid;
+                } else {
+                    lo = mid;
+                }
+            }
+        }
+
+        if (bestRatio < targetRatio) {
+            var fallbackL = goDark ? 0.02 : 0.98;
+            bestL = fallbackL;
+            bestRgb = oklchToSrgb(bestL, 0.01, fgOklch.H);
+            bestRatio = calcWcagContrast(bestRgb, bgRgb);
+        }
+
+        var apca = calcAPCA(bestRgb, bgRgb);
+        return {
+            L: bestL,
+            C: fgOklch.C,
+            H: fgOklch.H,
+            rgb: bestRgb,
+            ratio: bestRatio,
+            apca: apca,
+            passed: bestRatio >= targetRatio
+        };
+    }
+
+    function fitContrastApca(fgOklch, bgRgb, targetLc, options) {
+        targetLc = Math.abs(targetLc || 60);
+        if (!bgRgb) bgRgb = { r: 255, g: 255, b: 255 };
+        var bgLum = getRelativeLuminance(bgRgb.r, bgRgb.g, bgRgb.b);
+        var curRgb = oklchToSrgb(fgOklch.L, fgOklch.C, fgOklch.H);
+        var curLc = Math.abs(calcAPCA(curRgb, bgRgb));
+        if (curLc >= targetLc) {
+            return { L: fgOklch.L, C: fgOklch.C, H: fgOklch.H, rgb: curRgb, apca: curLc, passed: true };
+        }
+
+        var goDark = bgLum >= 0.179;
+        var lo = goDark ? 0.0 : Math.min(0.99, fgOklch.L);
+        var hi = goDark ? Math.max(0.01, fgOklch.L) : 1.0;
+
+        var bestL = goDark ? 0.0 : 1.0;
+        var bestRgb = oklchToSrgb(bestL, fgOklch.C, fgOklch.H);
+        var bestLc = Math.abs(calcAPCA(bestRgb, bgRgb));
+
+        for (var i = 0; i < 20; i++) {
+            var mid = (lo + hi) * 0.5;
+            var testRgb = oklchToSrgb(mid, fgOklch.C, fgOklch.H);
+            var lc = Math.abs(calcAPCA(testRgb, bgRgb));
+            if (goDark) {
+                if (lc >= targetLc) {
+                    bestL = mid; bestRgb = testRgb; bestLc = lc;
+                    lo = mid;
+                } else {
+                    hi = mid;
+                }
+            } else {
+                if (lc >= targetLc) {
+                    bestL = mid; bestRgb = testRgb; bestLc = lc;
+                    hi = mid;
+                } else {
+                    lo = mid;
+                }
+            }
+        }
+        return { L: bestL, C: fgOklch.C, H: fgOklch.H, rgb: bestRgb, apca: bestLc, passed: bestLc >= targetLc };
+    }
+
+    function auditSemanticContrast(priRgb, bgRgb, textRgb, secRgb) {
+        if (!priRgb || !bgRgb || !textRgb) return null;
+        var textBgRatio = calcWcagContrast(textRgb, bgRgb);
+        var priBgRatio = calcWcagContrast(priRgb, bgRgb);
+        var secBgRatio = secRgb ? calcWcagContrast(secRgb, bgRgb) : null;
+
+        var apcaText = Math.abs(calcAPCA(textRgb, bgRgb));
+        var apcaPri = Math.abs(calcAPCA(priRgb, bgRgb));
+        var apcaSec = secRgb ? Math.abs(calcAPCA(secRgb, bgRgb)) : null;
+
+        var passesAA = textBgRatio >= 4.5 && priBgRatio >= 3.0;
+        var passesAAA = textBgRatio >= 7.0 && priBgRatio >= 4.5;
+
+        return {
+            textBgRatio: textBgRatio,
+            priBgRatio: priBgRatio,
+            secBgRatio: secBgRatio,
+            apcaText: apcaText,
+            apcaPri: apcaPri,
+            apcaSec: apcaSec,
+            passesAA: passesAA,
+            passesAAA: passesAAA,
+            score: Math.min(100, Math.round((Math.min(7.0, textBgRatio) / 7.0 * 50) + (Math.min(4.5, priBgRatio) / 4.5 * 50)))
+        };
+    }
+
+    // Comprehensive OKLCH Profiles Dictionary (22 profiles with [L, C] perceptual curves)
+    var OKLCH_PROFILES = {
+        saas: {
+            id: "saas",
+            name: "SaaS & Cloud Platform",
+            category: "ui",
+            hues: [220, 235, 250, 265, 175, 195],
+            models: ["analogcompl", "monocompl", "triad"],
+            angle: [24, 34],
+            curve: [[0.56, 0.16], [0.95, 0.03], [0.72, 0.10], [0.22, 0.04], [0.99, 0.005]],
+            typoCategory: "ui"
+        },
+        minimal: {
+            id: "minimal",
+            name: "Swiss Minimal & Bauhaus",
+            category: "ui",
+            hues: [30, 210, 355, 45, 150],
+            models: ["mono", "monocompl"],
+            angle: [25, 35],
+            curve: [[0.50, 0.08], [0.96, 0.01], [0.78, 0.03], [0.18, 0.02], [0.99, 0.002]],
+            typoCategory: "ui"
+        },
+        cyberpunk: {
+            id: "cyberpunk",
+            name: "Cyberpunk Neon 2077",
+            category: "game",
+            hues: [195, 325, 140, 60],
+            models: ["triad", "analogcompl"],
+            angle: [30, 50],
+            curve: [[0.72, 0.25], [0.86, 0.18], [0.60, 0.22], [0.16, 0.06], [0.08, 0.03]],
+            typoCategory: "game"
+        },
+        darkui: {
+            id: "darkui",
+            name: "Modern Dark Mode",
+            category: "ui",
+            hues: [215, 240, 275, 310, 180],
+            models: ["monocompl", "analogcompl", "triadcompl"],
+            angle: [25, 40],
+            curve: [[0.65, 0.17], [0.82, 0.08], [0.50, 0.12], [0.20, 0.03], [0.11, 0.015]],
+            typoCategory: "ui"
+        },
+        luxury: {
+            id: "luxury",
+            name: "Luxury & High Jewelry",
+            category: "editorial",
+            hues: [75, 82, 350, 240],
+            models: ["monocompl", "triadcompl"],
+            angle: [28, 42],
+            curve: [[0.68, 0.12], [0.95, 0.02], [0.52, 0.10], [0.18, 0.03], [0.98, 0.008]],
+            typoCategory: "editorial"
+        },
+        nature: {
+            id: "nature",
+            name: "Organic Botanical",
+            category: "ui",
+            hues: [135, 145, 155, 65, 80],
+            models: ["analogcompl", "analog", "triad"],
+            angle: [25, 35],
+            curve: [[0.55, 0.11], [0.94, 0.025], [0.70, 0.08], [0.24, 0.04], [0.98, 0.008]],
+            typoCategory: "ui"
+        },
+        playful: {
+            id: "playful",
+            name: "Playful & EdTech",
+            category: "ui",
+            hues: [45, 140, 240, 340],
+            models: ["triad", "tetrad"],
+            angle: [30, 48],
+            curve: [[0.65, 0.22], [0.93, 0.06], [0.75, 0.18], [0.25, 0.08], [0.98, 0.015]],
+            typoCategory: "ui"
+        },
+        pastel: {
+            id: "pastel",
+            name: "Soft Pastel Calm",
+            category: "ui",
+            hues: [195, 260, 330, 140],
+            models: ["triad", "analogcompl", "mono"],
+            angle: [25, 35],
+            curve: [[0.82, 0.07], [0.96, 0.02], [0.88, 0.05], [0.35, 0.04], [0.99, 0.005]],
+            typoCategory: "ui"
+        },
+        monochrome: {
+            id: "monochrome",
+            name: "Pure Monochromatic",
+            category: "ui",
+            hues: [220],
+            models: ["mono"],
+            angle: [30, 30],
+            curve: [[0.50, 0.01], [0.95, 0.002], [0.75, 0.005], [0.22, 0.005], [0.99, 0.001]],
+            typoCategory: "ui"
+        },
+        earth: {
+            id: "earth",
+            name: "Warm Earth & Terracotta",
+            category: "ui",
+            hues: [45, 60, 75, 85],
+            models: ["analogcompl", "triad"],
+            angle: [25, 38],
+            curve: [[0.52, 0.09], [0.93, 0.03], [0.68, 0.07], [0.22, 0.03], [0.98, 0.01]],
+            typoCategory: "ui"
+        },
+        ocean: {
+            id: "ocean",
+            name: "Deep Ocean & Aqua",
+            category: "ui",
+            hues: [190, 210, 230, 245],
+            models: ["analog", "analogcompl"],
+            angle: [25, 35],
+            curve: [[0.55, 0.14], [0.94, 0.03], [0.72, 0.10], [0.20, 0.05], [0.98, 0.008]],
+            typoCategory: "ui"
+        },
+        sunset: {
+            id: "sunset",
+            name: "Sunset Gradient",
+            category: "ui",
+            hues: [25, 45, 70, 320, 340],
+            models: ["analogcompl", "triad"],
+            angle: [28, 44],
+            curve: [[0.62, 0.19], [0.94, 0.04], [0.74, 0.14], [0.22, 0.06], [0.98, 0.01]],
+            typoCategory: "ui"
+        },
+        neutral_accent: {
+            id: "neutral_accent",
+            name: "Neutral Gray with Vibrant Accent",
+            category: "ui",
+            hues: [25, 140, 220, 280, 340],
+            models: ["monocompl"],
+            angle: [30, 30],
+            curve: [[0.60, 0.20], [0.95, 0.005], [0.80, 0.01], [0.20, 0.01], [0.99, 0.002]],
+            typoCategory: "ui"
+        },
+        editorial: {
+            id: "editorial",
+            name: "High Editorial Magazine",
+            category: "editorial",
+            hues: [30, 45, 140, 220, 350],
+            models: ["analogcompl", "triad"],
+            angle: [26, 40],
+            curve: [[0.48, 0.11], [0.95, 0.015], [0.70, 0.08], [0.18, 0.025], [0.98, 0.005]],
+            typoCategory: "editorial"
+        },
+        retro: {
+            id: "retro",
+            name: "Retro Synth & 70s Warmth",
+            category: "editorial",
+            hues: [45, 75, 145, 195],
+            models: ["triad", "tetrad"],
+            angle: [30, 46],
+            curve: [[0.58, 0.13], [0.92, 0.04], [0.72, 0.10], [0.26, 0.05], [0.97, 0.02]],
+            typoCategory: "editorial"
+        },
+        game_rpg: {
+            id: "game_rpg",
+            name: "Dark Fantasy RPG (Elden/Witcher)",
+            category: "game",
+            hues: [75, 30, 355, 275],
+            models: ["triadcompl", "analogcompl", "tetrad"],
+            angle: [26, 40],
+            curve: [[0.65, 0.15], [0.92, 0.03], [0.48, 0.12], [0.18, 0.04], [0.08, 0.02]],
+            typoCategory: "game"
+        },
+        game_cyberpunk: {
+            id: "game_cyberpunk",
+            name: "Sci-Fi HUD & Hologram",
+            category: "game",
+            hues: [195, 325, 140, 95],
+            models: ["triad", "analogcompl", "tetrad"],
+            angle: [32, 54],
+            curve: [[0.74, 0.26], [0.88, 0.18], [0.60, 0.22], [0.15, 0.08], [0.06, 0.03]],
+            typoCategory: "game"
+        },
+        game_arcade: {
+            id: "game_arcade",
+            name: "8-Bit Retro Arcade (NES/Famicom)",
+            category: "game",
+            hues: [30, 140, 230, 350],
+            models: ["triad", "tetrad"],
+            angle: [35, 55],
+            curve: [[0.68, 0.24], [0.90, 0.12], [0.76, 0.20], [0.22, 0.10], [0.98, 0.01]],
+            typoCategory: "game"
+        },
+        game_fps: {
+            id: "game_fps",
+            name: "Tactical Military FPS (CoD/Arma)",
+            category: "game",
+            hues: [115, 75, 50, 215],
+            models: ["monocompl", "analogcompl"],
+            angle: [24, 34],
+            curve: [[0.48, 0.09], [0.88, 0.03], [0.62, 0.07], [0.20, 0.03], [0.10, 0.02]],
+            typoCategory: "game"
+        },
+        game_horror: {
+            id: "game_horror",
+            name: "Survival Horror (Resident Evil)",
+            category: "game",
+            hues: [25, 355, 175, 270],
+            models: ["monocompl", "triad"],
+            angle: [25, 42],
+            curve: [[0.42, 0.14], [0.75, 0.05], [0.35, 0.10], [0.14, 0.03], [0.05, 0.015]],
+            typoCategory: "game"
+        },
+        game_cozy: {
+            id: "game_cozy",
+            name: "Cozy / Casual Mobile (Animal Crossing)",
+            category: "game",
+            hues: [340, 65, 150, 205],
+            models: ["triad", "tetrad", "analogcompl"],
+            angle: [28, 48],
+            curve: [[0.72, 0.17], [0.94, 0.05], [0.82, 0.13], [0.32, 0.06], [0.99, 0.01]],
+            typoCategory: "game"
+        },
+        game_esports: {
+            id: "game_esports",
+            name: "Esports Arena (Apex/Valorant)",
+            category: "game",
+            hues: [85, 355, 200, 275],
+            models: ["monocompl", "triad"],
+            angle: [34, 52],
+            curve: [[0.70, 0.25], [0.88, 0.15], [0.55, 0.20], [0.16, 0.06], [0.07, 0.025]],
+            typoCategory: "game"
+        },
+        game_space: {
+            id: "game_space",
+            name: "Deep Space Sci-Fi (EVE/Starfield)",
+            category: "game",
+            hues: [190, 280, 45, 230],
+            models: ["analogcompl", "triadcompl"],
+            angle: [28, 46],
+            curve: [[0.62, 0.18], [0.86, 0.10], [0.50, 0.15], [0.16, 0.05], [0.07, 0.02]],
+            typoCategory: "game"
+        }
+    };
+
     return {
         srgbToLinear: srgbToLinear,
         linearToSrgb: linearToSrgb,
@@ -424,7 +838,15 @@
         formatColorString: formatColorString,
         formatHexColor: formatHexColor,
         TONAL_STEPS: TONAL_STEPS,
-        TONAL_LIGHTNESS: TONAL_LIGHTNESS
+        TONAL_LIGHTNESS: TONAL_LIGHTNESS,
+        mulberry32: mulberry32,
+        stringToSeed: stringToSeed,
+        generateSeed: generateSeed,
+        randomGaussian: randomGaussian,
+        fitContrast: fitContrast,
+        fitContrastApca: fitContrastApca,
+        auditSemanticContrast: auditSemanticContrast,
+        OKLCH_PROFILES: OKLCH_PROFILES
     };
 });
     }.call(this),function(){define("color.rgb.class",["color.cmyk.class","color.lab.class","util","color.oklch"],function(e,t,n,oklch){var r;return r=function(){function r(e,t,n){this.set(e,t,n)}return r.prototype.set=function(e,t,n){return this.r=Math.round(e>255?255:e>0?e:0),this.g=Math.round(t>255?255:t>0?t:0),this.b=Math.round(n>255?255:n>0?n:0)},r.prototype.setNormalized=function(e,t,n){var r,i;return i=Math.max(e,t,n),i>255&&(r=255/i,e=Math.round(e*r),t=Math.round(t*r),n=Math.round(n*r)),this.set(e,t,n)},r.prototype.setByHex=function(e){var t,r,i,s;return s=n.hex2rgb(e),i=s[0],r=s[1],t=s[2],this.set(i,r,t)},r.prototype.copy=function(){return new r(this.r,this.g,this.b)},r.prototype.getCSS=function(e){return e!=null?"rgba("+this.r+","+this.g+","+this.b+","+e+")":"rgb("+this.r+","+this.g+","+this.b+")"},r.prototype.getTextVal=function(e){return e==null&&(e="–"),this.r+e+this.g+e+this.b},r.prototype.getTextPerc=function(e,t,r){var i;return e||(e=0),t?(i="",r==null&&(r="–")):(i=" %",r==null&&(r=" – ")),n.round(this.r/255*100,e)+i+r+n.round(this.g/255*100,e)+i+r+n.round(this.b/255*100,e)+i},r.prototype.getHex=function(e){var t;return t="",e&&(t="#"),t+=n.dec2hex(this.r)+n.dec2hex(this.g)+n.dec2hex(this.b),t},r.prototype.getLum=function(){return(this.r*.299+this.g*.587+this.b*.114)/255},r.prototype.getLumWCAG=function(){var e;return e=function(e){var t;return t=e/255,t<=.03928?t/12.92:Math.pow((t+.055)/1.055,2.4)},e(this.r)*.2126+e(this.g)*.7152+e(this.b)*.0722},r.prototype.getLAB=function(){var e;return e=new t(0,0,0),e.setByRGB(this),e},r.prototype.getCMYK=function(){var t;return t=new e(0,0,0,0),t.setByRGB(this),t},r.prototype.getOKLCH=function(){return oklch.srgbToOklch(this.r,this.g,this.b)},r.prototype.getTextOKLCH=function(){var o=this.getOKLCH();return oklch.formatCssOklch(o.L,o.C,o.H)},r.prototype.setByOKLCH=function(L,C,H){var c=oklch.oklchToSrgb(L,C,H);return this.set(c.r,c.g,c.b)},r.prototype.getTonalScale=function(options){return oklch.generateTonalScale(this.r,this.g,this.b,options)},r.prototype.getAPCA=function(bg){return oklch.calcAPCA(this,bg||{r:255,g:255,b:255})},r.prototype.getContrast=function(other){return r.calcContrast(this,other)},r.calcContrast=function(c1,c2){if(!c1||!c2)return 1;var getL=function(c){if(typeof c.getLumWCAG==="function")return c.getLumWCAG();var e=function(val){var t=(val||0)/255;return t<=.03928?t/12.92:Math.pow((t+.055)/1.055,2.4)};var cr=c.r!=null?c.r:(c[0]||0),cg=c.g!=null?c.g:(c[1]||0),cb=c.b!=null?c.b:(c[2]||0);return e(cr)*.2126+e(cg)*.7152+e(cb)*.0722};var l1=getL(c1)+.05,l2=getL(c2)+.05,ratio=l1>l2?l1/l2:l2/l1;return Math.round(ratio*100)/100},r.calcAPCA=function(txt,bg){return oklch.calcAPCA(txt,bg);},r.prototype.getConverted=function(e,t){return e(this,t)},r}(),r})}.call(this),function(){define("color.wheel",["color.hsv.class","color.rgb.class"],function(e,t){var n,r,i,s,o,u,a,f,l,c,h;return s=function(e,t,n){return n===-1?e:e+(t-e)/(1+n)},i=function(e,t,n){return n===-1?t:t+(e-t)/(1+n)},f={r:{rgb:new t(255,0,0),hsv:new e(0,1,1)},rg:{rgb:new t(255,255,0),hsv:new e(120,1,1)},g:{rgb:new t(0,255,0),hsv:new e(180,1,.8)},gb:{rgb:new t(0,255,255),hsv:new e(210,1,.6)},b:{rgb:new t(0,0,255),hsv:new e(255,.85,.7)},br:{rgb:new t(255,0,255),hsv:new e(315,1,.65)}},u=function(e){return e<120?h:e<180?c:e<210?a:e<255?o:e<315?n:r},h={a:f.r,b:f.rg,f:function(e){return e===0?-1:Math.tan((120-e)/120*Math.PI/2)*.5},fi:function(e){return e===-1?0:120-Math.atan(e/.5)*120/Math.PI*2},g:s,orderRGB:function(e,n,r){return new t(e,n,r)}},c={a:f.rg,b:f.g,f:function(e){return e===180?-1:Math.tan((e-120)/60*Math.PI/2)*.5},fi:function(e){return e===-1?180:120+Math.atan(e/.5)*60/Math.PI*2},g:i,orderRGB:function(e,n,r){return new t(n,e,r)}},a={a:f.g,b:f.gb,f:function(e){return e===180?-1:Math.tan((210-e)/30*Math.PI/2)*.75},fi:function(e){return e===-1?180:210-Math.atan(e/.75)*30/Math.PI*2},g:s,orderRGB:function(e,n,r){return new t(r,e,n)}},o={a:f.gb,b:f.b,f:function(e){return e===255?-1:Math.tan((e-210)/45*Math.PI/2)*1.33},fi:function(e){return e===-1?255:210+Math.atan(e/1.33)*45/Math.PI*2},g:i,orderRGB:function(e,n,r){return new t(r,n,e)}},n={a:f.b,b:f.br,f:function(e){return e===255?-1:Math.tan((315-e)/60*Math.PI/2)*1.33},fi:function(e){return e===-1?255:315-Math.atan(e/1.33)*60/Math.PI*2},g:s,orderRGB:function(e,n,r){return new t(n,r,e)}},r={a:f.br,b:f.r,f:function(e){return(e%360===0)?-1:Math.tan((e-315)/45*Math.PI/2)*1.33},fi:function(e){return e===-1?0:315+Math.atan(e/1.33)*45/Math.PI*2},g:i,orderRGB:function(e,n,r){return new t(e,r,n)}},l={getBaseColorByHue:function(t){var n,r,i,s;return t=(t%360+360)%360,n=u(t),r=n.f(t),s=n.g(n.a.hsv.v,n.b.hsv.v,r),i=n.g(n.a.hsv.s,n.b.hsv.s,r),new e(t,i,s)},hsv2rgb:function(e){var t,n,r,i,s,o,a;return a=(e.h%360+360)%360,t=u(a),n=t.f(a),o=t.a.rgb,r=Math.max(o.r,Math.max(o.g,o.b)),r*=e.v,s=r*(1-e.s),n===-1?i=s:i=(r+s*n)/(1+n),t.orderRGB(r,i,s)},rgb2hsv:function(t){var i,s,u,f,l,p,d,v;return t.r===t.b&&t.r===t.g?(s=0,d=0,v=t.getLum()):(f=Math.max(t.r,Math.max(t.g,t.b)),p=Math.min(t.r,Math.min(t.g,t.b)),f===t.r?p===t.b?(l=t.g,i=h):(l=t.b,i=r):f===t.g?p===t.r?(l=t.b,i=a):(l=t.r,i=c):p===t.r?(l=t.g,i=o):(l=t.r,i=n),l===p?u=-1:u=(f-l)/(l-p),s=i.fi(u),d=(f-p)/f,v=f/255),new e(s,d,v)}},l})}.call(this),function(){define("color.presets",["util"],function(e){var t,n,r,i,s;i={"pale-light":{val:[[.24649,1.78676],[.09956,1.95603],[.17209,1.88583],[.32122,1.65929],[.39549,1.50186]]},"pastels-bright":{val:[[.65667,1.86024],[.04738,1.99142],[.39536,1.89478],[.90297,1.85419],[1.86422,1.8314]]},shiny:{val:[[1.00926,2],[.3587,2],[.5609,2],[2,.8502],[2,.65438]]},"pastels-lightest":{val:[[.34088,1.09786],[.13417,1.62645],[.23137,1.38072],[.45993,.92696],[.58431,.81098]]},"pastels-very-light":{val:[[.58181,1.32382],[.27125,1.81913],[.44103,1.59111],[.70192,1.02722],[.84207,.91425]]},full:{val:[[1,1],[.61056,1.24992],[.77653,1.05996],[1.06489,.77234],[1.25783,.60685]]},"pastels-light":{val:[[.37045,.90707],[.15557,1.28367],[.25644,1.00735],[.49686,.809],[.64701,.69855]]},"pastels-med":{val:[[.66333,.8267],[.36107,1.30435],[.52846,.95991],[.78722,.70882],[.91265,.5616]]},darker:{val:[[.93741,.68672],[.68147,.88956],[.86714,.82989],[1.12072,.5673],[1.44641,.42034]]},"pastels-mid-pale":{val:[[.38302,.68001],[.15521,.98457],[.26994,.81586],[.46705,.54194],[.64065,.44875]]},pastels:{val:[[.66667,.66667],[.33333,1],[.5,.83333],[.83333,.5],[1,.33333]]},"dark-neon":{val:[[.94645,.59068],[.99347,.91968],[.93954,.7292],[1.01481,.41313],[1.04535,.24368]]},"pastels-dark":{val:[[.36687,.39819],[.25044,.65561],[.319,.54623],[.55984,.37953],[.70913,.3436]]},"pastels-very-dark":{val:[[.60117,.41845],[.36899,.59144],[.42329,.44436],[.72826,.35958],[.88393,.27004]]},dark:{val:[[1.31883,.40212],[.9768,.25402],[1.27265,.30941],[1.21289,.60821],[1.29837,.82751]]},"pastels-mid-dark":{val:[[.26952,.22044],[.23405,.52735],[.23104,.37616],[.42324,.20502],[.54424,.18483]]},"pastels-darkest":{val:[[.53019,.23973],[.48102,.50306],[.50001,.36755],[.6643,.32778],[.77714,.3761]]},darkest:{val:[[1.46455,.21042],[.99797,.16373],[.96326,.274],[1.56924,.45022],[1.23016,.66]]},"almost black":{val:[[.12194,.15399],[.34224,.50742],[.24211,.34429],[.31846,.24986],[.52251,.33869]]},"almost-gray-dark":{val:[[.10266,.24053],[.13577,.39387],[.11716,.30603],[.14993,.22462],[.29809,.19255]]},"almost-gray-darker":{val:[[.07336,.36815],[.18061,.50026],[.09777,.314],[.12238,.25831],[.14388,.1883]]},"almost-gray-mid":{val:[[.07291,.59958],[.19602,.74092],[.10876,.5366],[.15632,.48229],[.20323,.42268]]},"almost-gray-lighter":{val:[[.06074,.82834],[.14546,.97794],[.10798,.76459],[.15939,.68697],[.22171,.62926]]},"almost-gray-light":{val:[[.03501,1.59439],[.23204,1.10483],[.14935,1.33784],[.07371,1.04897],[.09635,.91368]]}},r=[];for(t in i)n=i[t],r.push(t);return s={presetList:i,getPresetCount:function(){return r.length},getPresetId:function(e){return r[e]}},s})}.call(this),function(){define("color.class",["color.rgb.class","color.hsv.class","color.wheel","util"],function(e,t,n,r){var i;return i=function(){function e(e){this._setHue(e),this._setSV(0,0),this.hsv=new t(0,0,0),this._update()}return e.prototype._setHue=function(e){return e=Math.round(r.angleNorm(e)),this.baseHSV=n.getBaseColorByHue(e)},e.prototype._setSV=function(e,t){return this.kS=r.intervalNorm(e,0,2),this.kV=r.intervalNorm(t,0,2)},e.prototype._update=function(){var e;return e=function(e,t){return t<=1?e*t:e+(1-e)*(t-1)},this.hsv.set(this.baseHSV.h,e(this.baseHSV.s,this.kS),e(this.baseHSV.v,this.kV)),this.rgb=n.hsv2rgb(this.hsv)},e.prototype.setHue=function(e){return this._setHue(e),this._update()},e.prototype.setSV=function(e,t){return this._setSV(e,t),this._update()},e.prototype.setByHSV=function(e){var t,n,r;return t=function(e,t){return e===0?0:t<=e?t/e:1-e<=0?1:(t-e)/(1-e)+1},this._setHue(e.h),n=t(this.baseHSV.s,e.s),r=t(this.baseHSV.v,e.v),this._setSV(n,r),this._update()},e.prototype.setByRGB=function(e){return this.setByHSV(n.rgb2hsv(e))},e.prototype.rotate=function(e){var t;return t=r.angleAdd(this.baseHSV.h,e),this.setHue(t)},e.prototype.getCSS=function(e){return this.rgb.getCSS(e)},e.prototype.getTextVal=function(e){return this.rgb.getTextVal(e)},e.prototype.getTextPerc=function(e,t,n){return this.rgb.getTextPerc(e,t,n)},e.prototype.getHex=function(e){return this.rgb.getHex(e)},e.prototype.getLum=function(){return this.rgb.getLum()},e.prototype.getLumWCAG=function(){return this.rgb.getLumWCAG()},e.prototype.getCMYK=function(){return this.rgb.getCMYK()},e.prototype.getTextCMYK=function(e,t,n){var r;return r=this.rgb.getCMYK(),r.getTextPerc(e,t,n)},e.prototype.getOKLCH=function(){return this.rgb.getOKLCH()},e.prototype.getTextOKLCH=function(){return this.rgb.getTextOKLCH()},e.prototype.getTonalScale=function(options){return this.rgb.getTonalScale(options)},e.prototype.getAPCA=function(bg){return this.rgb.getAPCA(bg)},e.prototype.getContrast=function(other){return this.rgb.getContrast(other&&other.rgb?other.rgb:other)},e.prototype.getConverted=function(e,t){return this.rgb.getConverted(e,t)},e}(),i})}.call(this),function(){define("color.models.class",["util","color.class"],function(e,t){var n,r,i,s,o,u,a,f,l,c;return l=function(t){return e.angleAdd(t,180)},u=function(t,n){return e.angleAdd(t,n)},o=function(t,n){return e.angleAdd(t,-n)},f=function(t,n){return e.angleAdd(t+180,n)},a=function(t,n){return e.angleAdd(t+180,-n)},s=function(e){return e<0?-e:e},i=function(e){return e<0?180+e:180-e},r=function(e){return e<0?-e:180-e},n=function(){function t(e,t,n,r){this.fnGetCompl=e,this.fnGetSecCW=t,this.fnGetSecCCW=n,this.fnFixAngle=r,this.minD=5,this.maxD=175,this.swapped=!1}return t.prototype.getAngle=function(t){return this.fnFixAngle&&(t=this.fnFixAngle(t)),e.intervalNorm(t,this.minD,this.maxD)},t.prototype.getComplement=function(e){return this.fnGetCompl?this.fnGetCompl(e):null},t.prototype.swapSecs=function(){return this.swapped=!this.swapped},t.prototype.getSec1=function(t,n){var r;return r=this.fnGetSecCW,this.swapped&&(r=this.fnGetSecCCW),r?r(t,e.intervalNorm(n,this.minD,this.maxD)):null},t.prototype.getSec2=function(t,n){var r;return r=this.fnGetSecCCW,this.swapped&&(r=this.fnGetSecCW),r?r(t,e.intervalNorm(n,this.minD,this.maxD)):null},t}(),c={mono:new n(null,null,null,null),monocompl:new n(l,null,null,null),triad:new n(null,f,a,i),triadcompl:new n(l,f,a,i),analog:new n(null,u,o,s),analogcompl:new n(l,u,o,s),tetrad:new n(l,u,f,r)},c})}.call(this),function(){define("geometry.point.class",["util"],function(e){var t;return t=function(){function t(e){this.plane=e,this.x=0,this.y=0,this.r=0,this.theta=0,this.limit={type:"radius",value:{min:0,max:1}}}return t.prototype.setLimit=function(e){this.limit=e},t.prototype.setXY=function(t,n){var r;return this.x=t,this.y=n,r=e.xy2polar(this.x,this.y),this.r=r[0],this.theta=r[1],r},t.prototype.setPolar=function(t,n){var r;return this.r=t,n>2*Math.PI&&(n-=2*Math.PI),n<0&&(n+=2*Math.PI),this.theta=n,r=e.polar2xy(this.r,this.theta),this.x=r[0],this.y=r[1],r},t.prototype.getSqrXY=function(t){var n,r,i;return t||(t=1),i=this.getSqrPolar(),n=i[0],r=i[1],e.polar2xy(n/t,r)},t.prototype.setSqrXY=function(t,n,r){var i,s,o;return r||(r=1),o=e.xy2polar(t,n),i=o[0],s=o[1],this.setSqrPolar(i*r,s)},t.prototype.getSqrPolar=function(){var e;return e=Math.max(Math.abs(Math.sin(this.theta)),Math.abs(Math.cos(this.theta))),[this.r/e,this.theta]},t.prototype.setSqrPolar=function(e,t){var n;return n=Math.max(Math.abs(Math.sin(t)),Math.abs(Math.cos(t))),this.setPolar(e*n,t)},t.prototype.getXY=function(){return[this.x,this.y]},t.prototype.getPolar=function(){return[this.r,this.theta]},t.prototype.getCopy=function(){var e;return e=new t,e.x=this.x,e.y=this.y,e.r=this.r,e.theta=this.theta,e},t.prototype.getLimited=function(){var e;return this.limit?(e=new t(this.plane),e.setXY(this.x,this.y),e.setLimit(this.limit),e.doLimit(),e):this},t.prototype.getCanvasPos=function(){return this.plane.getCanvasPos(this.x,this.y)},t.prototype.getPagePos=function(){return this.plane.getPagePos(this.x,this.y)},t.prototype.setXYByCanvasPos=function(e){var t;return t=this.plane.getXYbyCanvasPos(e),this.setXY(t.x,t.y)},t.prototype.setXYByPagePos=function(e){var t;return t=this.plane.getXYbyPagePos(e),this.setXY(t.x,t.y)},t.prototype.doLimit=function(){var e,t,n;if(this.limit.type==="radius")return e=Math.min(Math.max(this.r,this.limit.value.min),this.limit.value.max),this.setPolar(e,this.theta,!0);if(this.limit.type==="bounds")return t=Math.min(Math.max(this.x,this.limit.value.xMin),this.limit.value.xMax),n=Math.min(Math.max(this.y,this.limit.value.yMin),this.limit.value.yMax),this.setXY(t,n,!0)},t.prototype.getDistance=function(e){var t,n;return t=this.x-e.x,n=this.y-e.y,Math.sqrt(t*t+n*n)},t.prototype.getAngle=function(e,n){var r,i,s;return i=new t(this.plane),s=new t(this.plane),i.setXY(e.x-this.x,e.y-this.y),s.setXY(n.x-this.x,n.y-this.y),r=i.theta-s.theta},t}(),t})}.call(this),function(){define("lib.point.follower",[],function(){var e,t,n;return t=function(){function t(e,t){this.x=Math.max(-1,Math.min(1,e)),this.y=Math.max(-1,Math.min(1,t))}return t.prototype.toDef=function(){var t,n,r,i,s;return r=this.rot_z(Math.PI/4),r.x<1?(t=r.y/Math.sqrt(1-r.x*r.x),t=Math.max(-1,Math.min(1,t)),i=Math.asin(t)):i=0,r.y<1?(n=r.x,n=Math.max(-1,Math.min(1,n)),s=Math.asin(n)):s=0,new e(s,i)},t.prototype.rot_z=function(e){return new t(this.x*Math.cos(e)+this.y*Math.sin(e),-this.x*Math.sin(e)+this.y*Math.cos(e))},t}(),e=function(){function e(e,t){this.psi=e,this.phi=t}return e.prototype.toLoc=function(){var e,n,r,i,s;return r=Math.min(Math.max(this.psi,-Math.PI/2),Math.PI/2),n=Math.min(Math.max(this.phi,-Math.PI/2),Math.PI/2),i=Math.sin(r),s=Math.sin(n)*Math.cos(r),e=new t(i,s),e.rot_z(-Math.PI/4)},e.prototype.rot_x=function(t){var n,r;return n=Math.cos(this.psi),r=n?(this.phi/n+t)*n:this.phi,new e(this.psi,r)},e.prototype.rot_y=function(t){return new e(this.psi+t,this.phi)},e}(),n={createLoc:function(e,n){return new t(e,n)},createDef:function(t,n){return new e(t,n)},getLoc:function(e,t){return t.rot_x(e.toDef().phi).rot_y(e.toDef().psi).toLoc()},getDef:function(e,t){return t.toDef().rot_y(-e.toDef().psi).rot_x(-e.toDef().phi)}},n})}.call(this),function(){define("color.variator1.class",["color.wheel","color.presets","geometry.point.class","lib.point.follower","app.events","util"],function(e,t,n,r,i,s){var o,u;return u=[[.66667,.66667],[.33333,1],[.5,.83333],[.83333,.5],[1,.33333]],o=function(){function e(e,t,n){var r,i;this.palette=e,r={treshold:.5,minDistance:.05,onChange:null},i=this,this.options=s.objMerge(r,n),this.defs=[],this.point=[],this.values=[],this.setPreset(t),this.inited=!0}return e.prototype.getVal=function(e){return this.values[e]},e.prototype.getVals=function(e){return s.objCopy(this.values)},e.prototype.setVals=function(e){return this.values=e,this.calcPoints()},e.prototype.setValsTransformed=function(e){var t,n,r,i,s;r=[];for(t=i=0,s=e.length;i<s;t=++i)n=e[t],r.push(this.getValueTransform(n[0],n[1]));return this.setVals(r)},e.prototype.getDef=function(e){return this.defs[e]},e.prototype.setDef=function(e,t){return this.defs[e]=t},e.prototype.getPoint=function(e){return this.point[e]},e.prototype.getSerialized=function(){var e,t,n,r,i,o;t="",o=this.values;for(e=r=0,i=o.length;r<i;e=++r)n=o[e],t+=s.myB64.encodeFloat(n[0]/2,2),t+=s.myB64.encodeFloat(n[1]/2,2);return t},e.prototype.setSerialized=function(e){var t,n,r,i;r=[];for(t=i=0;i<=4;t=++i)r[t]=[],n=e.substring(t*4,t*4+2),r[t][0]=s.myB64.decodeFloat(n,2,6)*2,n=e.substring(t*4+2,t*4+4),r[t][1]=s.myB64.decodeFloat(n,2,6)*2;return this.setVals(r)},e.prototype.setMainVal=function(e){var t;return t=this.valToPoint(e),this.moveMain(t.x,t.y)},e.prototype.setValueTransform=function(e,t){var n,r,i,s;return r=this.options.treshold,n=function(e){return e<1?e*(r+1)-1:(e-1)*(1-r)+r},i=n(e),s=n(t),[i,-s]},e.prototype.getValueTransform=function(e,t){var n,r,i,o;return r=this.options.treshold,n=function(e){return e<r?(e+1)/(r+1):(e-r)/(1-r)+1},i=s.round(n(e),5),o=s.round(n(-t),5),[i,o]},e.prototype.valToPoint=function(e){var t,r,i,s;return s=this.setValueTransform(e[0],e[1]),r=s[0],i=s[1],t=new n(null),t.setSqrXY(r,i,this.radius),t},e.prototype.pointToVal=function(e){var t,n,r;return r=e.getLimited().getSqrXY(this.radius),t=r[0],n=r[1],this.getValueTransform(t,n)},e.prototype.calcVals=function(){var e,t,n;n=[];for(e=t=0;t<=4;e=++t)n.push(this.values[e]=this.pointToVal(this.point[e]));return n},e.prototype.calcPoints=function(){var e,t,n,i,s;s=[];for(e=i=0;i<=4;e=++i)this.point[e]=this.valToPoint(this.values[e]),e===0?s.push(n=this.pointToLoc(this.point[0])):(t=this.pointToLoc(this.point[e]),s.push(this.setDef(e,r.getDef(n,t))));return s},e.prototype.pointToLoc=function(e){return r.createLoc(e.x,e.y)},e.prototype.locToPoint=function(e,t){return e.setXY(t.x,t.y)},e.prototype.moveMain=function(e,t,n){var i,s,o,u;this.point[0].setXY(e,t),this.point[0].doLimit(),o=this.pointToLoc(this.point[0]);for(i=u=1;u<=4;i=++u)n?(s=this.pointToLoc(this.point[i]),this.setDef(i,r.getDef(o,s))):(s=r.getLoc(o,this.getDef(i)),this.locToPoint(this.point[i],s));return this.calcVals(),this.onChange()},e.prototype.moveSec=function(e,t,n,i){var s,o,u,a,f,l,c,h;if(i)return this.point[e].setXY(t,n),this.point[e].doLimit(),l=this.pointToLoc(this.point[0]),f=this.pointToLoc(this.point[e]),this.setDef(e,r.getDef(l,f)),this.calcVals(),this.onChange();c=this.point[e].getCopy(),h=this.point[e].getCopy(),h.setXY(t,n),h.doLimit(),o=this.point[0].getDistance(c),u=this.point[0].getDistance(h),o<this.options.minDistance&&(o=this.options.minDistance),u<this.options.minDistance&&(u=this.options.minDistance),s=this.point[0].getAngle(h,c),a=o>0?u/o:1;if(u<1)return this.rotate(s,a)},e.prototype.rotate2=function(e,t){var n,i,s,o,u,a;u=this.point[0],s=this.pointToLoc(u),console.log("rotate:");for(n=a=1;a<=4;n=++a)o=this.point[n],o.setXY(o.x-u.x,o.y-u.y),o.setPolar(o.r*t,o.theta+e),o.setXY(o.x+u.x,o.y+u.y),i=this.pointToLoc(o),console.log(n,t,o.r,o.theta),this.setDef(n,r.getDef(s,i));return this.calcVals(),this.onChange()},e.prototype.rotate=function(e,t){var n,i,s,o,u,a,f;a=this.point[0].getCopy(),this.point[0].setXY(0,0),s=this.pointToLoc(this.point[0]);for(n=f=1;f<=4;n=++f)o=this.point[n],u=o.getCopy(),i=r.getLoc(s,this.getDef(n)),this.locToPoint(o,i),o.setPolar(o.r*t,o.theta+e),i=this.pointToLoc(o),this.setDef(n,r.getDef(s,i));return this.moveMain(a.x,a.y,!1)},e.prototype.setPreset=function(e){return t.presetList[e]!=null?this.setVals(s.objCopy(t.presetList[e].val)):this.setVals(s.objCopy(u)),this.onChange()},e.prototype.addSaturation=function(e){return this.moveMain(this.point[0].x+e,this.point[0].y)},e.prototype.addBright=function(e){return this.moveMain(this.point[0].x,this.point[0].y-e)},e.prototype.addContrast=function(e){return e/=100,this.rotate(0,e)},e.prototype.onChange=function(){if(this.inited)return this.palette.varsChanged()},e}(),o})}.call(this),function(){define("color.convert",["color.rgb.class","util"],function(e,t){var n,r;return n={protanope:{x:.7465,y:.2535,m:1.273463,yint:-0.073894},deuteranope:{x:1.4,y:-0.4,m:.968437,yint:.003331},tritanope:{x:.1748,y:0,m:.062921,yint:.292119}},r={convert:function(r,i){var s,o,u,a,f,l,c,h,p,d,v,m,g,y,b,w,E,S,x,T,N,C,k,L,A,O,M,_,D,P,H,B,j,F,I,q,R,U,z,W;return g={type:"none",amount:1},B=t.objMerge(g,i),z=B.type,f=B.amount,f>1&&(f=1),f<0&&(f=0),U=r.r,R=r.g,q=r.b,C=U,w=C,m=C,z==="webcolor"?(C=Math.round(U/51)*51,w=Math.round(R/51)*51,m=Math.round(q/51)*51,new e(C,w,m)):z==="gamma"?(O=f*3,C=255*Math.pow(U/255,O),w=255*Math.pow(R/255,O),m=255*Math.pow(q/255,O),new e(C>>0,w>>0,m>>0)):z==="gray"?(_=Math.round(r.getLum()*255),C=U*(1-f)+_*f,w=R*(1-f)+_*f,m=q*(1-f)+_*f,new e(C>>0,w>>0,m>>0)):z==="achromatope"?(C=U*.212656+R*.715158+q*.072186,C=U*(1-f)+C*f,w=R*(1-f)+C*f,m=q*(1-f)+C*f,new e(C>>0,w>>0,m>>0)):(z==="custom"?(p=B.x,d=B.y,h=B.m,v=B.yint):(M=n[B.type])?(p=M.x,d=M.y,h=M.m,v=M.yint):z="none",B.type==="none"?r:(U===0&&R===0&&q===0?new e(0,0,0):(I=Math.pow(U,2.2),F=Math.pow(R,2.2),j=Math.pow(q,2.2),s=I*.412424+F*.357579+j*.180464,o=I*.212656+F*.715158+j*.0721856,u=I*.0193324+F*.119193+j*.950444,l=s/(s+o+u),c=o/(s+o+u),D=(c-d)/(l-p),W=c-l*D,y=(v-W)/(D-h),b=D*y+W,s=y*o/b,u=(1-(y+b))*o/b,P=.312713*o/.329016,H=.358271*o/.329016,E=P-s,S=H-u,N=E*3.24071+S*-0.498571,T=E*-0.969258+S*.0415557,x=E*.0556352+S*1.05707,C=s*3.24071+o*-1.53726+u*-0.498571,w=s*-0.969258+o*1.87599+u*.0415557,m=s*.0556352+o*-0.203996+u*1.05707,A=((C<0?0:1)-C)/N,L=((w<0?0:1)-w)/T,k=((m<0?0:1)-m)/x,a=Math.max(A>1||A<0?0:A,L>1||L<0?0:L,k>1||k<0?0:k),C+=a*N,w+=a*T,m+=a*x,C=Math.pow(Math.max(0,C),1/2.2),w=Math.pow(Math.max(0,w),1/2.2),m=Math.pow(Math.max(0,m),1/2.2),C=U*(1-f)+C*f,w=R*(1-f)+w*f,m=q*(1-f)+m*f,new e(C>>0,w>>0,m>>0))))}},r})}.call(this),function() {
@@ -982,7 +1404,7 @@
                 on: !1,
                 type: "none",
                 amount: 1
-            }, this.typography = TYPOGRAPHY_PAIRS[0], this.inited = !0, this.unlock(), this.modelChanged(), this.colorChanged(), s = this, this.hidden || (t.register("history/changed", function(e, t) {
+            }, this.typography = TYPOGRAPHY_PAIRS[0], this.currentSeed = oklch.generateSeed(), this.chaos = 1.0, this.lastProfiles = [], this.inited = !0, this.unlock(), this.modelChanged(), this.colorChanged(), s = this, this.hidden || (t.register("history/changed", function(e, t) {
                 return s.loadPalette(t.data)
             }), t.register("palette/load", function(e, t) {
                 return s.loadPalette(t)
@@ -1288,291 +1710,265 @@
                 if (favs[idx].uid === this.uid) return true;
             }
             return false;
+        }, i.prototype.getSeed = function() {
+            return this.currentSeed || (this.currentSeed = oklch.generateSeed());
+        }, i.prototype.setSeed = function(seed) {
+            if (!seed) return this.getSeed();
+            this.currentSeed = String(seed).trim();
+            t.trigger("palette/seed/changed", { seed: this.currentSeed });
+            return this.currentSeed;
+        }, i.prototype.getChaos = function() {
+            return this.chaos !== undefined ? this.chaos : 1.0;
+        }, i.prototype.setChaos = function(val) {
+            var c = parseFloat(val);
+            if (!isNaN(c) && c >= 0.1 && c <= 2.5) {
+                this.chaos = Math.round(c * 10) / 10;
+                t.trigger("palette/chaos/changed", { chaos: this.chaos });
+            }
+            return this.chaos;
         }, i.prototype.getContrastReport = function() {
             var cTable = this.colorTable && this.colorTable.byPalette && this.colorTable.byPalette.pri;
             if (!cTable || cTable.length < 5) return null;
             var baseRgb = cTable[0] ? cTable[0].rgb : null;
             var lightBgRgb = cTable[4] ? cTable[4].rgb : null;
             var darkTextRgb = cTable[3] ? cTable[3].rgb : null;
+            var secRgb = (this.colorTable.byPalette && this.colorTable.byPalette.sec1 && this.colorTable.byPalette.sec1[0]) ? this.colorTable.byPalette.sec1[0].rgb : null;
             if (!baseRgb || !lightBgRgb || !darkTextRgb) return null;
-            var textBgRatio = oklch.calcWcagContrast(darkTextRgb, lightBgRgb);
-            var priBgRatio = oklch.calcWcagContrast(baseRgb, lightBgRgb);
-            var apcaText = oklch.calcAPCA ? oklch.calcAPCA(darkTextRgb, lightBgRgb) : 0;
-            var apcaPri = oklch.calcAPCA ? oklch.calcAPCA(baseRgb, lightBgRgb) : 0;
-            return {
-                textBgRatio: textBgRatio,
-                priBgRatio: priBgRatio,
-                apcaText: apcaText,
-                apcaPri: apcaPri,
-                passesAA: priBgRatio >= 4.5 || textBgRatio >= 4.5,
-                passesAAA: textBgRatio >= 7.0
-            };
+            return oklch.auditSemanticContrast(baseRgb, lightBgRgb, darkTextRgb, secRgb);
         }, i.prototype.fixContrast = function(targetRatio) {
             targetRatio = targetRatio || 4.5;
             this.locked = true;
-            var vals = this.vars.getVals();
-            // Shade 4: light background
-            vals[4][0] = Math.min(vals[4][0], 0.05);
-            vals[4][1] = 0.99;
-            // Shade 1: light surface
-            vals[1][0] = Math.min(vals[1][0], 0.12);
-            vals[1][1] = 0.95;
-            // Shade 3: dark text
-            vals[3][0] = Math.max(vals[3][0], 0.70);
-            vals[3][1] = targetRatio >= 7.0 ? 0.08 : 0.14;
+            var cTable = this.colorTable && this.colorTable.byPalette && this.colorTable.byPalette.pri;
+            var bgRgb = (cTable && cTable[4] && cTable[4].rgb) ? cTable[4].rgb : { r: 255, g: 255, b: 255 };
 
-            // Shade 0: Base primary accent - ensure target ratio against light background
-            var baseSat = vals[0][0];
-            var baseVal = vals[0][1];
-            var h = this.hue;
-            var bgRgb = { r: 250, g: 250, b: 250 };
-            var colObj = new o(h);
-            colObj.setSV(baseSat, baseVal);
-            var testRgb = colObj.rgb;
-            var ratio = oklch.calcWcagContrast(testRgb, bgRgb);
-            if (ratio < targetRatio) {
-                while (baseVal > 0.20 && ratio < targetRatio) {
-                    baseVal -= 0.03;
-                    colObj.setSV(baseSat, baseVal);
-                    testRgb = colObj.rgb;
-                    ratio = oklch.calcWcagContrast(testRgb, bgRgb);
-                }
-                vals[0][1] = Math.round(baseVal * 100) / 100;
-            }
+            var groups = ["pri"];
+            if (this.hasSecs()) groups.push("sec1", "sec2");
+            if (this.hasCompl()) groups.push("compl");
 
-            if (this.varsMultiOn) {
-                if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
-                if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
-                if (!this.lockedColors.sec && this.hasSecs()) {
-                    this.varsMulti.sec1.setVals(vals);
-                    this.varsMulti.sec2.setVals(vals);
-                }
-                this.varsActive = "pri";
-                this.vars = this.varsMulti.pri;
-            } else {
-                this.vars.setVals(vals);
+            for (var g = 0; g < groups.length; g++) {
+                var grp = groups[g];
+                var varsObj = this.varsMultiOn ? this.varsMulti[grp] : this.vars;
+                if (!varsObj) continue;
+                if (this.lockedColors[grp]) continue;
+
+                var vals = varsObj.getVals();
+                var gHue = (grp === "pri" ? this.hue : (grp === "compl" ? this.hueCompl : (grp === "sec1" ? this.hueSec1 : this.hueSec2))) || this.hue;
+
+                // Slot 3 (Text): guarantee targetRatio against background
+                var colText = new o(gHue);
+                colText.setSV(vals[3][0], vals[3][1]);
+                var textOklch = oklch.srgbToOklch(colText.rgb.r, colText.rgb.g, colText.rgb.b);
+                var fittedText = oklch.fitContrast(textOklch, bgRgb, targetRatio);
+                colText.setByRGB(fittedText.rgb);
+                vals[3] = [colText.kS, colText.kV];
+
+                // Slot 0 (Primary brand button / accent): guarantee contrast
+                var colPri = new o(gHue);
+                colPri.setSV(vals[0][0], vals[0][1]);
+                var priOklch = oklch.srgbToOklch(colPri.rgb.r, colPri.rgb.g, colPri.rgb.b);
+                var priTarget = targetRatio >= 7.0 ? 4.5 : 3.0;
+                var fittedPri = oklch.fitContrast(priOklch, bgRgb, priTarget);
+                colPri.setByRGB(fittedPri.rgb);
+                vals[0] = [colPri.kS, colPri.kV];
+
+                varsObj.setVals(vals);
+                if (!this.varsMultiOn) break;
             }
             this.locked = false;
-            this.modelChanged();
             this.colorChanged();
             return this.getContrastReport();
-        }, i.prototype.randomizeProfile = function(profile) {
+        }, i.prototype.randomizeProfile = function(profile, options) {
+            options = options || {};
             this.locked = true;
+
+            var seedStr = options.seed || oklch.generateSeed();
+            this.currentSeed = String(seedStr);
+            var seedNum = oklch.stringToSeed(this.currentSeed);
+            var rng = oklch.mulberry32(seedNum);
+
+            var chaos = options.chaos !== undefined ? options.chaos : (this.chaos || 1.0);
+            var prof = oklch.OKLCH_PROFILES[profile] || oklch.OKLCH_PROFILES["saas"];
+            this.currentProfileId = prof.id;
+
+            if (!this.lastProfiles) this.lastProfiles = [];
+            this.lastProfiles.unshift(prof.id);
+            if (this.lastProfiles.length > 5) this.lastProfiles.pop();
+
+            // 1. Primary Hue with Box-Muller Gaussian Jitter & Context-Aware Locking
+            var baseH = this.hue;
             if (!this.lockedColors.pri) {
-                var hue = 0;
-                if (profile === "saas") {
-                    var techHues = [205, 215, 225, 235, 255, 275, 160, 180];
-                    hue = techHues[Math.floor(Math.random() * techHues.length)] + (Math.random() * 16 - 8);
-                } else if (profile === "minimal") {
-                    var swissHues = [358, 2, 218, 38, 205];
-                    hue = swissHues[Math.floor(Math.random() * swissHues.length)] + (Math.random() * 8 - 4);
-                } else if (profile === "nature") {
-                    var natHues = [138, 148, 158, 32, 44, 75];
-                    hue = natHues[Math.floor(Math.random() * natHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "luxury") {
-                    var luxHues = [42, 46, 350, 215];
-                    hue = luxHues[Math.floor(Math.random() * luxHues.length)] + (Math.random() * 8 - 4);
-                } else if (profile === "playful") {
-                    var playHues = [45, 175, 280, 345];
-                    hue = playHues[Math.floor(Math.random() * playHues.length)] + (Math.random() * 12 - 6);
-                } else if (profile === "pastel") {
-                    var pastHues = [195, 265, 335, 145];
-                    hue = pastHues[Math.floor(Math.random() * pastHues.length)] + (Math.random() * 14 - 7);
-                } else if (profile === "monochrome") {
-                    hue = Math.floor(Math.random() * 360);
-                } else if (profile === "cyberpunk") {
-                    var cyberHues = [188, 322, 118];
-                    hue = cyberHues[Math.floor(Math.random() * cyberHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "earth") {
-                    var earthHues = [20, 36, 58, 80];
-                    hue = earthHues[Math.floor(Math.random() * earthHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "ocean") {
-                    var oceanHues = [175, 192, 215, 232];
-                    hue = oceanHues[Math.floor(Math.random() * oceanHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "sunset") {
-                    var sunHues = [18, 32, 45, 310, 330];
-                    hue = sunHues[Math.floor(Math.random() * sunHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "neutral_accent") {
-                    hue = Math.floor(Math.random() * 360);
-                } else if (profile === "editorial") {
-                    var editHues = [18, 30, 44, 145, 175, 348];
-                    hue = editHues[Math.floor(Math.random() * editHues.length)] + (Math.random() * 14 - 7);
-                } else if (profile === "retro") {
-                    var retroHues = [26, 42, 78, 98, 178, 196];
-                    hue = retroHues[Math.floor(Math.random() * retroHues.length)] + (Math.random() * 16 - 8);
-                } else if (profile === "darkui") {
-                    var darkHues = [182, 198, 268, 282, 318];
-                    hue = darkHues[Math.floor(Math.random() * darkHues.length)] + (Math.random() * 16 - 8);
-                } else if (profile === "game_rpg" || profile === "fantasy_rpg") {
-                    var rpgHues = [42, 48, 350, 278, 155];
-                    hue = rpgHues[Math.floor(Math.random() * rpgHues.length)] + (Math.random() * 12 - 6);
-                } else if (profile === "game_cyberpunk" || profile === "scifi_hud") {
-                    var cyberGameHues = [188, 322, 118, 54];
-                    hue = cyberGameHues[Math.floor(Math.random() * cyberGameHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "game_arcade" || profile === "pixel_8bit") {
-                    var arcadeHues = [355, 212, 48, 122, 288];
-                    hue = arcadeHues[Math.floor(Math.random() * arcadeHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "game_fps" || profile === "tactical_mil") {
-                    var fpsHues = [132, 34, 210, 44];
-                    hue = fpsHues[Math.floor(Math.random() * fpsHues.length)] + (Math.random() * 8 - 4);
-                } else if (profile === "game_horror" || profile === "survival_horror") {
-                    var horrorHues = [350, 78, 170, 225];
-                    hue = horrorHues[Math.floor(Math.random() * horrorHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "game_cozy" || profile === "casual_mobile") {
-                    var cozyHues = [340, 46, 155, 205, 275];
-                    hue = cozyHues[Math.floor(Math.random() * cozyHues.length)] + (Math.random() * 14 - 7);
-                } else if (profile === "game_esports" || profile === "esports_arena") {
-                    var esportHues = [52, 358, 190, 265];
-                    hue = esportHues[Math.floor(Math.random() * esportHues.length)] + (Math.random() * 10 - 5);
-                } else if (profile === "game_space" || profile === "deep_space") {
-                    var spaceHues = [176, 285, 26, 198];
-                    hue = spaceHues[Math.floor(Math.random() * spaceHues.length)] + (Math.random() * 12 - 6);
-                } else {
-                    hue = Math.floor(Math.random() * 360);
-                }
-                this.setHue((Math.round(hue) + 360) % 360);
+                var pickedBaseH = prof.hues[Math.floor(rng() * prof.hues.length)];
+                var jitter = oklch.randomGaussian(rng, 0, 10 * chaos);
+                baseH = Math.round((pickedBaseH + jitter + 360) % 360);
+                this.setHue(baseH);
+            } else {
+                baseH = Math.round(this.hue);
             }
 
+            // 2. Harmony Model & Secondary Angle
             if (!this.lockedColors.sec) {
-                var models = ["triad", "tetrad", "analogcompl", "monocompl", "analog", "mono"];
-                if (profile === "saas") models = ["analogcompl", "monocompl", "triad"];
-                else if (profile === "minimal") models = ["mono", "monocompl"];
-                else if (profile === "monochrome") models = ["mono"];
-                else if (profile === "nature") models = ["analogcompl", "analog", "triad"];
-                else if (profile === "luxury") models = ["monocompl", "triadcompl"];
-                else if (profile === "playful") models = ["triad", "tetrad"];
-                else if (profile === "pastel") models = ["triad", "analogcompl", "mono"];
-                else if (profile === "cyberpunk") models = ["triad", "analogcompl"];
-                else if (profile === "earth") models = ["analogcompl", "triad"];
-                else if (profile === "ocean") models = ["analog", "analogcompl"];
-                else if (profile === "sunset") models = ["analogcompl", "triad"];
-                else if (profile === "neutral_accent") models = ["monocompl"];
-                else if (profile === "editorial") models = ["analogcompl", "triad"];
-                else if (profile === "retro") models = ["triad", "tetrad"];
-                else if (profile === "darkui") models = ["monocompl", "analogcompl", "triadcompl"];
-                else if (profile === "game_rpg" || profile === "fantasy_rpg") models = ["triadcompl", "analogcompl", "tetrad"];
-                else if (profile === "game_cyberpunk" || profile === "scifi_hud") models = ["triad", "analogcompl", "tetrad"];
-                else if (profile === "game_arcade" || profile === "pixel_8bit") models = ["triad", "tetrad"];
-                else if (profile === "game_fps" || profile === "tactical_mil") models = ["monocompl", "analogcompl"];
-                else if (profile === "game_horror" || profile === "survival_horror") models = ["monocompl", "triad"];
-                else if (profile === "game_cozy" || profile === "casual_mobile") models = ["triad", "tetrad", "analogcompl"];
-                else if (profile === "game_esports" || profile === "esports_arena") models = ["monocompl", "triad"];
-                else if (profile === "game_space" || profile === "deep_space") models = ["analogcompl", "triadcompl"];
-                this.setModel(models[Math.floor(Math.random() * models.length)]);
+                var pickedModel = prof.models[Math.floor(rng() * prof.models.length)];
+                this.setModel(pickedModel);
                 if (this.hasSecs()) {
-                    var angle = profile === "saas" || profile === "minimal" ? 30 : Math.floor(25 + Math.random() * 38);
-                    if (profile === "game_arcade" || profile === "game_esports") angle = Math.floor(35 + Math.random() * 25);
+                    var minA = prof.angle ? prof.angle[0] : 25;
+                    var maxA = prof.angle ? prof.angle[1] : 35;
+                    var midA = (minA + maxA) * 0.5;
+                    var aJitter = oklch.randomGaussian(rng, 0, 4 * chaos);
+                    var angle = Math.max(15, Math.min(75, Math.round(midA + aJitter)));
                     this.setAngle(angle);
                 }
             }
 
-            var vals;
-            if (profile === "saas") {
-                vals = [[0.78, 0.95], [0.15, 0.98], [0.65, 0.60], [0.85, 0.22], [0.06, 0.99]];
-            } else if (profile === "minimal") {
-                vals = [[0.92, 0.88], [0.04, 0.98], [0.12, 0.88], [0.85, 0.32], [0.06, 0.14]];
-            } else if (profile === "nature") {
-                vals = [[0.52, 0.68], [0.22, 0.92], [0.58, 0.52], [0.68, 0.28], [0.14, 0.96]];
-            } else if (profile === "luxury") {
-                vals = [[0.72, 0.86], [0.10, 0.96], [0.80, 0.42], [0.88, 0.16], [0.04, 0.99]];
-            } else if (profile === "playful") {
-                vals = [[0.88, 0.96], [0.35, 0.96], [0.78, 0.72], [0.92, 0.45], [0.12, 0.99]];
-            } else if (profile === "pastel") {
-                vals = [[0.30, 0.94], [0.12, 0.98], [0.38, 0.84], [0.46, 0.62], [0.08, 0.99]];
-            } else if (profile === "monochrome") {
-                vals = [[0.70, 0.65], [0.18, 0.96], [0.45, 0.82], [0.82, 0.36], [0.94, 0.12]];
-            } else if (profile === "cyberpunk") {
-                vals = [[0.96, 0.98], [0.75, 0.92], [0.88, 0.50], [0.98, 0.10], [0.04, 0.99]];
-            } else if (profile === "earth") {
-                vals = [[0.62, 0.62], [0.22, 0.90], [0.68, 0.46], [0.76, 0.25], [0.14, 0.95]];
-            } else if (profile === "ocean") {
-                vals = [[0.78, 0.84], [0.20, 0.94], [0.68, 0.52], [0.88, 0.22], [0.06, 0.98]];
-            } else if (profile === "sunset") {
-                vals = [[0.84, 0.92], [0.26, 0.96], [0.75, 0.58], [0.88, 0.25], [0.08, 0.98]];
-            } else if (profile === "neutral_accent") {
-                vals = [[0.85, 0.90], [0.05, 0.96], [0.12, 0.75], [0.20, 0.25], [0.04, 0.99]];
-            } else if (profile === "editorial") {
-                vals = [[0.68, 0.72], [0.25, 0.92], [0.72, 0.48], [0.82, 0.28], [0.12, 0.96]];
-            } else if (profile === "retro") {
-                vals = [[0.58, 0.80], [0.30, 0.88], [0.62, 0.55], [0.70, 0.35], [0.20, 0.94]];
-            } else if (profile === "darkui") {
-                vals = [[0.85, 0.98], [0.70, 0.85], [0.60, 0.45], [0.95, 0.12], [0.05, 0.99]];
-            } else if (profile === "game_rpg" || profile === "fantasy_rpg") {
-                vals = [[0.82, 0.90], [0.12, 0.95], [0.85, 0.35], [0.95, 0.12], [0.03, 0.98]];
-            } else if (profile === "game_cyberpunk" || profile === "scifi_hud") {
-                vals = [[0.98, 0.98], [0.82, 0.95], [0.92, 0.45], [0.98, 0.08], [0.02, 0.99]];
-            } else if (profile === "game_arcade" || profile === "pixel_8bit") {
-                vals = [[0.95, 0.95], [0.35, 0.98], [0.88, 0.70], [0.95, 0.40], [0.05, 0.98]];
-            } else if (profile === "game_fps" || profile === "tactical_mil") {
-                vals = [[0.72, 0.85], [0.15, 0.92], [0.55, 0.45], [0.75, 0.18], [0.08, 0.96]];
-            } else if (profile === "game_horror" || profile === "survival_horror") {
-                vals = [[0.80, 0.65], [0.20, 0.88], [0.75, 0.35], [0.92, 0.10], [0.06, 0.94]];
-            } else if (profile === "game_cozy" || profile === "casual_mobile") {
-                vals = [[0.68, 0.95], [0.25, 0.98], [0.55, 0.85], [0.75, 0.55], [0.10, 0.99]];
-            } else if (profile === "game_esports" || profile === "esports_arena") {
-                vals = [[0.96, 0.95], [0.15, 0.98], [0.90, 0.55], [0.98, 0.12], [0.02, 0.99]];
-            } else if (profile === "game_space" || profile === "deep_space") {
-                vals = [[0.88, 0.92], [0.30, 0.95], [0.75, 0.50], [0.92, 0.15], [0.04, 0.98]];
-            }
+            // 3. OKLCH Perceptual Curve [L, C] & Gamut Mapping
+            var targetRatio = options.targetRatio || 4.5;
+            var curve = prof.curve;
+            var self = this;
 
-            if (vals) {
-                if (this.varsMultiOn) {
-                    if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
-                    if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
-                    if (!this.lockedColors.sec && this.hasSecs()) {
-                        this.varsMulti.sec1.setVals(vals);
-                        this.varsMulti.sec2.setVals(vals);
-                    }
-                    this.varsActive = "pri";
-                    this.vars = this.varsMulti.pri;
-                } else {
-                    this.vars.setVals(vals);
+            var calcGroupVals = function(groupKey, gHue) {
+                var rgbs = [];
+                for (var s = 0; s < 5; s++) {
+                    var ptL = curve[s][0];
+                    var ptC = curve[s][1];
+                    var lJitter = oklch.randomGaussian(rng, 0, 0.015 * chaos);
+                    var cJitter = oklch.randomGaussian(rng, 0, 0.01 * chaos);
+                    var finalL = Math.max(0.02, Math.min(0.99, ptL + lJitter));
+                    var finalC = Math.max(0.005, Math.min(0.35, ptC + cJitter));
+                    rgbs[s] = oklch.oklchToSrgb(finalL, finalC, gHue);
                 }
-            }
 
-            this.locked = false;
-            this.modelChanged();
-            return this.colorChanged();
-        }, i.prototype.randomizeKeepMood = function() {
-            this.locked = true;
-            if (!this.lockedColors.pri) {
-                var step = 45 + Math.floor(Math.random() * 270);
-                this.setHue((this.hue + step) % 360);
-            }
-            if (!this.lockedColors.sec && this.hasSecs()) {
-                var angle = Math.floor(20 + Math.random() * 45);
-                this.setAngle(angle);
-            }
-            this.locked = false;
-            this.modelChanged();
-            return this.colorChanged();
-        }, i.prototype.randomizeVariations = function() {
-            this.locked = true;
-            if (!this.lockedColors.pri) {
-                var deltaH = Math.round((Math.random() * 24 - 12));
-                this.setHue((this.hue + deltaH + 360) % 360);
-            }
-            if (!this.lockedColors.sec && this.hasSecs()) {
-                var deltaA = Math.round((Math.random() * 12 - 6));
-                this.setAngle(Math.max(10, Math.min(80, this.angle + deltaA)));
-            }
-            var vals = this.vars.getVals();
-            for (var j = 0; j < vals.length; j++) {
-                vals[j][0] = Math.max(0.02, Math.min(1.0, vals[j][0] + (Math.random() * 0.08 - 0.04)));
-                vals[j][1] = Math.max(0.08, Math.min(1.0, vals[j][1] + (Math.random() * 0.08 - 0.04)));
-            }
+                // Exact WCAG Contrast Guarantee using fitContrast
+                var bgRgb = rgbs[4];
+                var textFit = oklch.fitContrast({ L: curve[3][0], C: curve[3][1], H: gHue }, bgRgb, targetRatio);
+                rgbs[3] = textFit.rgb;
+
+                var priMinRatio = (profile === "minimal" || profile === "saas") ? 3.0 : 2.5;
+                var priFit = oklch.fitContrast({ L: curve[0][0], C: curve[0][1], H: gHue }, bgRgb, priMinRatio);
+                rgbs[0] = priFit.rgb;
+
+                // Map into Paletton internal [kS, kV]
+                var groupVals = [];
+                for (var k = 0; k < 5; k++) {
+                    var col = new o(gHue);
+                    col.setByRGB(rgbs[k]);
+                    groupVals[k] = [col.kS, col.kV];
+                }
+                return groupVals;
+            };
+
+            var priVals = calcGroupVals("pri", this.hue);
+
             if (this.varsMultiOn) {
-                if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
-                if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
+                if (!this.lockedColors.pri) this.varsMulti.pri.setVals(priVals);
+                if (!this.lockedColors.compl && this.hasCompl()) {
+                    this.varsMulti.compl.setVals(calcGroupVals("compl", this.hueCompl));
+                }
                 if (!this.lockedColors.sec && this.hasSecs()) {
-                    this.varsMulti.sec1.setVals(vals);
-                    this.varsMulti.sec2.setVals(vals);
+                    this.varsMulti.sec1.setVals(calcGroupVals("sec1", this.hueSec1));
+                    this.varsMulti.sec2.setVals(calcGroupVals("sec2", this.hueSec2));
                 }
                 this.varsActive = "pri";
                 this.vars = this.varsMulti.pri;
             } else {
-                this.vars.setVals(vals);
+                this.vars.setVals(priVals);
             }
+
+            if (prof.typoCategory && this.randomizeTypography) {
+                this.randomizeTypography(prof.typoCategory);
+            }
+
+            this.locked = false;
+            this.modelChanged();
+            this.colorChanged();
+            t.trigger("palette/seed/changed", { seed: this.currentSeed });
+            return this.getContrastReport();
+        }, i.prototype.randomizeKeepMood = function(options) {
+            options = options || {};
+            this.locked = true;
+            var rng = Math.random;
+
+            if (!this.lockedColors.pri) {
+                var step = 45 + Math.floor(rng() * 270);
+                this.setHue((this.hue + step) % 360);
+            }
+            if (!this.lockedColors.sec && this.hasSecs()) {
+                var angle = Math.floor(20 + rng() * 45);
+                this.setAngle(angle);
+            }
+
+            var groups = ["pri"];
+            if (this.hasSecs()) groups.push("sec1", "sec2");
+            if (this.hasCompl()) groups.push("compl");
+
+            for (var g = 0; g < groups.length; g++) {
+                var grp = groups[g];
+                var varsObj = this.varsMultiOn ? this.varsMulti[grp] : this.vars;
+                if (!varsObj) continue;
+
+                var vals = varsObj.getVals();
+                var gHue = (grp === "pri" ? this.hue : (grp === "compl" ? this.hueCompl : (grp === "sec1" ? this.hueSec1 : this.hueSec2))) || this.hue;
+
+                for (var j = 0; j < vals.length; j++) {
+                    var col = new o(gHue);
+                    col.setSV(vals[j][0], vals[j][1]);
+                    var curOklch = oklch.srgbToOklch(col.rgb.r, col.rgb.g, col.rgb.b);
+                    var newRgb = oklch.oklchToSrgb(curOklch.L, curOklch.C, gHue);
+                    col.setByRGB(newRgb);
+                    vals[j] = [col.kS, col.kV];
+                }
+                varsObj.setVals(vals);
+                if (!this.varsMultiOn) break;
+            }
+
+            this.locked = false;
+            this.modelChanged();
+            return this.colorChanged();
+        }, i.prototype.randomizeVariations = function(options) {
+            options = options || {};
+            this.locked = true;
+            var chaos = options.chaos !== undefined ? options.chaos : (this.chaos || 1.0);
+            var rng = Math.random;
+
+            if (!this.lockedColors.pri) {
+                var deltaH = Math.round(oklch.randomGaussian(rng, 0, 6 * chaos));
+                this.setHue((this.hue + deltaH + 360) % 360);
+            }
+            if (!this.lockedColors.sec && this.hasSecs()) {
+                var deltaA = Math.round(oklch.randomGaussian(rng, 0, 4 * chaos));
+                this.setAngle(Math.max(15, Math.min(75, this.angle + deltaA)));
+            }
+
+            var groups = ["pri"];
+            if (this.hasSecs()) groups.push("sec1", "sec2");
+            if (this.hasCompl()) groups.push("compl");
+
+            for (var g = 0; g < groups.length; g++) {
+                var grp = groups[g];
+                var varsObj = this.varsMultiOn ? this.varsMulti[grp] : this.vars;
+                if (!varsObj) continue;
+                if (this.lockedColors[grp]) continue;
+
+                var vals = varsObj.getVals();
+                var gHue = (grp === "pri" ? this.hue : (grp === "compl" ? this.hueCompl : (grp === "sec1" ? this.hueSec1 : this.hueSec2))) || this.hue;
+
+                for (var j = 0; j < vals.length; j++) {
+                    var col = new o(gHue);
+                    col.setSV(vals[j][0], vals[j][1]);
+                    var curOklch = oklch.srgbToOklch(col.rgb.r, col.rgb.g, col.rgb.b);
+
+                    var dL = oklch.randomGaussian(rng, 0, 0.02 * chaos);
+                    var dC = oklch.randomGaussian(rng, 0, 0.015 * chaos);
+
+                    var newL = Math.max(0.02, Math.min(0.99, curOklch.L + dL));
+                    var newC = Math.max(0.005, Math.min(0.35, curOklch.C + dC));
+                    var newRgb = oklch.oklchToSrgb(newL, newC, curOklch.H);
+
+                    col.setByRGB(newRgb);
+                    vals[j] = [col.kS, col.kV];
+                }
+                varsObj.setVals(vals);
+                if (!this.varsMultiOn) break;
+            }
+
             this.locked = false;
             this.modelChanged();
             return this.colorChanged();
@@ -1877,53 +2273,88 @@
         }, i.prototype.setHarmonyMode = function(mode) {
             return this.generateMode(mode);
         }, i.prototype.randomizeQuick = function() {
-            var profiles = ["saas", "minimal", "nature", "luxury", "playful", "pastel", "monochrome", "cyberpunk", "earth", "ocean", "sunset", "editorial", "retro", "darkui"];
-            var p = profiles[Math.floor(Math.random() * profiles.length)];
-            return this.randomizeProfile(p);
+            var allProfiles = Object.keys(oklch.OKLCH_PROFILES);
+            var last = (this.lastProfiles && this.lastProfiles[0]) ? this.lastProfiles[0] : "";
+            var pool = allProfiles.filter(function(k) { return k !== last; });
+            if (!pool.length) pool = allProfiles;
+            var p = pool[Math.floor(Math.random() * pool.length)];
+            return this.randomizeProfile(p, { seed: oklch.generateSeed() });
         }, i.prototype.randomizeWCAG = function(targetRatio) {
-            if (!targetRatio) targetRatio = 4.5;
+            targetRatio = targetRatio || 4.5;
             this.locked = true;
+
+            var newSeed = oklch.generateSeed();
+            this.currentSeed = newSeed;
+            var rng = oklch.mulberry32(oklch.stringToSeed(newSeed));
+
             if (!this.lockedColors.pri) {
-                var newHue = Math.floor(Math.random() * 360);
+                var newHue = Math.floor(rng() * 360);
                 this.setHue(newHue);
             }
             if (!this.lockedColors.sec) {
                 var models = ["triad", "tetrad", "analogcompl", "monocompl", "analog", "mono"];
-                var mId = models[Math.floor(Math.random() * models.length)];
+                var mId = models[Math.floor(rng() * models.length)];
                 this.setModel(mId);
                 if (this.hasSecs()) {
-                    var angle = Math.floor(25 + Math.random() * 35);
+                    var angle = Math.floor(25 + rng() * 35);
                     this.setAngle(angle);
                 }
             }
+
             var isAAA = targetRatio >= 7.0;
-            var darkVal = isAAA ? 0.10 : 0.16;
-            var lightVal = isAAA ? 0.99 : 0.96;
-            var lightSat = isAAA ? 0.08 : 0.18;
-            var baseSat = Math.round((0.65 + Math.random() * 0.25) * 1000) / 1000;
-            var baseVal = Math.round((0.65 + Math.random() * 0.25) * 1000) / 1000;
-            var vals = [
-                [baseSat, baseVal],
-                [0.32, 0.90],
-                [0.75, 0.42],
-                [0.92, darkVal],
-                [lightSat, lightVal]
+            var bgL = isAAA ? 0.99 : 0.96;
+            var textL = isAAA ? 0.12 : 0.20;
+            var priL = isAAA ? 0.40 : 0.52;
+
+            var curve = [
+                [priL, 0.18],
+                [0.93, 0.04],
+                [0.68, 0.14],
+                [textL, 0.04],
+                [bgL, 0.005]
             ];
+
+            var calcGroupVals = function(gHue) {
+                var rgbs = [];
+                for (var s = 0; s < 5; s++) {
+                    rgbs[s] = oklch.oklchToSrgb(curve[s][0], curve[s][1], gHue);
+                }
+                var bgRgb = rgbs[4];
+                var fittedText = oklch.fitContrast({ L: curve[3][0], C: curve[3][1], H: gHue }, bgRgb, targetRatio);
+                rgbs[3] = fittedText.rgb;
+
+                var priTarget = isAAA ? 4.5 : 3.0;
+                var fittedPri = oklch.fitContrast({ L: curve[0][0], C: curve[0][1], H: gHue }, bgRgb, priTarget);
+                rgbs[0] = fittedPri.rgb;
+
+                var res = [];
+                for (var k = 0; k < 5; k++) {
+                    var col = new o(gHue);
+                    col.setByRGB(rgbs[k]);
+                    res[k] = [col.kS, col.kV];
+                }
+                return res;
+            };
+
+            var priVals = calcGroupVals(this.hue);
             if (this.varsMultiOn) {
-                if (!this.lockedColors.pri) this.varsMulti.pri.setVals(vals);
-                if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(vals);
+                if (!this.lockedColors.pri) this.varsMulti.pri.setVals(priVals);
+                if (!this.lockedColors.compl && this.hasCompl()) this.varsMulti.compl.setVals(calcGroupVals(this.hueCompl));
                 if (!this.lockedColors.sec && this.hasSecs()) {
-                    this.varsMulti.sec1.setVals(vals);
-                    this.varsMulti.sec2.setVals(vals);
+                    this.varsMulti.sec1.setVals(calcGroupVals(this.hueSec1));
+                    this.varsMulti.sec2.setVals(calcGroupVals(this.hueSec2));
                 }
                 this.varsActive = "pri";
                 this.vars = this.varsMulti.pri;
             } else {
-                this.vars.setVals(vals);
+                this.vars.setVals(priVals);
             }
+
             this.locked = false;
             this.modelChanged();
-            return this.colorChanged();
+            this.colorChanged();
+            t.trigger("palette/seed/changed", { seed: this.currentSeed });
+            return this.getContrastReport();
         }, i.prototype.randomize = function(e, t, n, i) {
             var o, u, a, f, l, c, h;
             this.locked = !0, h = this;
@@ -2397,6 +2828,86 @@ define("ui.control.randomizer.class", ["app.ini", "app.events", "app.locale", "u
                 boxSizing: "border-box"
             }).data("control", this);
 
+            // Seed & Chaos Control Box
+            var $seedBox = $("<DIV>").css({
+                background: "#161b22",
+                border: "1px solid #30363d",
+                borderRadius: "6px",
+                padding: "8px 10px",
+                marginBottom: "10px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px"
+            });
+
+            var $seedRow = $("<DIV>").css({ display: "flex", alignItems: "center", gap: "6px" });
+            $("<span>").css({ fontSize: "11px", fontWeight: "700", color: "#8b949e", width: "42px" }).text("Seed:").appendTo($seedRow);
+            var $seedInput = $("<INPUT>", { type: "text" }).css({
+                flex: "1",
+                background: "#0d1117",
+                border: "1px solid #30363d",
+                borderRadius: "4px",
+                color: "#e6edf3",
+                fontFamily: "monospace",
+                fontSize: "11px",
+                padding: "3px 6px"
+            }).val(pal.getSeed ? pal.getSeed() : "").appendTo($seedRow);
+
+            $("<BUTTON>").addClass("rand-btn-pill").css({
+                padding: "3px 8px",
+                fontSize: "10px",
+                background: "#21262d",
+                borderColor: "#38bdf8",
+                color: "#38bdf8"
+            }).text("Apply").click(function() {
+                var s = $seedInput.val().trim();
+                if (s && pal.setSeed) {
+                    pal.setSeed(s);
+                    r.randomizeProfile(pal.currentProfileId || "saas", { seed: s });
+                    updateContrastBadge();
+                }
+            }).appendTo($seedRow);
+
+            $("<BUTTON>").addClass("rand-btn-pill").css({
+                padding: "3px 8px",
+                fontSize: "10px",
+                background: "#21262d",
+                borderColor: "#6e7681",
+                color: "#c9d1d9"
+            }).text("Copy").click(function() {
+                var curSeed = pal.getSeed ? pal.getSeed() : $seedInput.val();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(curSeed).catch(function(){});
+                }
+                var btn = $(this);
+                var oldText = btn.text();
+                btn.text("Copied! ✓");
+                setTimeout(function() { btn.text(oldText); }, 1200);
+            }).appendTo($seedRow);
+
+            $seedBox.append($seedRow);
+
+            var $chaosRow = $("<DIV>").css({ display: "flex", alignItems: "center", gap: "8px" });
+            var curChaos = pal.getChaos ? pal.getChaos() : 1.0;
+            var $chaosLabel = $("<span>").css({ fontSize: "11px", color: "#8b949e", width: "85px" }).text("Chaos: " + curChaos.toFixed(1) + "x");
+            $("<INPUT>", {
+                type: "range",
+                min: "0.1",
+                max: "2.0",
+                step: "0.1"
+            }).css({ flex: "1", cursor: "pointer" }).val(curChaos).on("input change", function() {
+                var val = parseFloat($(this).val());
+                if (pal.setChaos) pal.setChaos(val);
+                $chaosLabel.text("Chaos: " + val.toFixed(1) + "x");
+            }).appendTo($chaosRow);
+            $chaosRow.append($chaosLabel);
+            $seedBox.append($chaosRow);
+            e.append($seedBox);
+
+            events.register("palette/seed/changed", function(ev, data) {
+                if ($seedInput && data && data.seed) $seedInput.val(data.seed);
+            });
+
             // Contrast Report Box
             var $contrastBox = $("<DIV>").addClass("rand-contrast-box");
             var updateContrastBadge = function() {
@@ -2404,10 +2915,12 @@ define("ui.control.randomizer.class", ["app.ini", "app.events", "app.locale", "u
                 $contrastBox.empty();
                 if (rep) {
                     var isAA = rep.passesAA;
-                    var badgeBg = isAA ? "#194d33" : "#5a3a10";
-                    var badgeColor = isAA ? "#75fbc0" : "#ffb74d";
-                    var badgeText = isAA ? (n("random.contrastPassed") || "AA Passed ✓") : (n("random.contrastWarning") || "Low Contrast ⚠");
-                    $("<span>").css({ color: "#aaa" }).html("Primary: <b>" + rep.priBgRatio + ":1</b> • Text: <b>" + rep.textBgRatio + ":1</b>").appendTo($contrastBox);
+                    var isAAA = rep.passesAAA;
+                    var badgeBg = isAAA ? "#133827" : (isAA ? "#194d33" : "#5a3a10");
+                    var badgeColor = isAAA ? "#4ade80" : (isAA ? "#75fbc0" : "#ffb74d");
+                    var badgeText = isAAA ? "AAA Passed ★" : (isAA ? (n("random.contrastPassed") || "AA Passed ✓") : (n("random.contrastWarning") || "Low Contrast ⚠"));
+                    var apcaTxt = rep.apcaText ? (" • APCA: <b>" + rep.apcaText + " Lc</b>") : "";
+                    $("<span>").css({ color: "#aaa" }).html("Primary: <b>" + rep.priBgRatio + ":1</b> • Text: <b>" + rep.textBgRatio + ":1</b>" + apcaTxt).appendTo($contrastBox);
                     $("<span>").addClass("rand-contrast-badge").css({
                         background: badgeBg,
                         color: badgeColor,
