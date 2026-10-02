@@ -16,7 +16,7 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
             if (n === e) return t
         }
         return "mono"
-    }, d = {
+    },    d = {
         model: "mono",
         hue: 0,
         angle: 30,
@@ -26,215 +26,310 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
         {
             id: "game_retro_pixel",
             category: "game",
+            profileMatch: ["game_arcade", "game_indie"],
             name: "👾 8-Bit Arcade (Press Start)",
             heading: "'Press Start 2P', 'VT323', 'Silkscreen', 'Courier New', monospace",
+            headingCyrillic: "'Rubik Pixels', 'Silkscreen', 'Courier New', monospace",
             body: "'VT323', 'Silkscreen', 'Courier New', monospace",
+            bodyCyrillic: "'Rubik Pixels', 'Courier New', monospace",
             weightHeading: "400",
             scale: "1.25",
             letterSpacing: "0.05em",
-            lineHeight: "1.6"
+            lineHeightHeading: "1.5",
+            lineHeight: "1.6",
+            cyrillic: false
         },
         {
             id: "game_scifi_cyber",
             category: "game",
+            profileMatch: ["cyberpunk", "game_scifi", "game_esports", "neon"],
             name: "🤖 Cyberpunk HUD (Orbitron)",
             heading: "'Orbitron', 'Audiowide', 'Michroma', 'Impact', sans-serif",
+            headingCyrillic: "'Russo One', 'Exo 2', 'Unbounded', 'Impact', sans-serif",
             body: "'Rajdhani', 'Exo 2', -apple-system, sans-serif",
+            bodyCyrillic: "'Exo 2', 'Raleway', -apple-system, sans-serif",
             weightHeading: "800",
             scale: "1.333",
             letterSpacing: "0.06em",
-            lineHeight: "1.45"
+            lineHeightHeading: "1.15",
+            lineHeight: "1.45",
+            cyrillic: false
         },
         {
             id: "game_dark_fantasy",
             category: "game",
+            profileMatch: ["dark_fantasy", "gothic", "game_horror"],
             name: "⚔️ Dark Fantasy RPG (Cinzel)",
             heading: "'Cinzel', 'Cinzel Decorative', 'MedievalSharp', 'Georgia', serif",
+            headingCyrillic: "'Cormorant', 'Cormorant Garamond', 'IM Fell English', Georgia, serif",
             body: "'Cormorant Garamond', 'Garamond', Georgia, serif",
+            bodyCyrillic: "'Cormorant Garamond', 'Garamond', Georgia, serif",
             weightHeading: "700",
             scale: "1.414",
             letterSpacing: "0.04em",
-            lineHeight: "1.6"
+            lineHeightHeading: "1.2",
+            lineHeight: "1.6",
+            cyrillic: false
         },
         {
             id: "game_tactical_fps",
             category: "game",
+            profileMatch: ["game_fps", "military"],
             name: "🎯 Tactical Military (Black Ops)",
             heading: "'Black Ops One', 'Share Tech Mono', 'Impact', monospace, sans-serif",
+            headingCyrillic: "'Oswald', 'Bebas Neue', 'Impact', sans-serif",
             body: "'Share Tech Mono', 'JetBrains Mono', 'Courier New', monospace",
+            bodyCyrillic: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
             weightHeading: "800",
             scale: "1.25",
             letterSpacing: "0.08em",
-            lineHeight: "1.5"
+            lineHeightHeading: "1.1",
+            lineHeight: "1.5",
+            cyrillic: false
         },
         {
             id: "game_esports_speed",
             category: "game",
+            profileMatch: ["game_esports", "esports"],
             name: "🏆 Esports Arena (Russo One)",
             heading: "'Russo One', 'Montserrat', 'Arial Black', sans-serif",
+            headingCyrillic: "'Russo One', 'Montserrat', 'Arial Black', sans-serif",
             body: "'Chakra Petch', 'Roboto', 'Arial', sans-serif",
+            bodyCyrillic: "'Roboto', 'Ubuntu', 'Arial', sans-serif",
             weightHeading: "900",
             scale: "1.35",
             letterSpacing: "-0.02em",
-            lineHeight: "1.35"
+            lineHeightHeading: "1.1",
+            lineHeight: "1.35",
+            cyrillic: true
         },
         {
             id: "game_cozy_casual",
             category: "game",
+            profileMatch: ["game_cozy", "casual", "indie"],
             name: "🍭 Cozy Casual (Fredoka)",
             heading: "'Fredoka', 'Bungee', 'Luckiest Guy', 'Century Gothic', cursive, sans-serif",
+            headingCyrillic: "'Nunito', 'Comfortaa', 'Rounded Mplus 1c', cursive, sans-serif",
             body: "'Nunito', 'Comfortaa', -apple-system, sans-serif",
+            bodyCyrillic: "'Nunito', 'Comfortaa', -apple-system, sans-serif",
             weightHeading: "700",
             scale: "1.3",
             letterSpacing: "0.02em",
-            lineHeight: "1.45"
+            lineHeightHeading: "1.3",
+            lineHeight: "1.45",
+            cyrillic: false
         },
         {
             id: "game_mecha_terminal",
             category: "game",
+            profileMatch: ["game_scifi", "terminal", "hacker"],
             name: "⚙️ Mecha Terminal (Tech Mono)",
             heading: "'Share Tech Mono', 'Space Mono', 'Consolas', monospace",
+            headingCyrillic: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
             body: "'Share Tech Mono', 'Courier New', monospace",
+            bodyCyrillic: "'JetBrains Mono', 'Courier New', monospace",
             weightHeading: "700",
             scale: "1.2",
             letterSpacing: "0.1em",
-            lineHeight: "1.55"
+            lineHeightHeading: "1.35",
+            lineHeight: "1.55",
+            cyrillic: false
         },
         {
             id: "game_gothic_horror",
             category: "game",
+            profileMatch: ["game_horror", "dark", "gothic"],
             name: "💀 Survival Horror (Nosifer)",
             heading: "'Creepster', 'Nosifer', 'Playfair Display', Georgia, serif",
+            headingCyrillic: "'Cormorant', 'Playfair Display', Georgia, serif",
             body: "'Special Elite', 'Courier New', Georgia, serif",
+            bodyCyrillic: "'PT Serif', 'Georgia', serif",
             weightHeading: "700",
             scale: "1.414",
             letterSpacing: "0.05em",
-            lineHeight: "1.6"
+            lineHeightHeading: "1.2",
+            lineHeight: "1.6",
+            cyrillic: false
         },
         {
             id: "game_anime_jrpg",
             category: "game",
+            profileMatch: ["anime", "jrpg", "fantasy"],
             name: "⛩️ Anime / JRPG (Rounded)",
             heading: "'M PLUS Rounded 1c', 'Zen Tokyo Zoo', 'Century Gothic', sans-serif",
+            headingCyrillic: "'Nunito', 'Comfortaa', 'Century Gothic', sans-serif",
             body: "'M PLUS 1p', 'Noto Sans JP', sans-serif",
+            bodyCyrillic: "'PT Sans', 'Ubuntu', sans-serif",
             weightHeading: "800",
             scale: "1.333",
             letterSpacing: "0.01em",
-            lineHeight: "1.5"
+            lineHeightHeading: "1.25",
+            lineHeight: "1.5",
+            cyrillic: false
         },
 
         // ── UI & Web Category (5 Presets) ──
         {
             id: "modern_sans",
             category: "ui",
+            profileMatch: ["saas", "minimal", "dashboard", "enterprise"],
             name: "Modern Sans (SaaS)",
             heading: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+            headingCyrillic: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
             body: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+            bodyCyrillic: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
             weightHeading: "700",
             scale: "1.25",
             letterSpacing: "-0.02em",
-            lineHeight: "1.5"
+            lineHeightHeading: "1.2",
+            lineHeight: "1.5",
+            cyrillic: true
         },
         {
             id: "swiss_grotesk",
             category: "ui",
+            profileMatch: ["minimal", "bauhaus", "swiss"],
             name: "Swiss Grotesk (Clean)",
             heading: "'Helvetica Neue', Helvetica, 'Arial Black', Arial, sans-serif",
+            headingCyrillic: "'Helvetica Neue', Helvetica, 'Arial Black', Arial, sans-serif",
             body: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+            bodyCyrillic: "'Helvetica Neue', Helvetica, Arial, sans-serif",
             weightHeading: "800",
             scale: "1.414",
             letterSpacing: "-0.03em",
-            lineHeight: "1.4"
+            lineHeightHeading: "1.15",
+            lineHeight: "1.4",
+            cyrillic: true
         },
         {
             id: "humanist",
             category: "ui",
+            profileMatch: ["saas", "health", "education"],
             name: "Humanist (Warm UI)",
             heading: "'Trebuchet MS', 'Segoe UI', 'Lucida Grande', sans-serif",
+            headingCyrillic: "'PT Sans', 'Ubuntu', 'Segoe UI', sans-serif",
             body: "'Open Sans', 'Segoe UI', Arial, sans-serif",
+            bodyCyrillic: "'Open Sans', 'PT Sans', 'Segoe UI', sans-serif",
             weightHeading: "700",
             scale: "1.25",
             letterSpacing: "-0.01em",
-            lineHeight: "1.55"
+            lineHeightHeading: "1.2",
+            lineHeight: "1.55",
+            cyrillic: false
         },
         {
             id: "tech_mono",
             category: "ui",
+            profileMatch: ["developer", "terminal", "saas"],
             name: "Developer Monospace",
             heading: "'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace",
+            headingCyrillic: "'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace",
             body: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+            bodyCyrillic: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
             weightHeading: "700",
             scale: "1.2",
             letterSpacing: "-0.01em",
-            lineHeight: "1.65"
+            lineHeightHeading: "1.3",
+            lineHeight: "1.65",
+            cyrillic: true
         },
         {
             id: "minimal_system",
             category: "ui",
+            profileMatch: ["minimal", "saas", "app"],
             name: "Native System Compact",
             heading: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
+            headingCyrillic: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
             body: "-apple-system, 'SF Pro Text', 'Segoe UI', sans-serif",
+            bodyCyrillic: "-apple-system, 'SF Pro Text', 'Segoe UI', sans-serif",
             weightHeading: "600",
             scale: "1.2",
             letterSpacing: "-0.015em",
-            lineHeight: "1.45"
+            lineHeightHeading: "1.2",
+            lineHeight: "1.45",
+            cyrillic: true
         },
 
         // ── Editorial & Brand Category (5 Presets) ──
         {
             id: "editorial_serif",
             category: "editorial",
+            profileMatch: ["editorial", "newspaper", "literary"],
             name: "Editorial Serif",
             heading: "Georgia, 'Playfair Display', 'Times New Roman', serif",
+            headingCyrillic: "'PT Serif', Georgia, 'Times New Roman', serif",
             body: "Georgia, 'Charter', 'Source Serif Pro', serif",
+            bodyCyrillic: "'PT Serif', Georgia, serif",
             weightHeading: "700",
             scale: "1.333",
             letterSpacing: "0",
-            lineHeight: "1.6"
+            lineHeightHeading: "1.2",
+            lineHeight: "1.6",
+            cyrillic: false
         },
         {
             id: "luxury_didot",
             category: "editorial",
+            profileMatch: ["luxury", "fashion", "premium", "elegant"],
             name: "Luxury / Didot",
             heading: "'Didot', 'Bodoni MT', 'Cinzel', Georgia, serif",
+            headingCyrillic: "'Cormorant', 'Playfair Display', Georgia, serif",
             body: "'Cormorant Garamond', 'Garamond', Georgia, serif",
+            bodyCyrillic: "'Cormorant Garamond', 'PT Serif Caption', Georgia, serif",
             weightHeading: "600",
             scale: "1.5",
             letterSpacing: "0.05em",
-            lineHeight: "1.7"
+            lineHeightHeading: "1.15",
+            lineHeight: "1.7",
+            cyrillic: false
         },
         {
             id: "playful_round",
             category: "editorial",
+            profileMatch: ["fun", "kids", "casual"],
             name: "Playful / Casual",
             heading: "'Comic Sans MS', 'Century Gothic', 'Quicksand', cursive, sans-serif",
+            headingCyrillic: "'Nunito', 'Comfortaa', 'Rounded Mplus 1c', cursive, sans-serif",
             body: "'Nunito', 'Segoe UI', Arial, sans-serif",
+            bodyCyrillic: "'Nunito', 'PT Sans', Arial, sans-serif",
             weightHeading: "700",
             scale: "1.25",
             letterSpacing: "0.01em",
-            lineHeight: "1.5"
+            lineHeightHeading: "1.25",
+            lineHeight: "1.5",
+            cyrillic: false
         },
         {
             id: "display_impact",
             category: "editorial",
+            profileMatch: ["advertising", "bold", "promo"],
             name: "Display Impact",
             heading: "Impact, 'Arial Black', sans-serif",
+            headingCyrillic: "'Impact', 'Arial Black', sans-serif",
             body: "Arial, 'Helvetica Neue', sans-serif",
+            bodyCyrillic: "Arial, 'Helvetica Neue', sans-serif",
             weightHeading: "900",
             scale: "1.414",
             letterSpacing: "0.02em",
-            lineHeight: "1.35"
+            lineHeightHeading: "1.05",
+            lineHeight: "1.35",
+            cyrillic: true
         },
         {
             id: "brutalist_poster",
             category: "editorial",
+            profileMatch: ["brutalism", "industrial", "modern"],
             name: "Brutalist Heavy Poster",
             heading: "'Arial Black', Impact, sans-serif",
+            headingCyrillic: "'Arial Black', Impact, sans-serif",
             body: "'Courier New', Courier, monospace",
+            bodyCyrillic: "'Courier New', Courier, monospace",
             weightHeading: "900",
             scale: "1.5",
             letterSpacing: "0.03em",
-            lineHeight: "1.3"
+            lineHeightHeading: "1.0",
+            lineHeight: "1.3",
+            cyrillic: true
         }
     ], p = function() {
         function i(e, n, r, i) {
@@ -721,7 +816,7 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
             }
 
             if (prof.typoCategory && this.randomizeTypography) {
-                this.randomizeTypography(prof.typoCategory);
+                this.randomizeTypography(prof.typoCategory, prof.id, rng);
             }
 
             this.locked = false;
@@ -1120,11 +1215,104 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
             return this.generateMode(mood);
         }, i.prototype.setHarmonyMode = function(mode) {
             return this.generateMode(mode);
+        }, i.prototype._extractCandidateColors = function(profileId, seed, options) {
+            // Silently generate a palette candidate without side effects (no UI updates)
+            options = options || {};
+            var prof = oklch.OKLCH_PROFILES[profileId];
+            if (!prof) return null;
+
+            var chaos = options.chaos !== undefined ? options.chaos : (this.chaos || 1.0);
+            var targetRatio = options.targetRatio || 4.5;
+            var rng = oklch.mulberry32(oklch.stringToSeed(seed));
+
+            var baseHue = prof.hues[Math.floor(rng() * prof.hues.length)];
+            var hueJitter = oklch.randomGaussian(rng, 0, 10 * chaos);
+            var finalHue = Math.round((baseHue + hueJitter + 360) % 360);
+
+            var curve = prof.curve;
+            var calcRgbs = function(gHue) {
+                var rgbs = [];
+                for (var s = 0; s < 5; s++) {
+                    var ptL = curve[s][0];
+                    var ptC = curve[s][1];
+                    var lJ = oklch.randomGaussian(rng, 0, 0.015 * chaos);
+                    var cJ = oklch.randomGaussian(rng, 0, 0.01 * chaos);
+                    var fL = Math.max(0.02, Math.min(0.99, ptL + lJ));
+                    var fC = Math.max(0.005, Math.min(0.35, ptC + cJ));
+                    rgbs[s] = oklch.oklchToSrgb(fL, fC, gHue);
+                }
+                var bgRgb = rgbs[4];
+                var textFit = oklch.fitContrast({ L: curve[3][0], C: curve[3][1], H: gHue }, bgRgb, targetRatio);
+                rgbs[3] = textFit.rgb;
+                return rgbs;
+            };
+
+            var pickedModel = prof.models[Math.floor(rng() * prof.models.length)];
+            var minA = prof.angle ? prof.angle[0] : 25;
+            var maxA = prof.angle ? prof.angle[1] : 35;
+            var midA = (minA + maxA) * 0.5;
+            var angle = Math.max(15, Math.min(75, Math.round(midA + oklch.randomGaussian(rng, 0, 4 * chaos))));
+
+            // Compute harmony hues
+            var modelObj = (typeof u !== "undefined" && u) ? u[pickedModel] : null;
+            var hueCompl = modelObj ? modelObj.getComplement(finalHue) : (finalHue + 180) % 360;
+            var hueSec1 = modelObj ? modelObj.getSec1(finalHue, angle) : (finalHue + angle) % 360;
+            var hueSec2 = modelObj ? modelObj.getSec2(finalHue, angle) : (finalHue - angle + 360) % 360;
+
+            return {
+                hue: finalHue,
+                model: pickedModel,
+                angle: angle,
+                pri: calcRgbs(finalHue),
+                sec1: hueSec1 != null ? calcRgbs(hueSec1) : null,
+                sec2: hueSec2 != null ? calcRgbs(hueSec2) : null,
+                compl: hueCompl != null ? calcRgbs(hueCompl) : null,
+                seed: seed,
+                profileId: profileId
+            };
         }, i.prototype.randomizeQuick = function() {
             var allProfiles = Object.keys(oklch.OKLCH_PROFILES);
-            var last = (this.lastProfiles && this.lastProfiles[0]) ? this.lastProfiles[0] : "";
-            var pool = allProfiles.filter(function(k) { return k !== last; });
+            var last2 = (this.lastProfiles && this.lastProfiles.length >= 2) ? this.lastProfiles.slice(0, 2) : (this.lastProfiles || []);
+
+            // Weighted pool: exclude last 2 profiles
+            var pool = allProfiles.filter(function(k) { return last2.indexOf(k) === -1; });
             if (!pool.length) pool = allProfiles;
+
+            var self = this;
+            var history = [];
+            try {
+                var hist = JSON.parse(localStorage.getItem("pal_history") || "[]");
+                for (var h = 0; h < Math.min(5, hist.length); h++) {
+                    history.push({ hue: hist[h].hue });
+                }
+            } catch(e) {}
+
+            var CANDIDATE_COUNT = 20;
+            var bestCandidate = null;
+            var bestScore = -1;
+            var chaos = this.chaos || 1.0;
+
+            for (var ci = 0; ci < CANDIDATE_COUNT; ci++) {
+                var candSeed = oklch.generateSeed() + "_" + ci;
+                var profId = pool[Math.floor(Math.random() * pool.length)];
+                var candidate = null;
+                try {
+                    candidate = this._extractCandidateColors(profId, candSeed, { chaos: chaos });
+                } catch(e) { continue; }
+                if (!candidate) continue;
+
+                var score = oklch.scorePaletteCandidate(candidate, oklch.OKLCH_PROFILES[profId], history, {});
+                if (score.totalScore > bestScore) {
+                    bestScore = score.totalScore;
+                    bestCandidate = candidate;
+                }
+            }
+
+            if (bestCandidate) {
+                return this.randomizeProfile(bestCandidate.profileId, { seed: bestCandidate.seed, chaos: chaos });
+            }
+
+            // Fallback: pick any profile
             var p = pool[Math.floor(Math.random() * pool.length)];
             return this.randomizeProfile(p, { seed: oklch.generateSeed() });
         }, i.prototype.randomizeWCAG = function(targetRatio) {
@@ -1340,8 +1528,110 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
                 for (u = c = 0; c <= 4; u = ++c) r = this.getColorCode(o, u, l, n), i = this.getColorCode(o, u, "byLum", n), f["@col-" + s + "-" + u] = r, f["@col-" + s + "-lum-" + u] = i
             }
             return e.modifyVars(f)
+        }, i.prototype.getSemanticTokens = function() {
+            var priRgb = null, secRgb = null, complRgb = null;
+            if (this.col && this.col.pri && this.col.pri.rgb) {
+                priRgb = { r: this.col.pri.rgb.r, g: this.col.pri.rgb.g, b: this.col.pri.rgb.b };
+            }
+            if (this.col && this.col.sec1 && this.col.sec1.rgb) {
+                secRgb = { r: this.col.sec1.rgb.r, g: this.col.sec1.rgb.g, b: this.col.sec1.rgb.b };
+            }
+            if (this.col && this.col.compl && this.col.compl.rgb) {
+                complRgb = { r: this.col.compl.rgb.r, g: this.col.compl.rgb.g, b: this.col.compl.rgb.b };
+            }
+            if (!priRgb) {
+                if (this.colorTable && this.colorTable.byPalette && this.colorTable.byPalette.pri && this.colorTable.byPalette.pri[0]) {
+                    var c0 = this.colorTable.byPalette.pri[0];
+                    priRgb = { r: c0.rgb.r, g: c0.rgb.g, b: c0.rgb.b };
+                } else {
+                    priRgb = { r: 70, g: 130, b: 220 };
+                }
+            }
+            return oklch.generateSemanticTokens(priRgb, secRgb, complRgb);
+        }, i.prototype._showExportDialog = function(title, content) {
+            var $body = $(document.body);
+            var $overlay = $("<div>").css({
+                position: "fixed", inset: "0", background: "rgba(0,0,0,0.65)",
+                zIndex: 99999, display: "flex", alignItems: "center", justifyContent: "center"
+            });
+            var $box = $("<div>").css({
+                background: "#1e1e2e", borderRadius: "10px", padding: "20px",
+                maxWidth: "700px", width: "90%", maxHeight: "80vh",
+                display: "flex", flexDirection: "column", gap: "12px",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.5)", border: "1px solid #444",
+                color: "#cdd6f4", fontFamily: "JetBrains Mono, Fira Code, Consolas, monospace"
+            });
+            var $header = $("<div>").css({ display: "flex", alignItems: "center", justifyContent: "space-between" });
+            $header.append($("<strong>").text(title).css({ fontSize: "15px" }));
+            var $close = $("<button>").text("✕").css({
+                background: "none", border: "none", color: "#cdd6f4", cursor: "pointer", fontSize: "18px", lineHeight: "1"
+            });
+            $header.append($close);
+            $box.append($header);
+            var $textarea = $("<textarea>").val(content).css({
+                background: "#181825", border: "1px solid #555", borderRadius: "6px",
+                padding: "10px", color: "#cdd6f4", fontFamily: "inherit", fontSize: "11.5px",
+                resize: "none", height: "320px", width: "100%", boxSizing: "border-box",
+                lineHeight: "1.6", overflowY: "auto", whiteSpace: "pre"
+            }).prop("readonly", true);
+            $box.append($textarea);
+            var $actions = $("<div>").css({ display: "flex", gap: "8px" });
+            var $copy = $("<button>").text("📋 Copy All").css({
+                background: "#45475a", border: "none", borderRadius: "6px", color: "#cdd6f4",
+                padding: "8px 16px", cursor: "pointer", fontFamily: "inherit", fontSize: "13px"
+            });
+            $copy.on("click", function() {
+                try {
+                    navigator.clipboard.writeText($textarea.val());
+                    $copy.text("✅ Copied!");
+                    setTimeout(function() { $copy.text("📋 Copy All"); }, 2000);
+                } catch(e) {
+                    $textarea[0].select();
+                    document.execCommand("copy");
+                    $copy.text("✅ Copied!");
+                    setTimeout(function() { $copy.text("📋 Copy All"); }, 2000);
+                }
+            });
+            $actions.append($copy);
+            $box.append($actions);
+            $overlay.append($box);
+            $body.append($overlay);
+            var closeDialog = function() { $overlay.remove(); };
+            $close.on("click", closeDialog);
+            $overlay.on("click", function(ev) { if (ev.target === $overlay[0]) closeDialog(); });
+            $(document).on("keydown.exportdlg", function(ev) {
+                if (ev.keyCode === 27) { closeDialog(); $(document).off("keydown.exportdlg"); }
+            });
+            $textarea[0].focus();
+            $textarea[0].select();
         }, i.prototype["export"] = function(t) {
             var i, s, o, u;
+
+            // Handle token-based exports with inline dialog
+            if (t === "css" || t === "tailwind" || t === "dtcg" || t === "figma") {
+                var tokens = this.getSemanticTokens();
+                var typo = this.getTypography();
+                var content, title;
+                if (t === "css") {
+                    title = "CSS Variables (Semantic + Tonal Scales)";
+                    content = oklch.formatCssVariables(tokens, typo);
+                } else if (t === "tailwind") {
+                    title = "Tailwind CSS Config";
+                    content = oklch.formatTailwindConfig(tokens, typo);
+                } else if (t === "dtcg") {
+                    title = "Design Tokens (DTCG JSON)";
+                    content = oklch.formatDtcgTokens(tokens, typo);
+                } else if (t === "figma") {
+                    title = "Figma Variables (JSON)";
+                    content = oklch.formatFigmaTokens(tokens, typo);
+                }
+                if (content) {
+                    this._showExportDialog(title, content);
+                    return;
+                }
+            }
+
+            // Legacy server-based export
             return u = this, t === "html" ? s = [1, 2, 0, 3, 4] : s = [0, 1, 2, 3, 4], i = function(e, t, n) {
                 var i, o, a, f, l;
                 f = '"' + t + '":{"ttl":"' + n + '","col":[';
@@ -1375,52 +1665,83 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
             this.typography = typo;
             t.trigger("palette/typography/changed", this.typography);
             return this.typography;
-        }, i.prototype.generateWildTypography = function(preferredCategory) {
-            var headingList = [
-                { name: "Press Start 2P", font: "'Press Start 2P', 'VT323', monospace", weights: ["400"] },
-                { name: "Orbitron", font: "'Orbitron', 'Impact', sans-serif", weights: ["700", "800", "900"] },
-                { name: "Cinzel", font: "'Cinzel', 'Georgia', serif", weights: ["700", "800"] },
-                { name: "Black Ops One", font: "'Black Ops One', 'Impact', monospace, sans-serif", weights: ["800"] },
-                { name: "Russo One", font: "'Russo One', 'Impact', sans-serif", weights: ["900"] },
-                { name: "Fredoka", font: "'Fredoka', 'Century Gothic', cursive, sans-serif", weights: ["600", "700"] },
-                { name: "Share Tech Mono", font: "'Share Tech Mono', 'Courier New', monospace", weights: ["700"] },
-                { name: "VT323", font: "'VT323', monospace", weights: ["400"] },
-                { name: "Nosifer Horror", font: "'Nosifer', 'Creepster', Georgia, serif", weights: ["700"] },
-                { name: "M PLUS Rounded", font: "'M PLUS Rounded 1c', 'Century Gothic', sans-serif", weights: ["700", "800"] },
-                { name: "Impact", font: "Impact, 'Arial Black', sans-serif", weights: ["900"] },
-                { name: "Georgia", font: "Georgia, 'Times New Roman', serif", weights: ["700"] },
-                { name: "Helvetica Neue", font: "'Helvetica Neue', Arial, sans-serif", weights: ["700", "800"] },
-                { name: "Playfair Display", font: "'Playfair Display', Georgia, serif", weights: ["700", "800"] },
-                { name: "Trebuchet MS", font: "'Trebuchet MS', 'Segoe UI', sans-serif", weights: ["700"] },
-                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace", weights: ["700"] },
-                { name: "Didot", font: "Didot, 'Bodoni MT', serif", weights: ["600", "700"] },
-                { name: "Century Gothic", font: "'Century Gothic', sans-serif", weights: ["700"] }
+        }, i.prototype.generateWildTypography = function(preferredCategory, rng) {
+            rng = rng || Math.random;
+
+            // Detect Cyrillic context (app language = 'ru' or 'uk')
+            var needsCyrillic = (typeof window !== "undefined" && window._Paletton && window._Paletton.locale &&
+                (window._Paletton.locale === "ru" || window._Paletton.locale === "uk")) ? true : false;
+
+            // Only include headings with Cyrillic support when needed
+            var headingList = needsCyrillic ? [
+                { name: "Russo One", font: "'Russo One', 'Impact', sans-serif", weights: ["900"], cyrillic: true },
+                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace", weights: ["700"], cyrillic: true },
+                { name: "Nunito", font: "'Nunito', 'Comfortaa', -apple-system, sans-serif", weights: ["700", "800"], cyrillic: true },
+                { name: "Roboto", font: "Roboto, 'Segoe UI', sans-serif", weights: ["700", "900"], cyrillic: true },
+                { name: "Ubuntu", font: "'Ubuntu', 'Segoe UI', sans-serif", weights: ["700"], cyrillic: true },
+                { name: "PT Sans", font: "'PT Sans', 'Segoe UI', sans-serif", weights: ["700"], cyrillic: true },
+                { name: "Cormorant", font: "'Cormorant', 'Cormorant Garamond', Georgia, serif", weights: ["600", "700"], cyrillic: true },
+                { name: "Exo 2", font: "'Exo 2', Roboto, sans-serif", weights: ["700", "800"], cyrillic: true },
+                { name: "Montserrat", font: "Montserrat, 'Segoe UI', sans-serif", weights: ["700", "800", "900"], cyrillic: true },
+                { name: "Impact", font: "Impact, 'Arial Black', sans-serif", weights: ["900"], cyrillic: true },
+                { name: "Arial Black", font: "'Arial Black', Impact, sans-serif", weights: ["900"], cyrillic: true },
+                { name: "Georgia", font: "Georgia, 'Times New Roman', serif", weights: ["700"], cyrillic: true }
+            ] : [
+                { name: "Press Start 2P", font: "'Press Start 2P', 'VT323', monospace", weights: ["400"], cyrillic: false },
+                { name: "Orbitron", font: "'Orbitron', 'Impact', sans-serif", weights: ["700", "800", "900"], cyrillic: false },
+                { name: "Cinzel", font: "'Cinzel', 'Georgia', serif", weights: ["700", "800"], cyrillic: false },
+                { name: "Black Ops One", font: "'Black Ops One', 'Impact', monospace, sans-serif", weights: ["800"], cyrillic: false },
+                { name: "Russo One", font: "'Russo One', 'Impact', sans-serif", weights: ["900"], cyrillic: true },
+                { name: "Fredoka", font: "'Fredoka', 'Century Gothic', cursive, sans-serif", weights: ["600", "700"], cyrillic: false },
+                { name: "Share Tech Mono", font: "'Share Tech Mono', 'Courier New', monospace", weights: ["700"], cyrillic: false },
+                { name: "VT323", font: "'VT323', monospace", weights: ["400"], cyrillic: false },
+                { name: "Nosifer", font: "'Nosifer', 'Creepster', Georgia, serif", weights: ["700"], cyrillic: false },
+                { name: "M PLUS Rounded 1c", font: "'M PLUS Rounded 1c', 'Century Gothic', sans-serif", weights: ["700", "800"], cyrillic: false },
+                { name: "Impact", font: "Impact, 'Arial Black', sans-serif", weights: ["900"], cyrillic: true },
+                { name: "Georgia", font: "Georgia, 'Times New Roman', serif", weights: ["700"], cyrillic: true },
+                { name: "Helvetica Neue", font: "'Helvetica Neue', Arial, sans-serif", weights: ["700", "800"], cyrillic: true },
+                { name: "Playfair Display", font: "'Playfair Display', Georgia, serif", weights: ["700", "800"], cyrillic: false },
+                { name: "Trebuchet MS", font: "'Trebuchet MS', 'Segoe UI', sans-serif", weights: ["700"], cyrillic: true },
+                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace", weights: ["700"], cyrillic: true },
+                { name: "Cormorant", font: "'Cormorant', 'Cormorant Garamond', Georgia, serif", weights: ["600", "700"], cyrillic: true },
+                { name: "Montserrat", font: "Montserrat, 'Segoe UI', sans-serif", weights: ["700", "800"], cyrillic: true },
+                { name: "Exo 2", font: "'Exo 2', Roboto, sans-serif", weights: ["700", "800"], cyrillic: true }
             ];
 
-            var bodyList = [
-                { name: "Rajdhani", font: "'Rajdhani', -apple-system, sans-serif" },
-                { name: "VT323", font: "'VT323', monospace" },
-                { name: "Share Tech Mono", font: "'Share Tech Mono', monospace" },
-                { name: "System Sans", font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
-                { name: "Nunito", font: "'Nunito', -apple-system, sans-serif" },
-                { name: "Cormorant", font: "'Cormorant Garamond', Georgia, serif" },
-                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace" },
-                { name: "Open Sans", font: "'Open Sans', 'Segoe UI', Arial, sans-serif" },
-                { name: "Charter Serif", font: "'Charter', Georgia, serif" },
-                { name: "Helvetica", font: "'Helvetica Neue', Helvetica, Arial, sans-serif" },
-                { name: "Roboto", font: "Roboto, 'Segoe UI', sans-serif" }
+            var bodyList = needsCyrillic ? [
+                { name: "System Sans", font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", cyrillic: true },
+                { name: "Roboto", font: "Roboto, 'Segoe UI', sans-serif", cyrillic: true },
+                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace", cyrillic: true },
+                { name: "Nunito", font: "'Nunito', -apple-system, sans-serif", cyrillic: true },
+                { name: "PT Sans", font: "'PT Sans', 'Segoe UI', sans-serif", cyrillic: true },
+                { name: "Cormorant Garamond", font: "'Cormorant Garamond', Georgia, serif", cyrillic: true }
+            ] : [
+                { name: "Rajdhani", font: "'Rajdhani', -apple-system, sans-serif", cyrillic: false },
+                { name: "VT323", font: "'VT323', monospace", cyrillic: false },
+                { name: "Share Tech Mono", font: "'Share Tech Mono', monospace", cyrillic: false },
+                { name: "System Sans", font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", cyrillic: true },
+                { name: "Nunito", font: "'Nunito', -apple-system, sans-serif", cyrillic: true },
+                { name: "Cormorant Garamond", font: "'Cormorant Garamond', Georgia, serif", cyrillic: true },
+                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace", cyrillic: true },
+                { name: "Open Sans", font: "'Open Sans', 'Segoe UI', Arial, sans-serif", cyrillic: true },
+                { name: "Charter Serif", font: "'Charter', Georgia, serif", cyrillic: true },
+                { name: "Helvetica Neue", font: "'Helvetica Neue', Helvetica, Arial, sans-serif", cyrillic: true },
+                { name: "Roboto", font: "Roboto, 'Segoe UI', sans-serif", cyrillic: true }
             ];
 
             var scales = ["1.2", "1.25", "1.3", "1.333", "1.414", "1.5", "1.618"];
-            var letterSpacings = ["-0.03em", "-0.01em", "0", "0.02em", "0.05em", "0.08em"];
-            var lineHeights = ["1.35", "1.4", "1.45", "1.5", "1.55", "1.6", "1.65"];
+            // Heading-specific letter-spacing and line-heights (tight for headings)
+            var headingLetterSpacings = ["-0.04em", "-0.03em", "-0.02em", "-0.01em", "0", "0.02em", "0.05em", "0.08em"];
+            var headingLineHeights = ["1.0", "1.1", "1.15", "1.2", "1.25", "1.3"];
+            var bodyLineHeights = ["1.45", "1.5", "1.55", "1.6", "1.65"];
 
-            var pickedH = headingList[Math.floor(Math.random() * headingList.length)];
-            var pickedB = bodyList[Math.floor(Math.random() * bodyList.length)];
-            var weightH = pickedH.weights[Math.floor(Math.random() * pickedH.weights.length)];
-            var scale = scales[Math.floor(Math.random() * scales.length)];
-            var ls = letterSpacings[Math.floor(Math.random() * letterSpacings.length)];
-            var lh = lineHeights[Math.floor(Math.random() * lineHeights.length)];
+            var pickedH = headingList[Math.floor(rng() * headingList.length)];
+            var pickedB = bodyList[Math.floor(rng() * bodyList.length)];
+            var weightH = pickedH.weights[Math.floor(rng() * pickedH.weights.length)];
+            var scale = scales[Math.floor(rng() * scales.length)];
+            var ls = headingLetterSpacings[Math.floor(rng() * headingLetterSpacings.length)];
+            var lhH = headingLineHeights[Math.floor(rng() * headingLineHeights.length)];
+            var lhB = bodyLineHeights[Math.floor(rng() * bodyLineHeights.length)];
 
             return {
                 id: "wild_" + Math.random().toString(36).substr(2, 6),
@@ -1431,16 +1752,60 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
                 weightHeading: weightH,
                 scale: scale,
                 letterSpacing: ls,
-                lineHeight: lh
+                lineHeightHeading: lhH,
+                lineHeight: lhB,
+                cyrillic: pickedH.cyrillic && pickedB.cyrillic
             };
-        }, i.prototype.randomizeTypography = function(type) {
+        }, i.prototype.resolveTypography = function(typo) {
+            // Apply Cyrillic fallbacks if context is Cyrillic and pair doesn't support it
+            if (!typo) return typo;
+            var needsCyrillic = (typeof window !== "undefined" && window._Paletton && window._Paletton.locale &&
+                (window._Paletton.locale === "ru" || window._Paletton.locale === "uk")) ? true : false;
+            if (!needsCyrillic || typo.cyrillic) return typo;
+            // Clone and replace with Cyrillic alternatives
+            var resolved = {};
+            for (var k in typo) { if (typo.hasOwnProperty(k)) resolved[k] = typo[k]; }
+            if (typo.headingCyrillic) resolved.heading = typo.headingCyrillic;
+            if (typo.bodyCyrillic) resolved.body = typo.bodyCyrillic;
+            resolved._cyrillicResolved = true;
+            return resolved;
+        }, i.prototype.randomizeTypography = function(type, profileId, rng) {
             type = (type || "").toLowerCase();
+            rng = rng || Math.random;
             var curId = this.typography ? this.typography.id : "";
+            var self = this;
+
+            var needsCyrillic = (typeof window !== "undefined" && window._Paletton && window._Paletton.locale &&
+                (window._Paletton.locale === "ru" || window._Paletton.locale === "uk")) ? true : false;
 
             if (type === "wild") {
-                return this.setTypography(this.generateWildTypography());
+                var wild = this.generateWildTypography(null, rng);
+                return this.setTypography(wild);
             }
 
+            // Try profile-matched pairs first (strong coupling)
+            if (profileId && type !== "wild") {
+                var profileMatched = TYPOGRAPHY_PAIRS.filter(function(p) {
+                    if (!p.profileMatch) return false;
+                    for (var m = 0; m < p.profileMatch.length; m++) {
+                        if (p.profileMatch[m] === profileId || profileId.indexOf(p.profileMatch[m]) !== -1) return true;
+                    }
+                    return false;
+                });
+                // Filter Cyrillic-incompatible pairs when needed
+                if (needsCyrillic) {
+                    var cyrillicMatched = profileMatched.filter(function(p) { return p.cyrillic || p.headingCyrillic; });
+                    if (cyrillicMatched.length > 0) profileMatched = cyrillicMatched;
+                }
+                if (profileMatched.length > 0 && rng() < 0.70) {
+                    var available = profileMatched.filter(function(p) { return p.id !== curId; });
+                    if (!available.length) available = profileMatched;
+                    var picked = available[Math.floor(rng() * available.length)];
+                    return this.setTypography(this.resolveTypography(picked));
+                }
+            }
+
+            // Category-filtered pool fallback
             var pool = TYPOGRAPHY_PAIRS;
             if (type === "game" || type === "gaming") {
                 pool = TYPOGRAPHY_PAIRS.filter(function(p) { return p.category === "game"; });
@@ -1450,16 +1815,25 @@ define("color.palette.class", ["app.ini", "app.events", "app.locale", "util", "c
                 pool = TYPOGRAPHY_PAIRS.filter(function(p) { return p.category === "editorial"; });
             }
 
+            // Filter Cyrillic-incompatible when needed
+            if (needsCyrillic) {
+                var cyrillicPool = pool.filter(function(p) { return p.cyrillic || p.headingCyrillic; });
+                if (cyrillicPool.length > 0) pool = cyrillicPool;
+            }
+
+            // 30% chance for wild when no specific profile
             if (!type || type === "all") {
-                if (Math.random() < 0.35) {
-                    return this.setTypography(this.generateWildTypography());
+                if (rng() < 0.30) {
+                    var wildFallback = this.generateWildTypography(null, rng);
+                    return this.setTypography(wildFallback);
                 }
             }
 
-            var available = pool.filter(function(p) { return p.id !== curId; });
-            if (!available.length) available = pool;
-            var picked = available[Math.floor(Math.random() * available.length)];
-            return this.setTypography(picked);
+            var available2 = pool.filter(function(p) { return p.id !== curId; });
+            if (!available2.length) available2 = pool;
+            var picked2 = available2[Math.floor(rng() * available2.length)];
+            return this.setTypography(this.resolveTypography(picked2));
         }, i
     }(), p
 });
+

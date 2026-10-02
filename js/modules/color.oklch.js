@@ -583,6 +583,435 @@ define("color.oklch", ["util"], function(r) {
         };
     }
 
+    /**
+     * OKLab Euclidean color difference Delta E OK:
+     * Reflects perceived visual distance uniformly across hue and lightness.
+     * JND ~ 0.02, distinct accents >= 0.08, high contrast >= 0.15.
+     */
+    function deltaEOk(rgb1, rgb2) {
+        if (!rgb1 || !rgb2) return 0;
+        var lab1 = srgbToOklab(rgb1.r, rgb1.g, rgb1.b);
+        var lab2 = srgbToOklab(rgb2.r, rgb2.g, rgb2.b);
+        var dL = lab1.L - lab2.L;
+        var da = lab1.a - lab2.a;
+        var db = lab1.b - lab2.b;
+        return Math.sqrt(dL * dL + da * da + db * db);
+    }
+
+    /**
+     * Delta E OK under simulated Color Vision Deficiency (CVD).
+     */
+    function cvdDeltaEOk(rgb1, rgb2, type) {
+        var sim1 = simulateColorBlindness(rgb1.r, rgb1.g, rgb1.b, type);
+        var sim2 = simulateColorBlindness(rgb2.r, rgb2.g, rgb2.b, type);
+        return deltaEOk(sim1, sim2);
+    }
+
+    /**
+     * Multi-objective scoring function for batch generate-and-test candidate evaluation:
+     * 1. Semantic contrast (WCAG text/bg, primary/bg, APCA)
+     * 2. Perceptual accent distinctness (Delta E OK between swatches)
+     * 3. Color vision deficiency safety (CVD simulation for protan/deutan/tritan)
+     * 4. Novelty distance (anti-repeat vs last 5 palettes in history)
+     * 5. Profile curve adherence
+     */
+    function scorePaletteCandidate(candidate, profile, history, options) {
+        options = options || {};
+        var targetRatio = options.targetRatio || 4.5;
+        var priColors = candidate.pri;
+        if (!priColors || priColors.length < 5) return { totalScore: 0 };
+
+        var bgRgb = priColors[4];
+        var textRgb = priColors[3];
+        var priRgb = priColors[0];
+
+        // 1. Contrast Score (0-100, weight 35%)
+        var textRatio = calcWcagContrast(textRgb, bgRgb);
+        var priRatio = calcWcagContrast(priRgb, bgRgb);
+        var textScore = textRatio >= 7.0 ? 100 : (textRatio >= targetRatio ? (75 + (textRatio - targetRatio) * 10) : (textRatio / targetRatio * 60));
+        var priTarget = targetRatio >= 7.0 ? 4.5 : 3.0;
+        var priScore = priRatio >= priTarget ? (80 + Math.min(20, (priRatio - priTarget) * 10)) : (priRatio / priTarget * 60);
+        var contrastScore = Math.max(0, Math.min(100, textScore * 0.65 + priScore * 0.35));
+
+        // 2. Accent Distinctness Score (0-100, weight 25%)
+        var accents = [priRgb];
+        if (candidate.sec1 && candidate.sec1[0]) accents.push(candidate.sec1[0]);
+        if (candidate.sec2 && candidate.sec2[0]) accents.push(candidate.sec2[0]);
+        if (candidate.compl && candidate.compl[0]) accents.push(candidate.compl[0]);
+
+        var minDelta = 1.0;
+        var pairCount = 0;
+        for (var i = 0; i < accents.length; i++) {
+            for (var j = i + 1; j < accents.length; j++) {
+                var dE = deltaEOk(accents[i], accents[j]);
+                if (dE < minDelta) minDelta = dE;
+                pairCount++;
+            }
+        }
+        var distinctnessScore = 95;
+        if (pairCount > 0) {
+            if (minDelta >= 0.12) {
+                distinctnessScore = 100;
+            } else if (minDelta < 0.05) {
+                distinctnessScore = Math.max(10, (minDelta / 0.05) * 40);
+            } else {
+                distinctnessScore = 40 + ((minDelta - 0.05) / 0.07) * 60;
+            }
+        }
+
+        // 3. CVD Safety Score (0-100, weight 15%)
+        var minCvdDelta = 1.0;
+        var cvdPairs = 0;
+        if (pairCount > 0) {
+            var cvdTypes = ["deuteranopia", "protanopia"];
+            for (var c = 0; c < cvdTypes.length; c++) {
+                for (var ci = 0; ci < accents.length; ci++) {
+                    for (var cj = ci + 1; cj < accents.length; cj++) {
+                        var cdE = cvdDeltaEOk(accents[ci], accents[cj], cvdTypes[c]);
+                        if (cdE < minCvdDelta) minCvdDelta = cdE;
+                        cvdPairs++;
+                    }
+                }
+            }
+        }
+        var cvdScore = 95;
+        if (cvdPairs > 0) {
+            if (minCvdDelta >= 0.08) {
+                cvdScore = 100;
+            } else if (minCvdDelta < 0.03) {
+                cvdScore = Math.max(15, (minCvdDelta / 0.03) * 45);
+            } else {
+                cvdScore = 45 + ((minCvdDelta - 0.03) / 0.05) * 55;
+            }
+        }
+
+        // 4. Novelty Distance Score (0-100, weight 15%)
+        var noveltyScore = 100;
+        if (history && history.length > 0) {
+            var recentDiffs = [];
+            for (var h = 0; h < Math.min(5, history.length); h++) {
+                var prevHue = history[h].hue !== undefined ? history[h].hue : (history[h].priHue !== undefined ? history[h].priHue : null);
+                if (prevHue !== null) {
+                    var diffH = Math.abs(candidate.hue - prevHue);
+                    var circularDiff = Math.min(diffH, 360 - diffH);
+                    recentDiffs.push(circularDiff);
+                }
+            }
+            if (recentDiffs.length > 0) {
+                var immediateDiff = recentDiffs[0];
+                if (immediateDiff < 15) {
+                    noveltyScore = Math.max(20, (immediateDiff / 15) * 50);
+                } else if (immediateDiff < 35) {
+                    noveltyScore = 50 + ((immediateDiff - 15) / 20) * 35;
+                } else {
+                    noveltyScore = 85 + Math.min(15, ((immediateDiff - 35) / 50) * 15);
+                }
+            }
+        }
+
+        // 5. Profile Adherence Score (0-100, weight 10%)
+        var adherenceScore = 90;
+        if (profile && profile.curve) {
+            var targetPriL = profile.curve[0][0];
+            var priOklch = srgbToOklch(priRgb.r, priRgb.g, priRgb.b);
+            var lDiff = Math.abs(priOklch.L - targetPriL);
+            adherenceScore = Math.max(40, 100 - lDiff * 150);
+        }
+
+        var totalScore = Math.round(
+            contrastScore * 0.35 +
+            distinctnessScore * 0.25 +
+            cvdScore * 0.15 +
+            noveltyScore * 0.15 +
+            adherenceScore * 0.10
+        );
+
+        return {
+            totalScore: totalScore,
+            contrastScore: Math.round(contrastScore),
+            distinctnessScore: Math.round(distinctnessScore),
+            cvdScore: Math.round(cvdScore),
+            noveltyScore: Math.round(noveltyScore),
+            adherenceScore: Math.round(adherenceScore),
+            minDelta: minDelta,
+            minCvdDelta: minCvdDelta,
+            textRatio: textRatio,
+            priRatio: priRatio
+        };
+    }
+
+    /**
+     * Generate complete semantic tokens including light & dark modes, functional roles,
+     * and 11-step tonal scales (50-950) from the palette.
+     */
+    function generateSemanticTokens(priRgb, secRgb, complRgb, options) {
+        options = options || {};
+        var priOklch = srgbToOklch(priRgb.r, priRgb.g, priRgb.b);
+        var baseHue = priOklch.H;
+        var secRgbActual = secRgb || oklchToSrgb(priOklch.L, priOklch.C, (baseHue + 40) % 360);
+        var complRgbActual = complRgb || oklchToSrgb(priOklch.L, priOklch.C, (baseHue + 180) % 360);
+
+        // Scales
+        var primaryScale = generateTonalScale(priRgb.r, priRgb.g, priRgb.b, { hueShift: 3 });
+        var accentScale = generateTonalScale(secRgbActual.r, secRgbActual.g, secRgbActual.b, { hueShift: 4 });
+        var complScale = generateTonalScale(complRgbActual.r, complRgbActual.g, complRgbActual.b, { hueShift: 3 });
+
+        // Functional roles in OKLCH
+        var successRgb = oklchToSrgb(0.62, 0.17, 145);
+        var warningRgb = oklchToSrgb(0.76, 0.16, 85);
+        var dangerRgb = oklchToSrgb(0.58, 0.22, 28);
+        var infoRgb = oklchToSrgb(0.62, 0.16, 235);
+
+        var successScale = generateTonalScale(successRgb.r, successRgb.g, successRgb.b);
+        var warningScale = generateTonalScale(warningRgb.r, warningRgb.g, warningRgb.b);
+        var dangerScale = generateTonalScale(dangerRgb.r, dangerRgb.g, dangerRgb.b);
+        var infoScale = generateTonalScale(infoRgb.r, infoRgb.g, infoRgb.b);
+
+        // Light mode semantic roles
+        var bgLight = oklchToSrgb(0.985, 0.006, baseHue);
+        var surfaceLight = oklchToSrgb(0.95, 0.010, baseHue);
+        var surfaceRaisedLight = oklchToSrgb(1.00, 0.002, baseHue);
+        var textLight = oklchToSrgb(0.14, 0.015, baseHue);
+        var textMutedLight = oklchToSrgb(0.45, 0.020, baseHue);
+        var borderLight = oklchToSrgb(0.86, 0.012, baseHue);
+
+        // Dark mode semantic roles
+        var bgDark = oklchToSrgb(0.12, 0.015, baseHue);
+        var surfaceDark = oklchToSrgb(0.18, 0.020, baseHue);
+        var surfaceRaisedDark = oklchToSrgb(0.24, 0.025, baseHue);
+        var textDark = oklchToSrgb(0.94, 0.008, baseHue);
+        var textMutedDark = oklchToSrgb(0.68, 0.018, baseHue);
+        var borderDark = oklchToSrgb(0.28, 0.020, baseHue);
+
+        var hexFromRgb = function(c) {
+            return "#" + ((1 << 24) + (c.r << 16) + (c.g << 8) + c.b).toString(16).slice(1).toUpperCase();
+        };
+
+        return {
+            primary: primaryScale,
+            accent: accentScale,
+            complement: complScale,
+            success: successScale,
+            warning: warningScale,
+            danger: dangerScale,
+            info: infoScale,
+            modes: {
+                light: {
+                    bg: hexFromRgb(bgLight),
+                    surface: hexFromRgb(surfaceLight),
+                    surfaceRaised: hexFromRgb(surfaceRaisedLight),
+                    text: hexFromRgb(textLight),
+                    textMuted: hexFromRgb(textMutedLight),
+                    border: hexFromRgb(borderLight),
+                    primary: hexFromRgb(primaryScale[500] ? primaryScale[500] : priRgb),
+                    accent: hexFromRgb(accentScale[500] ? accentScale[500] : secRgbActual),
+                    success: hexFromRgb(successScale[500] ? successScale[500] : successRgb),
+                    warning: hexFromRgb(warningScale[500] ? warningScale[500] : warningRgb),
+                    danger: hexFromRgb(dangerScale[500] ? dangerScale[500] : dangerRgb)
+                },
+                dark: {
+                    bg: hexFromRgb(bgDark),
+                    surface: hexFromRgb(surfaceDark),
+                    surfaceRaised: hexFromRgb(surfaceRaisedDark),
+                    text: hexFromRgb(textDark),
+                    textMuted: hexFromRgb(textMutedDark),
+                    border: hexFromRgb(borderDark),
+                    primary: hexFromRgb(primaryScale[400] ? primaryScale[400] : priRgb),
+                    accent: hexFromRgb(accentScale[400] ? accentScale[400] : secRgbActual),
+                    success: hexFromRgb(successScale[400] ? successScale[400] : successRgb),
+                    warning: hexFromRgb(warningScale[400] ? warningScale[400] : warningRgb),
+                    danger: hexFromRgb(dangerScale[400] ? dangerScale[400] : dangerRgb)
+                }
+            }
+        };
+    }
+
+    function formatCssVariables(tokens, typography) {
+        var out = ":root {\n";
+        out += "  /* === Color Scales (50-950) === */\n";
+        var scales = ["primary", "accent", "success", "warning", "danger", "info"];
+        for (var s = 0; s < scales.length; s++) {
+            var name = scales[s];
+            var scale = tokens[name];
+            if (scale) {
+                for (var step in scale) {
+                    out += "  --color-" + name + "-" + step + ": " + scale[step].hex + ";\n";
+                }
+            }
+        }
+
+        out += "\n  /* === Semantic Roles (Light Default) === */\n";
+        var light = tokens.modes.light;
+        for (var role in light) {
+            out += "  --color-" + role + ": " + light[role] + ";\n";
+        }
+
+        if (typography) {
+            out += "\n  /* === Typography Tokens & Fluid Scale === */\n";
+            out += "  --font-heading: " + (typography.heading || "sans-serif") + ";\n";
+            out += "  --font-body: " + (typography.body || "sans-serif") + ";\n";
+            out += "  --font-weight-heading: " + (typography.weightHeading || "700") + ";\n";
+            out += "  --letter-spacing-heading: " + (typography.letterSpacing || "-0.025em") + ";\n";
+            out += "  --letter-spacing-body: 0em;\n";
+            out += "  --letter-spacing-caps: 0.08em;\n";
+            out += "  --line-height-heading: " + (typography.lineHeightHeading || "1.2") + ";\n";
+            out += "  --line-height-body: " + (typography.lineHeight || "1.6") + ";\n";
+            out += "  --type-scale-ratio: " + (typography.scale || "1.25") + ";\n";
+            out += "  --font-size-h1: clamp(2.2rem, 1.8rem + 2vw, 3.8rem);\n";
+            out += "  --font-size-h2: clamp(1.75rem, 1.5rem + 1.2vw, 2.5rem);\n";
+            out += "  --font-size-h3: clamp(1.35rem, 1.25rem + 0.6vw, 1.8rem);\n";
+            out += "  --font-size-body: clamp(0.95rem, 0.9rem + 0.25vw, 1.125rem);\n";
+            out += "  --font-size-caption: clamp(0.75rem, 0.72rem + 0.15vw, 0.875rem);\n";
+            out += "  --content-max-width: 65ch;\n";
+        }
+        out += "}\n\n";
+
+        out += "/* === Dark Theme === */\n";
+        out += "[data-theme=\"dark\"], .dark {\n";
+        var dark = tokens.modes.dark;
+        for (var dRole in dark) {
+            out += "  --color-" + dRole + ": " + dark[dRole] + ";\n";
+        }
+        out += "}\n";
+
+        return out;
+    }
+
+    function formatTailwindConfig(tokens, typography) {
+        var extractScale = function(scale) {
+            var obj = {};
+            if (!scale) return obj;
+            for (var step in scale) {
+                obj[step] = scale[step].hex;
+            }
+            if (scale[500]) obj["DEFAULT"] = scale[500].hex;
+            return obj;
+        };
+
+        var config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: extractScale(tokens.primary),
+                        accent: extractScale(tokens.accent),
+                        success: extractScale(tokens.success),
+                        warning: extractScale(tokens.warning),
+                        danger: extractScale(tokens.danger),
+                        info: extractScale(tokens.info),
+                        bg: "var(--color-bg)",
+                        surface: "var(--color-surface)",
+                        "surface-raised": "var(--color-surfaceRaised)",
+                        text: "var(--color-text)",
+                        "text-muted": "var(--color-textMuted)",
+                        border: "var(--color-border)"
+                    },
+                    fontFamily: {
+                        heading: [(typography && typography.heading) ? typography.heading.replace(/['"]/g, '').split(',')[0].trim() : "sans-serif", "sans-serif"],
+                        body: [(typography && typography.body) ? typography.body.replace(/['"]/g, '').split(',')[0].trim() : "sans-serif", "sans-serif"]
+                    }
+                }
+            }
+        };
+
+        return "/** @type {import('tailwindcss').Config} */\nmodule.exports = " + JSON.stringify(config, null, 2) + ";\n";
+    }
+
+    function formatDtcgTokens(tokens, typography) {
+        var dtcg = {
+            "$schema": "https://design-tokens.github.io/community-group/format/",
+            "color": {
+                "primary": {},
+                "accent": {},
+                "success": {},
+                "warning": {},
+                "danger": {},
+                "semantic": {
+                    "bg": {
+                        "light": { "$value": tokens.modes.light.bg, "$type": "color" },
+                        "dark": { "$value": tokens.modes.dark.bg, "$type": "color" }
+                    },
+                    "surface": {
+                        "light": { "$value": tokens.modes.light.surface, "$type": "color" },
+                        "dark": { "$value": tokens.modes.dark.surface, "$type": "color" }
+                    },
+                    "text": {
+                        "light": { "$value": tokens.modes.light.text, "$type": "color" },
+                        "dark": { "$value": tokens.modes.dark.text, "$type": "color" }
+                    },
+                    "text-muted": {
+                        "light": { "$value": tokens.modes.light.textMuted, "$type": "color" },
+                        "dark": { "$value": tokens.modes.dark.textMuted, "$type": "color" }
+                    },
+                    "border": {
+                        "light": { "$value": tokens.modes.light.border, "$type": "color" },
+                        "dark": { "$value": tokens.modes.dark.border, "$type": "color" }
+                    }
+                }
+            }
+        };
+
+        var addScale = function(name, scaleObj) {
+            for (var step in scaleObj) {
+                dtcg.color[name][step] = {
+                    "$value": scaleObj[step].hex,
+                    "$type": "color",
+                    "$description": "OKLCH L=" + scaleObj[step].L.toFixed(2) + " C=" + scaleObj[step].C.toFixed(3) + " H=" + scaleObj[step].H.toFixed(0)
+                };
+            }
+        };
+        addScale("primary", tokens.primary);
+        addScale("accent", tokens.accent);
+        addScale("success", tokens.success);
+        addScale("warning", tokens.warning);
+        addScale("danger", tokens.danger);
+
+        if (typography) {
+            dtcg.typography = {
+                "fontFamily": {
+                    "heading": { "$value": typography.heading, "$type": "fontFamily" },
+                    "body": { "$value": typography.body, "$type": "fontFamily" }
+                },
+                "letterSpacing": {
+                    "heading": { "$value": typography.letterSpacing || "-0.025em", "$type": "dimension" },
+                    "body": { "$value": "0em", "$type": "dimension" }
+                },
+                "lineHeight": {
+                    "heading": { "$value": typography.lineHeightHeading || "1.2", "$type": "number" },
+                    "body": { "$value": typography.lineHeight || "1.6", "$type": "number" }
+                }
+            };
+        }
+
+        return JSON.stringify(dtcg, null, 2);
+    }
+
+    function formatFigmaTokens(tokens, typography) {
+        var figma = {
+            "version": "1.0.0",
+            "collections": [
+                {
+                    "name": "Semantic Colors",
+                    "modes": ["Light", "Dark"],
+                    "variables": [
+                        { "name": "color/bg", "type": "COLOR", "values": { "Light": tokens.modes.light.bg, "Dark": tokens.modes.dark.bg } },
+                        { "name": "color/surface", "type": "COLOR", "values": { "Light": tokens.modes.light.surface, "Dark": tokens.modes.dark.surface } },
+                        { "name": "color/surface-raised", "type": "COLOR", "values": { "Light": tokens.modes.light.surfaceRaised, "Dark": tokens.modes.dark.surfaceRaised } },
+                        { "name": "color/text", "type": "COLOR", "values": { "Light": tokens.modes.light.text, "Dark": tokens.modes.dark.text } },
+                        { "name": "color/text-muted", "type": "COLOR", "values": { "Light": tokens.modes.light.textMuted, "Dark": tokens.modes.dark.textMuted } },
+                        { "name": "color/border", "type": "COLOR", "values": { "Light": tokens.modes.light.border, "Dark": tokens.modes.dark.border } },
+                        { "name": "color/primary", "type": "COLOR", "values": { "Light": tokens.modes.light.primary, "Dark": tokens.modes.dark.primary } },
+                        { "name": "color/accent", "type": "COLOR", "values": { "Light": tokens.modes.light.accent, "Dark": tokens.modes.dark.accent } },
+                        { "name": "color/success", "type": "COLOR", "values": { "Light": tokens.modes.light.success, "Dark": tokens.modes.dark.success } },
+                        { "name": "color/warning", "type": "COLOR", "values": { "Light": tokens.modes.light.warning, "Dark": tokens.modes.dark.warning } },
+                        { "name": "color/danger", "type": "COLOR", "values": { "Light": tokens.modes.light.danger, "Dark": tokens.modes.dark.danger } }
+                    ]
+                }
+            ]
+        };
+        return JSON.stringify(figma, null, 2);
+    }
+
     // Comprehensive OKLCH Profiles Dictionary (22 profiles with [L, C] perceptual curves)
     var OKLCH_PROFILES = {
         saas: {
@@ -845,6 +1274,14 @@ define("color.oklch", ["util"], function(r) {
         fitContrast: fitContrast,
         fitContrastApca: fitContrastApca,
         auditSemanticContrast: auditSemanticContrast,
+        deltaEOk: deltaEOk,
+        cvdDeltaEOk: cvdDeltaEOk,
+        scorePaletteCandidate: scorePaletteCandidate,
+        generateSemanticTokens: generateSemanticTokens,
+        formatCssVariables: formatCssVariables,
+        formatTailwindConfig: formatTailwindConfig,
+        formatDtcgTokens: formatDtcgTokens,
+        formatFigmaTokens: formatFigmaTokens,
         OKLCH_PROFILES: OKLCH_PROFILES
     };
 });

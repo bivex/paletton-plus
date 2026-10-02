@@ -584,6 +584,435 @@
         };
     }
 
+    /**
+     * OKLab Euclidean color difference Delta E OK:
+     * Reflects perceived visual distance uniformly across hue and lightness.
+     * JND ~ 0.02, distinct accents >= 0.08, high contrast >= 0.15.
+     */
+    function deltaEOk(rgb1, rgb2) {
+        if (!rgb1 || !rgb2) return 0;
+        var lab1 = srgbToOklab(rgb1.r, rgb1.g, rgb1.b);
+        var lab2 = srgbToOklab(rgb2.r, rgb2.g, rgb2.b);
+        var dL = lab1.L - lab2.L;
+        var da = lab1.a - lab2.a;
+        var db = lab1.b - lab2.b;
+        return Math.sqrt(dL * dL + da * da + db * db);
+    }
+
+    /**
+     * Delta E OK under simulated Color Vision Deficiency (CVD).
+     */
+    function cvdDeltaEOk(rgb1, rgb2, type) {
+        var sim1 = simulateColorBlindness(rgb1.r, rgb1.g, rgb1.b, type);
+        var sim2 = simulateColorBlindness(rgb2.r, rgb2.g, rgb2.b, type);
+        return deltaEOk(sim1, sim2);
+    }
+
+    /**
+     * Multi-objective scoring function for batch generate-and-test candidate evaluation:
+     * 1. Semantic contrast (WCAG text/bg, primary/bg, APCA)
+     * 2. Perceptual accent distinctness (Delta E OK between swatches)
+     * 3. Color vision deficiency safety (CVD simulation for protan/deutan/tritan)
+     * 4. Novelty distance (anti-repeat vs last 5 palettes in history)
+     * 5. Profile curve adherence
+     */
+    function scorePaletteCandidate(candidate, profile, history, options) {
+        options = options || {};
+        var targetRatio = options.targetRatio || 4.5;
+        var priColors = candidate.pri;
+        if (!priColors || priColors.length < 5) return { totalScore: 0 };
+
+        var bgRgb = priColors[4];
+        var textRgb = priColors[3];
+        var priRgb = priColors[0];
+
+        // 1. Contrast Score (0-100, weight 35%)
+        var textRatio = calcWcagContrast(textRgb, bgRgb);
+        var priRatio = calcWcagContrast(priRgb, bgRgb);
+        var textScore = textRatio >= 7.0 ? 100 : (textRatio >= targetRatio ? (75 + (textRatio - targetRatio) * 10) : (textRatio / targetRatio * 60));
+        var priTarget = targetRatio >= 7.0 ? 4.5 : 3.0;
+        var priScore = priRatio >= priTarget ? (80 + Math.min(20, (priRatio - priTarget) * 10)) : (priRatio / priTarget * 60);
+        var contrastScore = Math.max(0, Math.min(100, textScore * 0.65 + priScore * 0.35));
+
+        // 2. Accent Distinctness Score (0-100, weight 25%)
+        var accents = [priRgb];
+        if (candidate.sec1 && candidate.sec1[0]) accents.push(candidate.sec1[0]);
+        if (candidate.sec2 && candidate.sec2[0]) accents.push(candidate.sec2[0]);
+        if (candidate.compl && candidate.compl[0]) accents.push(candidate.compl[0]);
+
+        var minDelta = 1.0;
+        var pairCount = 0;
+        for (var i = 0; i < accents.length; i++) {
+            for (var j = i + 1; j < accents.length; j++) {
+                var dE = deltaEOk(accents[i], accents[j]);
+                if (dE < minDelta) minDelta = dE;
+                pairCount++;
+            }
+        }
+        var distinctnessScore = 95;
+        if (pairCount > 0) {
+            if (minDelta >= 0.12) {
+                distinctnessScore = 100;
+            } else if (minDelta < 0.05) {
+                distinctnessScore = Math.max(10, (minDelta / 0.05) * 40);
+            } else {
+                distinctnessScore = 40 + ((minDelta - 0.05) / 0.07) * 60;
+            }
+        }
+
+        // 3. CVD Safety Score (0-100, weight 15%)
+        var minCvdDelta = 1.0;
+        var cvdPairs = 0;
+        if (pairCount > 0) {
+            var cvdTypes = ["deuteranopia", "protanopia"];
+            for (var c = 0; c < cvdTypes.length; c++) {
+                for (var ci = 0; ci < accents.length; ci++) {
+                    for (var cj = ci + 1; cj < accents.length; cj++) {
+                        var cdE = cvdDeltaEOk(accents[ci], accents[cj], cvdTypes[c]);
+                        if (cdE < minCvdDelta) minCvdDelta = cdE;
+                        cvdPairs++;
+                    }
+                }
+            }
+        }
+        var cvdScore = 95;
+        if (cvdPairs > 0) {
+            if (minCvdDelta >= 0.08) {
+                cvdScore = 100;
+            } else if (minCvdDelta < 0.03) {
+                cvdScore = Math.max(15, (minCvdDelta / 0.03) * 45);
+            } else {
+                cvdScore = 45 + ((minCvdDelta - 0.03) / 0.05) * 55;
+            }
+        }
+
+        // 4. Novelty Distance Score (0-100, weight 15%)
+        var noveltyScore = 100;
+        if (history && history.length > 0) {
+            var recentDiffs = [];
+            for (var h = 0; h < Math.min(5, history.length); h++) {
+                var prevHue = history[h].hue !== undefined ? history[h].hue : (history[h].priHue !== undefined ? history[h].priHue : null);
+                if (prevHue !== null) {
+                    var diffH = Math.abs(candidate.hue - prevHue);
+                    var circularDiff = Math.min(diffH, 360 - diffH);
+                    recentDiffs.push(circularDiff);
+                }
+            }
+            if (recentDiffs.length > 0) {
+                var immediateDiff = recentDiffs[0];
+                if (immediateDiff < 15) {
+                    noveltyScore = Math.max(20, (immediateDiff / 15) * 50);
+                } else if (immediateDiff < 35) {
+                    noveltyScore = 50 + ((immediateDiff - 15) / 20) * 35;
+                } else {
+                    noveltyScore = 85 + Math.min(15, ((immediateDiff - 35) / 50) * 15);
+                }
+            }
+        }
+
+        // 5. Profile Adherence Score (0-100, weight 10%)
+        var adherenceScore = 90;
+        if (profile && profile.curve) {
+            var targetPriL = profile.curve[0][0];
+            var priOklch = srgbToOklch(priRgb.r, priRgb.g, priRgb.b);
+            var lDiff = Math.abs(priOklch.L - targetPriL);
+            adherenceScore = Math.max(40, 100 - lDiff * 150);
+        }
+
+        var totalScore = Math.round(
+            contrastScore * 0.35 +
+            distinctnessScore * 0.25 +
+            cvdScore * 0.15 +
+            noveltyScore * 0.15 +
+            adherenceScore * 0.10
+        );
+
+        return {
+            totalScore: totalScore,
+            contrastScore: Math.round(contrastScore),
+            distinctnessScore: Math.round(distinctnessScore),
+            cvdScore: Math.round(cvdScore),
+            noveltyScore: Math.round(noveltyScore),
+            adherenceScore: Math.round(adherenceScore),
+            minDelta: minDelta,
+            minCvdDelta: minCvdDelta,
+            textRatio: textRatio,
+            priRatio: priRatio
+        };
+    }
+
+    /**
+     * Generate complete semantic tokens including light & dark modes, functional roles,
+     * and 11-step tonal scales (50-950) from the palette.
+     */
+    function generateSemanticTokens(priRgb, secRgb, complRgb, options) {
+        options = options || {};
+        var priOklch = srgbToOklch(priRgb.r, priRgb.g, priRgb.b);
+        var baseHue = priOklch.H;
+        var secRgbActual = secRgb || oklchToSrgb(priOklch.L, priOklch.C, (baseHue + 40) % 360);
+        var complRgbActual = complRgb || oklchToSrgb(priOklch.L, priOklch.C, (baseHue + 180) % 360);
+
+        // Scales
+        var primaryScale = generateTonalScale(priRgb.r, priRgb.g, priRgb.b, { hueShift: 3 });
+        var accentScale = generateTonalScale(secRgbActual.r, secRgbActual.g, secRgbActual.b, { hueShift: 4 });
+        var complScale = generateTonalScale(complRgbActual.r, complRgbActual.g, complRgbActual.b, { hueShift: 3 });
+
+        // Functional roles in OKLCH
+        var successRgb = oklchToSrgb(0.62, 0.17, 145);
+        var warningRgb = oklchToSrgb(0.76, 0.16, 85);
+        var dangerRgb = oklchToSrgb(0.58, 0.22, 28);
+        var infoRgb = oklchToSrgb(0.62, 0.16, 235);
+
+        var successScale = generateTonalScale(successRgb.r, successRgb.g, successRgb.b);
+        var warningScale = generateTonalScale(warningRgb.r, warningRgb.g, warningRgb.b);
+        var dangerScale = generateTonalScale(dangerRgb.r, dangerRgb.g, dangerRgb.b);
+        var infoScale = generateTonalScale(infoRgb.r, infoRgb.g, infoRgb.b);
+
+        // Light mode semantic roles
+        var bgLight = oklchToSrgb(0.985, 0.006, baseHue);
+        var surfaceLight = oklchToSrgb(0.95, 0.010, baseHue);
+        var surfaceRaisedLight = oklchToSrgb(1.00, 0.002, baseHue);
+        var textLight = oklchToSrgb(0.14, 0.015, baseHue);
+        var textMutedLight = oklchToSrgb(0.45, 0.020, baseHue);
+        var borderLight = oklchToSrgb(0.86, 0.012, baseHue);
+
+        // Dark mode semantic roles
+        var bgDark = oklchToSrgb(0.12, 0.015, baseHue);
+        var surfaceDark = oklchToSrgb(0.18, 0.020, baseHue);
+        var surfaceRaisedDark = oklchToSrgb(0.24, 0.025, baseHue);
+        var textDark = oklchToSrgb(0.94, 0.008, baseHue);
+        var textMutedDark = oklchToSrgb(0.68, 0.018, baseHue);
+        var borderDark = oklchToSrgb(0.28, 0.020, baseHue);
+
+        var hexFromRgb = function(c) {
+            return "#" + ((1 << 24) + (c.r << 16) + (c.g << 8) + c.b).toString(16).slice(1).toUpperCase();
+        };
+
+        return {
+            primary: primaryScale,
+            accent: accentScale,
+            complement: complScale,
+            success: successScale,
+            warning: warningScale,
+            danger: dangerScale,
+            info: infoScale,
+            modes: {
+                light: {
+                    bg: hexFromRgb(bgLight),
+                    surface: hexFromRgb(surfaceLight),
+                    surfaceRaised: hexFromRgb(surfaceRaisedLight),
+                    text: hexFromRgb(textLight),
+                    textMuted: hexFromRgb(textMutedLight),
+                    border: hexFromRgb(borderLight),
+                    primary: hexFromRgb(primaryScale[500] ? primaryScale[500] : priRgb),
+                    accent: hexFromRgb(accentScale[500] ? accentScale[500] : secRgbActual),
+                    success: hexFromRgb(successScale[500] ? successScale[500] : successRgb),
+                    warning: hexFromRgb(warningScale[500] ? warningScale[500] : warningRgb),
+                    danger: hexFromRgb(dangerScale[500] ? dangerScale[500] : dangerRgb)
+                },
+                dark: {
+                    bg: hexFromRgb(bgDark),
+                    surface: hexFromRgb(surfaceDark),
+                    surfaceRaised: hexFromRgb(surfaceRaisedDark),
+                    text: hexFromRgb(textDark),
+                    textMuted: hexFromRgb(textMutedDark),
+                    border: hexFromRgb(borderDark),
+                    primary: hexFromRgb(primaryScale[400] ? primaryScale[400] : priRgb),
+                    accent: hexFromRgb(accentScale[400] ? accentScale[400] : secRgbActual),
+                    success: hexFromRgb(successScale[400] ? successScale[400] : successRgb),
+                    warning: hexFromRgb(warningScale[400] ? warningScale[400] : warningRgb),
+                    danger: hexFromRgb(dangerScale[400] ? dangerScale[400] : dangerRgb)
+                }
+            }
+        };
+    }
+
+    function formatCssVariables(tokens, typography) {
+        var out = ":root {\n";
+        out += "  /* === Color Scales (50-950) === */\n";
+        var scales = ["primary", "accent", "success", "warning", "danger", "info"];
+        for (var s = 0; s < scales.length; s++) {
+            var name = scales[s];
+            var scale = tokens[name];
+            if (scale) {
+                for (var step in scale) {
+                    out += "  --color-" + name + "-" + step + ": " + scale[step].hex + ";\n";
+                }
+            }
+        }
+
+        out += "\n  /* === Semantic Roles (Light Default) === */\n";
+        var light = tokens.modes.light;
+        for (var role in light) {
+            out += "  --color-" + role + ": " + light[role] + ";\n";
+        }
+
+        if (typography) {
+            out += "\n  /* === Typography Tokens & Fluid Scale === */\n";
+            out += "  --font-heading: " + (typography.heading || "sans-serif") + ";\n";
+            out += "  --font-body: " + (typography.body || "sans-serif") + ";\n";
+            out += "  --font-weight-heading: " + (typography.weightHeading || "700") + ";\n";
+            out += "  --letter-spacing-heading: " + (typography.letterSpacing || "-0.025em") + ";\n";
+            out += "  --letter-spacing-body: 0em;\n";
+            out += "  --letter-spacing-caps: 0.08em;\n";
+            out += "  --line-height-heading: " + (typography.lineHeightHeading || "1.2") + ";\n";
+            out += "  --line-height-body: " + (typography.lineHeight || "1.6") + ";\n";
+            out += "  --type-scale-ratio: " + (typography.scale || "1.25") + ";\n";
+            out += "  --font-size-h1: clamp(2.2rem, 1.8rem + 2vw, 3.8rem);\n";
+            out += "  --font-size-h2: clamp(1.75rem, 1.5rem + 1.2vw, 2.5rem);\n";
+            out += "  --font-size-h3: clamp(1.35rem, 1.25rem + 0.6vw, 1.8rem);\n";
+            out += "  --font-size-body: clamp(0.95rem, 0.9rem + 0.25vw, 1.125rem);\n";
+            out += "  --font-size-caption: clamp(0.75rem, 0.72rem + 0.15vw, 0.875rem);\n";
+            out += "  --content-max-width: 65ch;\n";
+        }
+        out += "}\n\n";
+
+        out += "/* === Dark Theme === */\n";
+        out += "[data-theme=\"dark\"], .dark {\n";
+        var dark = tokens.modes.dark;
+        for (var dRole in dark) {
+            out += "  --color-" + dRole + ": " + dark[dRole] + ";\n";
+        }
+        out += "}\n";
+
+        return out;
+    }
+
+    function formatTailwindConfig(tokens, typography) {
+        var extractScale = function(scale) {
+            var obj = {};
+            if (!scale) return obj;
+            for (var step in scale) {
+                obj[step] = scale[step].hex;
+            }
+            if (scale[500]) obj["DEFAULT"] = scale[500].hex;
+            return obj;
+        };
+
+        var config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: extractScale(tokens.primary),
+                        accent: extractScale(tokens.accent),
+                        success: extractScale(tokens.success),
+                        warning: extractScale(tokens.warning),
+                        danger: extractScale(tokens.danger),
+                        info: extractScale(tokens.info),
+                        bg: "var(--color-bg)",
+                        surface: "var(--color-surface)",
+                        "surface-raised": "var(--color-surfaceRaised)",
+                        text: "var(--color-text)",
+                        "text-muted": "var(--color-textMuted)",
+                        border: "var(--color-border)"
+                    },
+                    fontFamily: {
+                        heading: [(typography && typography.heading) ? typography.heading.replace(/['"]/g, '').split(',')[0].trim() : "sans-serif", "sans-serif"],
+                        body: [(typography && typography.body) ? typography.body.replace(/['"]/g, '').split(',')[0].trim() : "sans-serif", "sans-serif"]
+                    }
+                }
+            }
+        };
+
+        return "/** @type {import('tailwindcss').Config} */\nmodule.exports = " + JSON.stringify(config, null, 2) + ";\n";
+    }
+
+    function formatDtcgTokens(tokens, typography) {
+        var dtcg = {
+            "$schema": "https://design-tokens.github.io/community-group/format/",
+            "color": {
+                "primary": {},
+                "accent": {},
+                "success": {},
+                "warning": {},
+                "danger": {},
+                "semantic": {
+                    "bg": {
+                        "light": { "$value": tokens.modes.light.bg, "$type": "color" },
+                        "dark": { "$value": tokens.modes.dark.bg, "$type": "color" }
+                    },
+                    "surface": {
+                        "light": { "$value": tokens.modes.light.surface, "$type": "color" },
+                        "dark": { "$value": tokens.modes.dark.surface, "$type": "color" }
+                    },
+                    "text": {
+                        "light": { "$value": tokens.modes.light.text, "$type": "color" },
+                        "dark": { "$value": tokens.modes.dark.text, "$type": "color" }
+                    },
+                    "text-muted": {
+                        "light": { "$value": tokens.modes.light.textMuted, "$type": "color" },
+                        "dark": { "$value": tokens.modes.dark.textMuted, "$type": "color" }
+                    },
+                    "border": {
+                        "light": { "$value": tokens.modes.light.border, "$type": "color" },
+                        "dark": { "$value": tokens.modes.dark.border, "$type": "color" }
+                    }
+                }
+            }
+        };
+
+        var addScale = function(name, scaleObj) {
+            for (var step in scaleObj) {
+                dtcg.color[name][step] = {
+                    "$value": scaleObj[step].hex,
+                    "$type": "color",
+                    "$description": "OKLCH L=" + scaleObj[step].L.toFixed(2) + " C=" + scaleObj[step].C.toFixed(3) + " H=" + scaleObj[step].H.toFixed(0)
+                };
+            }
+        };
+        addScale("primary", tokens.primary);
+        addScale("accent", tokens.accent);
+        addScale("success", tokens.success);
+        addScale("warning", tokens.warning);
+        addScale("danger", tokens.danger);
+
+        if (typography) {
+            dtcg.typography = {
+                "fontFamily": {
+                    "heading": { "$value": typography.heading, "$type": "fontFamily" },
+                    "body": { "$value": typography.body, "$type": "fontFamily" }
+                },
+                "letterSpacing": {
+                    "heading": { "$value": typography.letterSpacing || "-0.025em", "$type": "dimension" },
+                    "body": { "$value": "0em", "$type": "dimension" }
+                },
+                "lineHeight": {
+                    "heading": { "$value": typography.lineHeightHeading || "1.2", "$type": "number" },
+                    "body": { "$value": typography.lineHeight || "1.6", "$type": "number" }
+                }
+            };
+        }
+
+        return JSON.stringify(dtcg, null, 2);
+    }
+
+    function formatFigmaTokens(tokens, typography) {
+        var figma = {
+            "version": "1.0.0",
+            "collections": [
+                {
+                    "name": "Semantic Colors",
+                    "modes": ["Light", "Dark"],
+                    "variables": [
+                        { "name": "color/bg", "type": "COLOR", "values": { "Light": tokens.modes.light.bg, "Dark": tokens.modes.dark.bg } },
+                        { "name": "color/surface", "type": "COLOR", "values": { "Light": tokens.modes.light.surface, "Dark": tokens.modes.dark.surface } },
+                        { "name": "color/surface-raised", "type": "COLOR", "values": { "Light": tokens.modes.light.surfaceRaised, "Dark": tokens.modes.dark.surfaceRaised } },
+                        { "name": "color/text", "type": "COLOR", "values": { "Light": tokens.modes.light.text, "Dark": tokens.modes.dark.text } },
+                        { "name": "color/text-muted", "type": "COLOR", "values": { "Light": tokens.modes.light.textMuted, "Dark": tokens.modes.dark.textMuted } },
+                        { "name": "color/border", "type": "COLOR", "values": { "Light": tokens.modes.light.border, "Dark": tokens.modes.dark.border } },
+                        { "name": "color/primary", "type": "COLOR", "values": { "Light": tokens.modes.light.primary, "Dark": tokens.modes.dark.primary } },
+                        { "name": "color/accent", "type": "COLOR", "values": { "Light": tokens.modes.light.accent, "Dark": tokens.modes.dark.accent } },
+                        { "name": "color/success", "type": "COLOR", "values": { "Light": tokens.modes.light.success, "Dark": tokens.modes.dark.success } },
+                        { "name": "color/warning", "type": "COLOR", "values": { "Light": tokens.modes.light.warning, "Dark": tokens.modes.dark.warning } },
+                        { "name": "color/danger", "type": "COLOR", "values": { "Light": tokens.modes.light.danger, "Dark": tokens.modes.dark.danger } }
+                    ]
+                }
+            ]
+        };
+        return JSON.stringify(figma, null, 2);
+    }
+
     // Comprehensive OKLCH Profiles Dictionary (22 profiles with [L, C] perceptual curves)
     var OKLCH_PROFILES = {
         saas: {
@@ -846,10 +1275,19 @@
         fitContrast: fitContrast,
         fitContrastApca: fitContrastApca,
         auditSemanticContrast: auditSemanticContrast,
+        deltaEOk: deltaEOk,
+        cvdDeltaEOk: cvdDeltaEOk,
+        scorePaletteCandidate: scorePaletteCandidate,
+        generateSemanticTokens: generateSemanticTokens,
+        formatCssVariables: formatCssVariables,
+        formatTailwindConfig: formatTailwindConfig,
+        formatDtcgTokens: formatDtcgTokens,
+        formatFigmaTokens: formatFigmaTokens,
         OKLCH_PROFILES: OKLCH_PROFILES
     };
 });
-    }.call(this),function(){define("color.rgb.class",["color.cmyk.class","color.lab.class","util","color.oklch"],function(e,t,n,oklch){var r;return r=function(){function r(e,t,n){this.set(e,t,n)}return r.prototype.set=function(e,t,n){return this.r=Math.round(e>255?255:e>0?e:0),this.g=Math.round(t>255?255:t>0?t:0),this.b=Math.round(n>255?255:n>0?n:0)},r.prototype.setNormalized=function(e,t,n){var r,i;return i=Math.max(e,t,n),i>255&&(r=255/i,e=Math.round(e*r),t=Math.round(t*r),n=Math.round(n*r)),this.set(e,t,n)},r.prototype.setByHex=function(e){var t,r,i,s;return s=n.hex2rgb(e),i=s[0],r=s[1],t=s[2],this.set(i,r,t)},r.prototype.copy=function(){return new r(this.r,this.g,this.b)},r.prototype.getCSS=function(e){return e!=null?"rgba("+this.r+","+this.g+","+this.b+","+e+")":"rgb("+this.r+","+this.g+","+this.b+")"},r.prototype.getTextVal=function(e){return e==null&&(e="–"),this.r+e+this.g+e+this.b},r.prototype.getTextPerc=function(e,t,r){var i;return e||(e=0),t?(i="",r==null&&(r="–")):(i=" %",r==null&&(r=" – ")),n.round(this.r/255*100,e)+i+r+n.round(this.g/255*100,e)+i+r+n.round(this.b/255*100,e)+i},r.prototype.getHex=function(e){var t;return t="",e&&(t="#"),t+=n.dec2hex(this.r)+n.dec2hex(this.g)+n.dec2hex(this.b),t},r.prototype.getLum=function(){return(this.r*.299+this.g*.587+this.b*.114)/255},r.prototype.getLumWCAG=function(){var e;return e=function(e){var t;return t=e/255,t<=.03928?t/12.92:Math.pow((t+.055)/1.055,2.4)},e(this.r)*.2126+e(this.g)*.7152+e(this.b)*.0722},r.prototype.getLAB=function(){var e;return e=new t(0,0,0),e.setByRGB(this),e},r.prototype.getCMYK=function(){var t;return t=new e(0,0,0,0),t.setByRGB(this),t},r.prototype.getOKLCH=function(){return oklch.srgbToOklch(this.r,this.g,this.b)},r.prototype.getTextOKLCH=function(){var o=this.getOKLCH();return oklch.formatCssOklch(o.L,o.C,o.H)},r.prototype.setByOKLCH=function(L,C,H){var c=oklch.oklchToSrgb(L,C,H);return this.set(c.r,c.g,c.b)},r.prototype.getTonalScale=function(options){return oklch.generateTonalScale(this.r,this.g,this.b,options)},r.prototype.getAPCA=function(bg){return oklch.calcAPCA(this,bg||{r:255,g:255,b:255})},r.prototype.getContrast=function(other){return r.calcContrast(this,other)},r.calcContrast=function(c1,c2){if(!c1||!c2)return 1;var getL=function(c){if(typeof c.getLumWCAG==="function")return c.getLumWCAG();var e=function(val){var t=(val||0)/255;return t<=.03928?t/12.92:Math.pow((t+.055)/1.055,2.4)};var cr=c.r!=null?c.r:(c[0]||0),cg=c.g!=null?c.g:(c[1]||0),cb=c.b!=null?c.b:(c[2]||0);return e(cr)*.2126+e(cg)*.7152+e(cb)*.0722};var l1=getL(c1)+.05,l2=getL(c2)+.05,ratio=l1>l2?l1/l2:l2/l1;return Math.round(ratio*100)/100},r.calcAPCA=function(txt,bg){return oklch.calcAPCA(txt,bg);},r.prototype.getConverted=function(e,t){return e(this,t)},r}(),r})}.call(this),function(){define("color.wheel",["color.hsv.class","color.rgb.class"],function(e,t){var n,r,i,s,o,u,a,f,l,c,h;return s=function(e,t,n){return n===-1?e:e+(t-e)/(1+n)},i=function(e,t,n){return n===-1?t:t+(e-t)/(1+n)},f={r:{rgb:new t(255,0,0),hsv:new e(0,1,1)},rg:{rgb:new t(255,255,0),hsv:new e(120,1,1)},g:{rgb:new t(0,255,0),hsv:new e(180,1,.8)},gb:{rgb:new t(0,255,255),hsv:new e(210,1,.6)},b:{rgb:new t(0,0,255),hsv:new e(255,.85,.7)},br:{rgb:new t(255,0,255),hsv:new e(315,1,.65)}},u=function(e){return e<120?h:e<180?c:e<210?a:e<255?o:e<315?n:r},h={a:f.r,b:f.rg,f:function(e){return e===0?-1:Math.tan((120-e)/120*Math.PI/2)*.5},fi:function(e){return e===-1?0:120-Math.atan(e/.5)*120/Math.PI*2},g:s,orderRGB:function(e,n,r){return new t(e,n,r)}},c={a:f.rg,b:f.g,f:function(e){return e===180?-1:Math.tan((e-120)/60*Math.PI/2)*.5},fi:function(e){return e===-1?180:120+Math.atan(e/.5)*60/Math.PI*2},g:i,orderRGB:function(e,n,r){return new t(n,e,r)}},a={a:f.g,b:f.gb,f:function(e){return e===180?-1:Math.tan((210-e)/30*Math.PI/2)*.75},fi:function(e){return e===-1?180:210-Math.atan(e/.75)*30/Math.PI*2},g:s,orderRGB:function(e,n,r){return new t(r,e,n)}},o={a:f.gb,b:f.b,f:function(e){return e===255?-1:Math.tan((e-210)/45*Math.PI/2)*1.33},fi:function(e){return e===-1?255:210+Math.atan(e/1.33)*45/Math.PI*2},g:i,orderRGB:function(e,n,r){return new t(r,n,e)}},n={a:f.b,b:f.br,f:function(e){return e===255?-1:Math.tan((315-e)/60*Math.PI/2)*1.33},fi:function(e){return e===-1?255:315-Math.atan(e/1.33)*60/Math.PI*2},g:s,orderRGB:function(e,n,r){return new t(n,r,e)}},r={a:f.br,b:f.r,f:function(e){return(e%360===0)?-1:Math.tan((e-315)/45*Math.PI/2)*1.33},fi:function(e){return e===-1?0:315+Math.atan(e/1.33)*45/Math.PI*2},g:i,orderRGB:function(e,n,r){return new t(e,r,n)}},l={getBaseColorByHue:function(t){var n,r,i,s;return t=(t%360+360)%360,n=u(t),r=n.f(t),s=n.g(n.a.hsv.v,n.b.hsv.v,r),i=n.g(n.a.hsv.s,n.b.hsv.s,r),new e(t,i,s)},hsv2rgb:function(e){var t,n,r,i,s,o,a;return a=(e.h%360+360)%360,t=u(a),n=t.f(a),o=t.a.rgb,r=Math.max(o.r,Math.max(o.g,o.b)),r*=e.v,s=r*(1-e.s),n===-1?i=s:i=(r+s*n)/(1+n),t.orderRGB(r,i,s)},rgb2hsv:function(t){var i,s,u,f,l,p,d,v;return t.r===t.b&&t.r===t.g?(s=0,d=0,v=t.getLum()):(f=Math.max(t.r,Math.max(t.g,t.b)),p=Math.min(t.r,Math.min(t.g,t.b)),f===t.r?p===t.b?(l=t.g,i=h):(l=t.b,i=r):f===t.g?p===t.r?(l=t.b,i=a):(l=t.r,i=c):p===t.r?(l=t.g,i=o):(l=t.r,i=n),l===p?u=-1:u=(f-l)/(l-p),s=i.fi(u),d=(f-p)/f,v=f/255),new e(s,d,v)}},l})}.call(this),function(){define("color.presets",["util"],function(e){var t,n,r,i,s;i={"pale-light":{val:[[.24649,1.78676],[.09956,1.95603],[.17209,1.88583],[.32122,1.65929],[.39549,1.50186]]},"pastels-bright":{val:[[.65667,1.86024],[.04738,1.99142],[.39536,1.89478],[.90297,1.85419],[1.86422,1.8314]]},shiny:{val:[[1.00926,2],[.3587,2],[.5609,2],[2,.8502],[2,.65438]]},"pastels-lightest":{val:[[.34088,1.09786],[.13417,1.62645],[.23137,1.38072],[.45993,.92696],[.58431,.81098]]},"pastels-very-light":{val:[[.58181,1.32382],[.27125,1.81913],[.44103,1.59111],[.70192,1.02722],[.84207,.91425]]},full:{val:[[1,1],[.61056,1.24992],[.77653,1.05996],[1.06489,.77234],[1.25783,.60685]]},"pastels-light":{val:[[.37045,.90707],[.15557,1.28367],[.25644,1.00735],[.49686,.809],[.64701,.69855]]},"pastels-med":{val:[[.66333,.8267],[.36107,1.30435],[.52846,.95991],[.78722,.70882],[.91265,.5616]]},darker:{val:[[.93741,.68672],[.68147,.88956],[.86714,.82989],[1.12072,.5673],[1.44641,.42034]]},"pastels-mid-pale":{val:[[.38302,.68001],[.15521,.98457],[.26994,.81586],[.46705,.54194],[.64065,.44875]]},pastels:{val:[[.66667,.66667],[.33333,1],[.5,.83333],[.83333,.5],[1,.33333]]},"dark-neon":{val:[[.94645,.59068],[.99347,.91968],[.93954,.7292],[1.01481,.41313],[1.04535,.24368]]},"pastels-dark":{val:[[.36687,.39819],[.25044,.65561],[.319,.54623],[.55984,.37953],[.70913,.3436]]},"pastels-very-dark":{val:[[.60117,.41845],[.36899,.59144],[.42329,.44436],[.72826,.35958],[.88393,.27004]]},dark:{val:[[1.31883,.40212],[.9768,.25402],[1.27265,.30941],[1.21289,.60821],[1.29837,.82751]]},"pastels-mid-dark":{val:[[.26952,.22044],[.23405,.52735],[.23104,.37616],[.42324,.20502],[.54424,.18483]]},"pastels-darkest":{val:[[.53019,.23973],[.48102,.50306],[.50001,.36755],[.6643,.32778],[.77714,.3761]]},darkest:{val:[[1.46455,.21042],[.99797,.16373],[.96326,.274],[1.56924,.45022],[1.23016,.66]]},"almost black":{val:[[.12194,.15399],[.34224,.50742],[.24211,.34429],[.31846,.24986],[.52251,.33869]]},"almost-gray-dark":{val:[[.10266,.24053],[.13577,.39387],[.11716,.30603],[.14993,.22462],[.29809,.19255]]},"almost-gray-darker":{val:[[.07336,.36815],[.18061,.50026],[.09777,.314],[.12238,.25831],[.14388,.1883]]},"almost-gray-mid":{val:[[.07291,.59958],[.19602,.74092],[.10876,.5366],[.15632,.48229],[.20323,.42268]]},"almost-gray-lighter":{val:[[.06074,.82834],[.14546,.97794],[.10798,.76459],[.15939,.68697],[.22171,.62926]]},"almost-gray-light":{val:[[.03501,1.59439],[.23204,1.10483],[.14935,1.33784],[.07371,1.04897],[.09635,.91368]]}},r=[];for(t in i)n=i[t],r.push(t);return s={presetList:i,getPresetCount:function(){return r.length},getPresetId:function(e){return r[e]}},s})}.call(this),function(){define("color.class",["color.rgb.class","color.hsv.class","color.wheel","util"],function(e,t,n,r){var i;return i=function(){function e(e){this._setHue(e),this._setSV(0,0),this.hsv=new t(0,0,0),this._update()}return e.prototype._setHue=function(e){return e=Math.round(r.angleNorm(e)),this.baseHSV=n.getBaseColorByHue(e)},e.prototype._setSV=function(e,t){return this.kS=r.intervalNorm(e,0,2),this.kV=r.intervalNorm(t,0,2)},e.prototype._update=function(){var e;return e=function(e,t){return t<=1?e*t:e+(1-e)*(t-1)},this.hsv.set(this.baseHSV.h,e(this.baseHSV.s,this.kS),e(this.baseHSV.v,this.kV)),this.rgb=n.hsv2rgb(this.hsv)},e.prototype.setHue=function(e){return this._setHue(e),this._update()},e.prototype.setSV=function(e,t){return this._setSV(e,t),this._update()},e.prototype.setByHSV=function(e){var t,n,r;return t=function(e,t){return e===0?0:t<=e?t/e:1-e<=0?1:(t-e)/(1-e)+1},this._setHue(e.h),n=t(this.baseHSV.s,e.s),r=t(this.baseHSV.v,e.v),this._setSV(n,r),this._update()},e.prototype.setByRGB=function(e){return this.setByHSV(n.rgb2hsv(e))},e.prototype.rotate=function(e){var t;return t=r.angleAdd(this.baseHSV.h,e),this.setHue(t)},e.prototype.getCSS=function(e){return this.rgb.getCSS(e)},e.prototype.getTextVal=function(e){return this.rgb.getTextVal(e)},e.prototype.getTextPerc=function(e,t,n){return this.rgb.getTextPerc(e,t,n)},e.prototype.getHex=function(e){return this.rgb.getHex(e)},e.prototype.getLum=function(){return this.rgb.getLum()},e.prototype.getLumWCAG=function(){return this.rgb.getLumWCAG()},e.prototype.getCMYK=function(){return this.rgb.getCMYK()},e.prototype.getTextCMYK=function(e,t,n){var r;return r=this.rgb.getCMYK(),r.getTextPerc(e,t,n)},e.prototype.getOKLCH=function(){return this.rgb.getOKLCH()},e.prototype.getTextOKLCH=function(){return this.rgb.getTextOKLCH()},e.prototype.getTonalScale=function(options){return this.rgb.getTonalScale(options)},e.prototype.getAPCA=function(bg){return this.rgb.getAPCA(bg)},e.prototype.getContrast=function(other){return this.rgb.getContrast(other&&other.rgb?other.rgb:other)},e.prototype.getConverted=function(e,t){return this.rgb.getConverted(e,t)},e}(),i})}.call(this),function(){define("color.models.class",["util","color.class"],function(e,t){var n,r,i,s,o,u,a,f,l,c;return l=function(t){return e.angleAdd(t,180)},u=function(t,n){return e.angleAdd(t,n)},o=function(t,n){return e.angleAdd(t,-n)},f=function(t,n){return e.angleAdd(t+180,n)},a=function(t,n){return e.angleAdd(t+180,-n)},s=function(e){return e<0?-e:e},i=function(e){return e<0?180+e:180-e},r=function(e){return e<0?-e:180-e},n=function(){function t(e,t,n,r){this.fnGetCompl=e,this.fnGetSecCW=t,this.fnGetSecCCW=n,this.fnFixAngle=r,this.minD=5,this.maxD=175,this.swapped=!1}return t.prototype.getAngle=function(t){return this.fnFixAngle&&(t=this.fnFixAngle(t)),e.intervalNorm(t,this.minD,this.maxD)},t.prototype.getComplement=function(e){return this.fnGetCompl?this.fnGetCompl(e):null},t.prototype.swapSecs=function(){return this.swapped=!this.swapped},t.prototype.getSec1=function(t,n){var r;return r=this.fnGetSecCW,this.swapped&&(r=this.fnGetSecCCW),r?r(t,e.intervalNorm(n,this.minD,this.maxD)):null},t.prototype.getSec2=function(t,n){var r;return r=this.fnGetSecCCW,this.swapped&&(r=this.fnGetSecCW),r?r(t,e.intervalNorm(n,this.minD,this.maxD)):null},t}(),c={mono:new n(null,null,null,null),monocompl:new n(l,null,null,null),triad:new n(null,f,a,i),triadcompl:new n(l,f,a,i),analog:new n(null,u,o,s),analogcompl:new n(l,u,o,s),tetrad:new n(l,u,f,r)},c})}.call(this),function(){define("geometry.point.class",["util"],function(e){var t;return t=function(){function t(e){this.plane=e,this.x=0,this.y=0,this.r=0,this.theta=0,this.limit={type:"radius",value:{min:0,max:1}}}return t.prototype.setLimit=function(e){this.limit=e},t.prototype.setXY=function(t,n){var r;return this.x=t,this.y=n,r=e.xy2polar(this.x,this.y),this.r=r[0],this.theta=r[1],r},t.prototype.setPolar=function(t,n){var r;return this.r=t,n>2*Math.PI&&(n-=2*Math.PI),n<0&&(n+=2*Math.PI),this.theta=n,r=e.polar2xy(this.r,this.theta),this.x=r[0],this.y=r[1],r},t.prototype.getSqrXY=function(t){var n,r,i;return t||(t=1),i=this.getSqrPolar(),n=i[0],r=i[1],e.polar2xy(n/t,r)},t.prototype.setSqrXY=function(t,n,r){var i,s,o;return r||(r=1),o=e.xy2polar(t,n),i=o[0],s=o[1],this.setSqrPolar(i*r,s)},t.prototype.getSqrPolar=function(){var e;return e=Math.max(Math.abs(Math.sin(this.theta)),Math.abs(Math.cos(this.theta))),[this.r/e,this.theta]},t.prototype.setSqrPolar=function(e,t){var n;return n=Math.max(Math.abs(Math.sin(t)),Math.abs(Math.cos(t))),this.setPolar(e*n,t)},t.prototype.getXY=function(){return[this.x,this.y]},t.prototype.getPolar=function(){return[this.r,this.theta]},t.prototype.getCopy=function(){var e;return e=new t,e.x=this.x,e.y=this.y,e.r=this.r,e.theta=this.theta,e},t.prototype.getLimited=function(){var e;return this.limit?(e=new t(this.plane),e.setXY(this.x,this.y),e.setLimit(this.limit),e.doLimit(),e):this},t.prototype.getCanvasPos=function(){return this.plane.getCanvasPos(this.x,this.y)},t.prototype.getPagePos=function(){return this.plane.getPagePos(this.x,this.y)},t.prototype.setXYByCanvasPos=function(e){var t;return t=this.plane.getXYbyCanvasPos(e),this.setXY(t.x,t.y)},t.prototype.setXYByPagePos=function(e){var t;return t=this.plane.getXYbyPagePos(e),this.setXY(t.x,t.y)},t.prototype.doLimit=function(){var e,t,n;if(this.limit.type==="radius")return e=Math.min(Math.max(this.r,this.limit.value.min),this.limit.value.max),this.setPolar(e,this.theta,!0);if(this.limit.type==="bounds")return t=Math.min(Math.max(this.x,this.limit.value.xMin),this.limit.value.xMax),n=Math.min(Math.max(this.y,this.limit.value.yMin),this.limit.value.yMax),this.setXY(t,n,!0)},t.prototype.getDistance=function(e){var t,n;return t=this.x-e.x,n=this.y-e.y,Math.sqrt(t*t+n*n)},t.prototype.getAngle=function(e,n){var r,i,s;return i=new t(this.plane),s=new t(this.plane),i.setXY(e.x-this.x,e.y-this.y),s.setXY(n.x-this.x,n.y-this.y),r=i.theta-s.theta},t}(),t})}.call(this),function(){define("lib.point.follower",[],function(){var e,t,n;return t=function(){function t(e,t){this.x=Math.max(-1,Math.min(1,e)),this.y=Math.max(-1,Math.min(1,t))}return t.prototype.toDef=function(){var t,n,r,i,s;return r=this.rot_z(Math.PI/4),r.x<1?(t=r.y/Math.sqrt(1-r.x*r.x),t=Math.max(-1,Math.min(1,t)),i=Math.asin(t)):i=0,r.y<1?(n=r.x,n=Math.max(-1,Math.min(1,n)),s=Math.asin(n)):s=0,new e(s,i)},t.prototype.rot_z=function(e){return new t(this.x*Math.cos(e)+this.y*Math.sin(e),-this.x*Math.sin(e)+this.y*Math.cos(e))},t}(),e=function(){function e(e,t){this.psi=e,this.phi=t}return e.prototype.toLoc=function(){var e,n,r,i,s;return r=Math.min(Math.max(this.psi,-Math.PI/2),Math.PI/2),n=Math.min(Math.max(this.phi,-Math.PI/2),Math.PI/2),i=Math.sin(r),s=Math.sin(n)*Math.cos(r),e=new t(i,s),e.rot_z(-Math.PI/4)},e.prototype.rot_x=function(t){var n,r;return n=Math.cos(this.psi),r=n?(this.phi/n+t)*n:this.phi,new e(this.psi,r)},e.prototype.rot_y=function(t){return new e(this.psi+t,this.phi)},e}(),n={createLoc:function(e,n){return new t(e,n)},createDef:function(t,n){return new e(t,n)},getLoc:function(e,t){return t.rot_x(e.toDef().phi).rot_y(e.toDef().psi).toLoc()},getDef:function(e,t){return t.toDef().rot_y(-e.toDef().psi).rot_x(-e.toDef().phi)}},n})}.call(this),function(){define("color.variator1.class",["color.wheel","color.presets","geometry.point.class","lib.point.follower","app.events","util"],function(e,t,n,r,i,s){var o,u;return u=[[.66667,.66667],[.33333,1],[.5,.83333],[.83333,.5],[1,.33333]],o=function(){function e(e,t,n){var r,i;this.palette=e,r={treshold:.5,minDistance:.05,onChange:null},i=this,this.options=s.objMerge(r,n),this.defs=[],this.point=[],this.values=[],this.setPreset(t),this.inited=!0}return e.prototype.getVal=function(e){return this.values[e]},e.prototype.getVals=function(e){return s.objCopy(this.values)},e.prototype.setVals=function(e){return this.values=e,this.calcPoints()},e.prototype.setValsTransformed=function(e){var t,n,r,i,s;r=[];for(t=i=0,s=e.length;i<s;t=++i)n=e[t],r.push(this.getValueTransform(n[0],n[1]));return this.setVals(r)},e.prototype.getDef=function(e){return this.defs[e]},e.prototype.setDef=function(e,t){return this.defs[e]=t},e.prototype.getPoint=function(e){return this.point[e]},e.prototype.getSerialized=function(){var e,t,n,r,i,o;t="",o=this.values;for(e=r=0,i=o.length;r<i;e=++r)n=o[e],t+=s.myB64.encodeFloat(n[0]/2,2),t+=s.myB64.encodeFloat(n[1]/2,2);return t},e.prototype.setSerialized=function(e){var t,n,r,i;r=[];for(t=i=0;i<=4;t=++i)r[t]=[],n=e.substring(t*4,t*4+2),r[t][0]=s.myB64.decodeFloat(n,2,6)*2,n=e.substring(t*4+2,t*4+4),r[t][1]=s.myB64.decodeFloat(n,2,6)*2;return this.setVals(r)},e.prototype.setMainVal=function(e){var t;return t=this.valToPoint(e),this.moveMain(t.x,t.y)},e.prototype.setValueTransform=function(e,t){var n,r,i,s;return r=this.options.treshold,n=function(e){return e<1?e*(r+1)-1:(e-1)*(1-r)+r},i=n(e),s=n(t),[i,-s]},e.prototype.getValueTransform=function(e,t){var n,r,i,o;return r=this.options.treshold,n=function(e){return e<r?(e+1)/(r+1):(e-r)/(1-r)+1},i=s.round(n(e),5),o=s.round(n(-t),5),[i,o]},e.prototype.valToPoint=function(e){var t,r,i,s;return s=this.setValueTransform(e[0],e[1]),r=s[0],i=s[1],t=new n(null),t.setSqrXY(r,i,this.radius),t},e.prototype.pointToVal=function(e){var t,n,r;return r=e.getLimited().getSqrXY(this.radius),t=r[0],n=r[1],this.getValueTransform(t,n)},e.prototype.calcVals=function(){var e,t,n;n=[];for(e=t=0;t<=4;e=++t)n.push(this.values[e]=this.pointToVal(this.point[e]));return n},e.prototype.calcPoints=function(){var e,t,n,i,s;s=[];for(e=i=0;i<=4;e=++i)this.point[e]=this.valToPoint(this.values[e]),e===0?s.push(n=this.pointToLoc(this.point[0])):(t=this.pointToLoc(this.point[e]),s.push(this.setDef(e,r.getDef(n,t))));return s},e.prototype.pointToLoc=function(e){return r.createLoc(e.x,e.y)},e.prototype.locToPoint=function(e,t){return e.setXY(t.x,t.y)},e.prototype.moveMain=function(e,t,n){var i,s,o,u;this.point[0].setXY(e,t),this.point[0].doLimit(),o=this.pointToLoc(this.point[0]);for(i=u=1;u<=4;i=++u)n?(s=this.pointToLoc(this.point[i]),this.setDef(i,r.getDef(o,s))):(s=r.getLoc(o,this.getDef(i)),this.locToPoint(this.point[i],s));return this.calcVals(),this.onChange()},e.prototype.moveSec=function(e,t,n,i){var s,o,u,a,f,l,c,h;if(i)return this.point[e].setXY(t,n),this.point[e].doLimit(),l=this.pointToLoc(this.point[0]),f=this.pointToLoc(this.point[e]),this.setDef(e,r.getDef(l,f)),this.calcVals(),this.onChange();c=this.point[e].getCopy(),h=this.point[e].getCopy(),h.setXY(t,n),h.doLimit(),o=this.point[0].getDistance(c),u=this.point[0].getDistance(h),o<this.options.minDistance&&(o=this.options.minDistance),u<this.options.minDistance&&(u=this.options.minDistance),s=this.point[0].getAngle(h,c),a=o>0?u/o:1;if(u<1)return this.rotate(s,a)},e.prototype.rotate2=function(e,t){var n,i,s,o,u,a;u=this.point[0],s=this.pointToLoc(u),console.log("rotate:");for(n=a=1;a<=4;n=++a)o=this.point[n],o.setXY(o.x-u.x,o.y-u.y),o.setPolar(o.r*t,o.theta+e),o.setXY(o.x+u.x,o.y+u.y),i=this.pointToLoc(o),console.log(n,t,o.r,o.theta),this.setDef(n,r.getDef(s,i));return this.calcVals(),this.onChange()},e.prototype.rotate=function(e,t){var n,i,s,o,u,a,f;a=this.point[0].getCopy(),this.point[0].setXY(0,0),s=this.pointToLoc(this.point[0]);for(n=f=1;f<=4;n=++f)o=this.point[n],u=o.getCopy(),i=r.getLoc(s,this.getDef(n)),this.locToPoint(o,i),o.setPolar(o.r*t,o.theta+e),i=this.pointToLoc(o),this.setDef(n,r.getDef(s,i));return this.moveMain(a.x,a.y,!1)},e.prototype.setPreset=function(e){return t.presetList[e]!=null?this.setVals(s.objCopy(t.presetList[e].val)):this.setVals(s.objCopy(u)),this.onChange()},e.prototype.addSaturation=function(e){return this.moveMain(this.point[0].x+e,this.point[0].y)},e.prototype.addBright=function(e){return this.moveMain(this.point[0].x,this.point[0].y-e)},e.prototype.addContrast=function(e){return e/=100,this.rotate(0,e)},e.prototype.onChange=function(){if(this.inited)return this.palette.varsChanged()},e}(),o})}.call(this),function(){define("color.convert",["color.rgb.class","util"],function(e,t){var n,r;return n={protanope:{x:.7465,y:.2535,m:1.273463,yint:-0.073894},deuteranope:{x:1.4,y:-0.4,m:.968437,yint:.003331},tritanope:{x:.1748,y:0,m:.062921,yint:.292119}},r={convert:function(r,i){var s,o,u,a,f,l,c,h,p,d,v,m,g,y,b,w,E,S,x,T,N,C,k,L,A,O,M,_,D,P,H,B,j,F,I,q,R,U,z,W;return g={type:"none",amount:1},B=t.objMerge(g,i),z=B.type,f=B.amount,f>1&&(f=1),f<0&&(f=0),U=r.r,R=r.g,q=r.b,C=U,w=C,m=C,z==="webcolor"?(C=Math.round(U/51)*51,w=Math.round(R/51)*51,m=Math.round(q/51)*51,new e(C,w,m)):z==="gamma"?(O=f*3,C=255*Math.pow(U/255,O),w=255*Math.pow(R/255,O),m=255*Math.pow(q/255,O),new e(C>>0,w>>0,m>>0)):z==="gray"?(_=Math.round(r.getLum()*255),C=U*(1-f)+_*f,w=R*(1-f)+_*f,m=q*(1-f)+_*f,new e(C>>0,w>>0,m>>0)):z==="achromatope"?(C=U*.212656+R*.715158+q*.072186,C=U*(1-f)+C*f,w=R*(1-f)+C*f,m=q*(1-f)+C*f,new e(C>>0,w>>0,m>>0)):(z==="custom"?(p=B.x,d=B.y,h=B.m,v=B.yint):(M=n[B.type])?(p=M.x,d=M.y,h=M.m,v=M.yint):z="none",B.type==="none"?r:(U===0&&R===0&&q===0?new e(0,0,0):(I=Math.pow(U,2.2),F=Math.pow(R,2.2),j=Math.pow(q,2.2),s=I*.412424+F*.357579+j*.180464,o=I*.212656+F*.715158+j*.0721856,u=I*.0193324+F*.119193+j*.950444,l=s/(s+o+u),c=o/(s+o+u),D=(c-d)/(l-p),W=c-l*D,y=(v-W)/(D-h),b=D*y+W,s=y*o/b,u=(1-(y+b))*o/b,P=.312713*o/.329016,H=.358271*o/.329016,E=P-s,S=H-u,N=E*3.24071+S*-0.498571,T=E*-0.969258+S*.0415557,x=E*.0556352+S*1.05707,C=s*3.24071+o*-1.53726+u*-0.498571,w=s*-0.969258+o*1.87599+u*.0415557,m=s*.0556352+o*-0.203996+u*1.05707,A=((C<0?0:1)-C)/N,L=((w<0?0:1)-w)/T,k=((m<0?0:1)-m)/x,a=Math.max(A>1||A<0?0:A,L>1||L<0?0:L,k>1||k<0?0:k),C+=a*N,w+=a*T,m+=a*x,C=Math.pow(Math.max(0,C),1/2.2),w=Math.pow(Math.max(0,w),1/2.2),m=Math.pow(Math.max(0,m),1/2.2),C=U*(1-f)+C*f,w=R*(1-f)+w*f,m=q*(1-f)+m*f,new e(C>>0,w>>0,m>>0))))}},r})}.call(this),function() {
+
+define("color.rgb.class",["color.cmyk.class","color.lab.class","util","color.oklch"],function(e,t,n,oklch){var r;return r=function(){function r(e,t,n){this.set(e,t,n)}return r.prototype.set=function(e,t,n){return this.r=Math.round(e>255?255:e>0?e:0),this.g=Math.round(t>255?255:t>0?t:0),this.b=Math.round(n>255?255:n>0?n:0)},r.prototype.setNormalized=function(e,t,n){var r,i;return i=Math.max(e,t,n),i>255&&(r=255/i,e=Math.round(e*r),t=Math.round(t*r),n=Math.round(n*r)),this.set(e,t,n)},r.prototype.setByHex=function(e){var t,r,i,s;return s=n.hex2rgb(e),i=s[0],r=s[1],t=s[2],this.set(i,r,t)},r.prototype.copy=function(){return new r(this.r,this.g,this.b)},r.prototype.getCSS=function(e){return e!=null?"rgba("+this.r+","+this.g+","+this.b+","+e+")":"rgb("+this.r+","+this.g+","+this.b+")"},r.prototype.getTextVal=function(e){return e==null&&(e="–"),this.r+e+this.g+e+this.b},r.prototype.getTextPerc=function(e,t,r){var i;return e||(e=0),t?(i="",r==null&&(r="–")):(i=" %",r==null&&(r=" – ")),n.round(this.r/255*100,e)+i+r+n.round(this.g/255*100,e)+i+r+n.round(this.b/255*100,e)+i},r.prototype.getHex=function(e){var t;return t="",e&&(t="#"),t+=n.dec2hex(this.r)+n.dec2hex(this.g)+n.dec2hex(this.b),t},r.prototype.getLum=function(){return(this.r*.299+this.g*.587+this.b*.114)/255},r.prototype.getLumWCAG=function(){var e;return e=function(e){var t;return t=e/255,t<=.03928?t/12.92:Math.pow((t+.055)/1.055,2.4)},e(this.r)*.2126+e(this.g)*.7152+e(this.b)*.0722},r.prototype.getLAB=function(){var e;return e=new t(0,0,0),e.setByRGB(this),e},r.prototype.getCMYK=function(){var t;return t=new e(0,0,0,0),t.setByRGB(this),t},r.prototype.getOKLCH=function(){return oklch.srgbToOklch(this.r,this.g,this.b)},r.prototype.getTextOKLCH=function(){var o=this.getOKLCH();return oklch.formatCssOklch(o.L,o.C,o.H)},r.prototype.setByOKLCH=function(L,C,H){var c=oklch.oklchToSrgb(L,C,H);return this.set(c.r,c.g,c.b)},r.prototype.getTonalScale=function(options){return oklch.generateTonalScale(this.r,this.g,this.b,options)},r.prototype.getAPCA=function(bg){return oklch.calcAPCA(this,bg||{r:255,g:255,b:255})},r.prototype.getContrast=function(other){return r.calcContrast(this,other)},r.calcContrast=function(c1,c2){if(!c1||!c2)return 1;var getL=function(c){if(typeof c.getLumWCAG==="function")return c.getLumWCAG();var e=function(val){var t=(val||0)/255;return t<=.03928?t/12.92:Math.pow((t+.055)/1.055,2.4)};var cr=c.r!=null?c.r:(c[0]||0),cg=c.g!=null?c.g:(c[1]||0),cb=c.b!=null?c.b:(c[2]||0);return e(cr)*.2126+e(cg)*.7152+e(cb)*.0722};var l1=getL(c1)+.05,l2=getL(c2)+.05,ratio=l1>l2?l1/l2:l2/l1;return Math.round(ratio*100)/100},r.calcAPCA=function(txt,bg){return oklch.calcAPCA(txt,bg);},r.prototype.getConverted=function(e,t){return e(this,t)},r}(),r})}.call(this),function(){define("color.wheel",["color.hsv.class","color.rgb.class"],function(e,t){var n,r,i,s,o,u,a,f,l,c,h;return s=function(e,t,n){return n===-1?e:e+(t-e)/(1+n)},i=function(e,t,n){return n===-1?t:t+(e-t)/(1+n)},f={r:{rgb:new t(255,0,0),hsv:new e(0,1,1)},rg:{rgb:new t(255,255,0),hsv:new e(120,1,1)},g:{rgb:new t(0,255,0),hsv:new e(180,1,.8)},gb:{rgb:new t(0,255,255),hsv:new e(210,1,.6)},b:{rgb:new t(0,0,255),hsv:new e(255,.85,.7)},br:{rgb:new t(255,0,255),hsv:new e(315,1,.65)}},u=function(e){return e<120?h:e<180?c:e<210?a:e<255?o:e<315?n:r},h={a:f.r,b:f.rg,f:function(e){return e===0?-1:Math.tan((120-e)/120*Math.PI/2)*.5},fi:function(e){return e===-1?0:120-Math.atan(e/.5)*120/Math.PI*2},g:s,orderRGB:function(e,n,r){return new t(e,n,r)}},c={a:f.rg,b:f.g,f:function(e){return e===180?-1:Math.tan((e-120)/60*Math.PI/2)*.5},fi:function(e){return e===-1?180:120+Math.atan(e/.5)*60/Math.PI*2},g:i,orderRGB:function(e,n,r){return new t(n,e,r)}},a={a:f.g,b:f.gb,f:function(e){return e===180?-1:Math.tan((210-e)/30*Math.PI/2)*.75},fi:function(e){return e===-1?180:210-Math.atan(e/.75)*30/Math.PI*2},g:s,orderRGB:function(e,n,r){return new t(r,e,n)}},o={a:f.gb,b:f.b,f:function(e){return e===255?-1:Math.tan((e-210)/45*Math.PI/2)*1.33},fi:function(e){return e===-1?255:210+Math.atan(e/1.33)*45/Math.PI*2},g:i,orderRGB:function(e,n,r){return new t(r,n,e)}},n={a:f.b,b:f.br,f:function(e){return e===255?-1:Math.tan((315-e)/60*Math.PI/2)*1.33},fi:function(e){return e===-1?255:315-Math.atan(e/1.33)*60/Math.PI*2},g:s,orderRGB:function(e,n,r){return new t(n,r,e)}},r={a:f.br,b:f.r,f:function(e){return(e%360===0)?-1:Math.tan((e-315)/45*Math.PI/2)*1.33},fi:function(e){return e===-1?0:315+Math.atan(e/1.33)*45/Math.PI*2},g:i,orderRGB:function(e,n,r){return new t(e,r,n)}},l={getBaseColorByHue:function(t){var n,r,i,s;return t=(t%360+360)%360,n=u(t),r=n.f(t),s=n.g(n.a.hsv.v,n.b.hsv.v,r),i=n.g(n.a.hsv.s,n.b.hsv.s,r),new e(t,i,s)},hsv2rgb:function(e){var t,n,r,i,s,o,a;return a=(e.h%360+360)%360,t=u(a),n=t.f(a),o=t.a.rgb,r=Math.max(o.r,Math.max(o.g,o.b)),r*=e.v,s=r*(1-e.s),n===-1?i=s:i=(r+s*n)/(1+n),t.orderRGB(r,i,s)},rgb2hsv:function(t){var i,s,u,f,l,p,d,v;return t.r===t.b&&t.r===t.g?(s=0,d=0,v=t.getLum()):(f=Math.max(t.r,Math.max(t.g,t.b)),p=Math.min(t.r,Math.min(t.g,t.b)),f===t.r?p===t.b?(l=t.g,i=h):(l=t.b,i=r):f===t.g?p===t.r?(l=t.b,i=a):(l=t.r,i=c):p===t.r?(l=t.g,i=o):(l=t.r,i=n),l===p?u=-1:u=(f-l)/(l-p),s=i.fi(u),d=(f-p)/f,v=f/255),new e(s,d,v)}},l})}.call(this),function(){define("color.presets",["util"],function(e){var t,n,r,i,s;i={"pale-light":{val:[[.24649,1.78676],[.09956,1.95603],[.17209,1.88583],[.32122,1.65929],[.39549,1.50186]]},"pastels-bright":{val:[[.65667,1.86024],[.04738,1.99142],[.39536,1.89478],[.90297,1.85419],[1.86422,1.8314]]},shiny:{val:[[1.00926,2],[.3587,2],[.5609,2],[2,.8502],[2,.65438]]},"pastels-lightest":{val:[[.34088,1.09786],[.13417,1.62645],[.23137,1.38072],[.45993,.92696],[.58431,.81098]]},"pastels-very-light":{val:[[.58181,1.32382],[.27125,1.81913],[.44103,1.59111],[.70192,1.02722],[.84207,.91425]]},full:{val:[[1,1],[.61056,1.24992],[.77653,1.05996],[1.06489,.77234],[1.25783,.60685]]},"pastels-light":{val:[[.37045,.90707],[.15557,1.28367],[.25644,1.00735],[.49686,.809],[.64701,.69855]]},"pastels-med":{val:[[.66333,.8267],[.36107,1.30435],[.52846,.95991],[.78722,.70882],[.91265,.5616]]},darker:{val:[[.93741,.68672],[.68147,.88956],[.86714,.82989],[1.12072,.5673],[1.44641,.42034]]},"pastels-mid-pale":{val:[[.38302,.68001],[.15521,.98457],[.26994,.81586],[.46705,.54194],[.64065,.44875]]},pastels:{val:[[.66667,.66667],[.33333,1],[.5,.83333],[.83333,.5],[1,.33333]]},"dark-neon":{val:[[.94645,.59068],[.99347,.91968],[.93954,.7292],[1.01481,.41313],[1.04535,.24368]]},"pastels-dark":{val:[[.36687,.39819],[.25044,.65561],[.319,.54623],[.55984,.37953],[.70913,.3436]]},"pastels-very-dark":{val:[[.60117,.41845],[.36899,.59144],[.42329,.44436],[.72826,.35958],[.88393,.27004]]},dark:{val:[[1.31883,.40212],[.9768,.25402],[1.27265,.30941],[1.21289,.60821],[1.29837,.82751]]},"pastels-mid-dark":{val:[[.26952,.22044],[.23405,.52735],[.23104,.37616],[.42324,.20502],[.54424,.18483]]},"pastels-darkest":{val:[[.53019,.23973],[.48102,.50306],[.50001,.36755],[.6643,.32778],[.77714,.3761]]},darkest:{val:[[1.46455,.21042],[.99797,.16373],[.96326,.274],[1.56924,.45022],[1.23016,.66]]},"almost black":{val:[[.12194,.15399],[.34224,.50742],[.24211,.34429],[.31846,.24986],[.52251,.33869]]},"almost-gray-dark":{val:[[.10266,.24053],[.13577,.39387],[.11716,.30603],[.14993,.22462],[.29809,.19255]]},"almost-gray-darker":{val:[[.07336,.36815],[.18061,.50026],[.09777,.314],[.12238,.25831],[.14388,.1883]]},"almost-gray-mid":{val:[[.07291,.59958],[.19602,.74092],[.10876,.5366],[.15632,.48229],[.20323,.42268]]},"almost-gray-lighter":{val:[[.06074,.82834],[.14546,.97794],[.10798,.76459],[.15939,.68697],[.22171,.62926]]},"almost-gray-light":{val:[[.03501,1.59439],[.23204,1.10483],[.14935,1.33784],[.07371,1.04897],[.09635,.91368]]}},r=[];for(t in i)n=i[t],r.push(t);return s={presetList:i,getPresetCount:function(){return r.length},getPresetId:function(e){return r[e]}},s})}.call(this),function(){define("color.class",["color.rgb.class","color.hsv.class","color.wheel","util"],function(e,t,n,r){var i;return i=function(){function e(e){this._setHue(e),this._setSV(0,0),this.hsv=new t(0,0,0),this._update()}return e.prototype._setHue=function(e){return e=Math.round(r.angleNorm(e)),this.baseHSV=n.getBaseColorByHue(e)},e.prototype._setSV=function(e,t){return this.kS=r.intervalNorm(e,0,2),this.kV=r.intervalNorm(t,0,2)},e.prototype._update=function(){var e;return e=function(e,t){return t<=1?e*t:e+(1-e)*(t-1)},this.hsv.set(this.baseHSV.h,e(this.baseHSV.s,this.kS),e(this.baseHSV.v,this.kV)),this.rgb=n.hsv2rgb(this.hsv)},e.prototype.setHue=function(e){return this._setHue(e),this._update()},e.prototype.setSV=function(e,t){return this._setSV(e,t),this._update()},e.prototype.setByHSV=function(e){var t,n,r;return t=function(e,t){return e===0?0:t<=e?t/e:1-e<=0?1:(t-e)/(1-e)+1},this._setHue(e.h),n=t(this.baseHSV.s,e.s),r=t(this.baseHSV.v,e.v),this._setSV(n,r),this._update()},e.prototype.setByRGB=function(e){return this.setByHSV(n.rgb2hsv(e))},e.prototype.rotate=function(e){var t;return t=r.angleAdd(this.baseHSV.h,e),this.setHue(t)},e.prototype.getCSS=function(e){return this.rgb.getCSS(e)},e.prototype.getTextVal=function(e){return this.rgb.getTextVal(e)},e.prototype.getTextPerc=function(e,t,n){return this.rgb.getTextPerc(e,t,n)},e.prototype.getHex=function(e){return this.rgb.getHex(e)},e.prototype.getLum=function(){return this.rgb.getLum()},e.prototype.getLumWCAG=function(){return this.rgb.getLumWCAG()},e.prototype.getCMYK=function(){return this.rgb.getCMYK()},e.prototype.getTextCMYK=function(e,t,n){var r;return r=this.rgb.getCMYK(),r.getTextPerc(e,t,n)},e.prototype.getOKLCH=function(){return this.rgb.getOKLCH()},e.prototype.getTextOKLCH=function(){return this.rgb.getTextOKLCH()},e.prototype.getTonalScale=function(options){return this.rgb.getTonalScale(options)},e.prototype.getAPCA=function(bg){return this.rgb.getAPCA(bg)},e.prototype.getContrast=function(other){return this.rgb.getContrast(other&&other.rgb?other.rgb:other)},e.prototype.getConverted=function(e,t){return this.rgb.getConverted(e,t)},e}(),i})}.call(this),function(){define("color.models.class",["util","color.class"],function(e,t){var n,r,i,s,o,u,a,f,l,c;return l=function(t){return e.angleAdd(t,180)},u=function(t,n){return e.angleAdd(t,n)},o=function(t,n){return e.angleAdd(t,-n)},f=function(t,n){return e.angleAdd(t+180,n)},a=function(t,n){return e.angleAdd(t+180,-n)},s=function(e){return e<0?-e:e},i=function(e){return e<0?180+e:180-e},r=function(e){return e<0?-e:180-e},n=function(){function t(e,t,n,r){this.fnGetCompl=e,this.fnGetSecCW=t,this.fnGetSecCCW=n,this.fnFixAngle=r,this.minD=5,this.maxD=175,this.swapped=!1}return t.prototype.getAngle=function(t){return this.fnFixAngle&&(t=this.fnFixAngle(t)),e.intervalNorm(t,this.minD,this.maxD)},t.prototype.getComplement=function(e){return this.fnGetCompl?this.fnGetCompl(e):null},t.prototype.swapSecs=function(){return this.swapped=!this.swapped},t.prototype.getSec1=function(t,n){var r;return r=this.fnGetSecCW,this.swapped&&(r=this.fnGetSecCCW),r?r(t,e.intervalNorm(n,this.minD,this.maxD)):null},t.prototype.getSec2=function(t,n){var r;return r=this.fnGetSecCCW,this.swapped&&(r=this.fnGetSecCW),r?r(t,e.intervalNorm(n,this.minD,this.maxD)):null},t}(),c={mono:new n(null,null,null,null),monocompl:new n(l,null,null,null),triad:new n(null,f,a,i),triadcompl:new n(l,f,a,i),analog:new n(null,u,o,s),analogcompl:new n(l,u,o,s),tetrad:new n(l,u,f,r)},c})}.call(this),function(){define("geometry.point.class",["util"],function(e){var t;return t=function(){function t(e){this.plane=e,this.x=0,this.y=0,this.r=0,this.theta=0,this.limit={type:"radius",value:{min:0,max:1}}}return t.prototype.setLimit=function(e){this.limit=e},t.prototype.setXY=function(t,n){var r;return this.x=t,this.y=n,r=e.xy2polar(this.x,this.y),this.r=r[0],this.theta=r[1],r},t.prototype.setPolar=function(t,n){var r;return this.r=t,n>2*Math.PI&&(n-=2*Math.PI),n<0&&(n+=2*Math.PI),this.theta=n,r=e.polar2xy(this.r,this.theta),this.x=r[0],this.y=r[1],r},t.prototype.getSqrXY=function(t){var n,r,i;return t||(t=1),i=this.getSqrPolar(),n=i[0],r=i[1],e.polar2xy(n/t,r)},t.prototype.setSqrXY=function(t,n,r){var i,s,o;return r||(r=1),o=e.xy2polar(t,n),i=o[0],s=o[1],this.setSqrPolar(i*r,s)},t.prototype.getSqrPolar=function(){var e;return e=Math.max(Math.abs(Math.sin(this.theta)),Math.abs(Math.cos(this.theta))),[this.r/e,this.theta]},t.prototype.setSqrPolar=function(e,t){var n;return n=Math.max(Math.abs(Math.sin(t)),Math.abs(Math.cos(t))),this.setPolar(e*n,t)},t.prototype.getXY=function(){return[this.x,this.y]},t.prototype.getPolar=function(){return[this.r,this.theta]},t.prototype.getCopy=function(){var e;return e=new t,e.x=this.x,e.y=this.y,e.r=this.r,e.theta=this.theta,e},t.prototype.getLimited=function(){var e;return this.limit?(e=new t(this.plane),e.setXY(this.x,this.y),e.setLimit(this.limit),e.doLimit(),e):this},t.prototype.getCanvasPos=function(){return this.plane.getCanvasPos(this.x,this.y)},t.prototype.getPagePos=function(){return this.plane.getPagePos(this.x,this.y)},t.prototype.setXYByCanvasPos=function(e){var t;return t=this.plane.getXYbyCanvasPos(e),this.setXY(t.x,t.y)},t.prototype.setXYByPagePos=function(e){var t;return t=this.plane.getXYbyPagePos(e),this.setXY(t.x,t.y)},t.prototype.doLimit=function(){var e,t,n;if(this.limit.type==="radius")return e=Math.min(Math.max(this.r,this.limit.value.min),this.limit.value.max),this.setPolar(e,this.theta,!0);if(this.limit.type==="bounds")return t=Math.min(Math.max(this.x,this.limit.value.xMin),this.limit.value.xMax),n=Math.min(Math.max(this.y,this.limit.value.yMin),this.limit.value.yMax),this.setXY(t,n,!0)},t.prototype.getDistance=function(e){var t,n;return t=this.x-e.x,n=this.y-e.y,Math.sqrt(t*t+n*n)},t.prototype.getAngle=function(e,n){var r,i,s;return i=new t(this.plane),s=new t(this.plane),i.setXY(e.x-this.x,e.y-this.y),s.setXY(n.x-this.x,n.y-this.y),r=i.theta-s.theta},t}(),t})}.call(this),function(){define("lib.point.follower",[],function(){var e,t,n;return t=function(){function t(e,t){this.x=Math.max(-1,Math.min(1,e)),this.y=Math.max(-1,Math.min(1,t))}return t.prototype.toDef=function(){var t,n,r,i,s;return r=this.rot_z(Math.PI/4),r.x<1?(t=r.y/Math.sqrt(1-r.x*r.x),t=Math.max(-1,Math.min(1,t)),i=Math.asin(t)):i=0,r.y<1?(n=r.x,n=Math.max(-1,Math.min(1,n)),s=Math.asin(n)):s=0,new e(s,i)},t.prototype.rot_z=function(e){return new t(this.x*Math.cos(e)+this.y*Math.sin(e),-this.x*Math.sin(e)+this.y*Math.cos(e))},t}(),e=function(){function e(e,t){this.psi=e,this.phi=t}return e.prototype.toLoc=function(){var e,n,r,i,s;return r=Math.min(Math.max(this.psi,-Math.PI/2),Math.PI/2),n=Math.min(Math.max(this.phi,-Math.PI/2),Math.PI/2),i=Math.sin(r),s=Math.sin(n)*Math.cos(r),e=new t(i,s),e.rot_z(-Math.PI/4)},e.prototype.rot_x=function(t){var n,r;return n=Math.cos(this.psi),r=n?(this.phi/n+t)*n:this.phi,new e(this.psi,r)},e.prototype.rot_y=function(t){return new e(this.psi+t,this.phi)},e}(),n={createLoc:function(e,n){return new t(e,n)},createDef:function(t,n){return new e(t,n)},getLoc:function(e,t){return t.rot_x(e.toDef().phi).rot_y(e.toDef().psi).toLoc()},getDef:function(e,t){return t.toDef().rot_y(-e.toDef().psi).rot_x(-e.toDef().phi)}},n})}.call(this),function(){define("color.variator1.class",["color.wheel","color.presets","geometry.point.class","lib.point.follower","app.events","util"],function(e,t,n,r,i,s){var o,u;return u=[[.66667,.66667],[.33333,1],[.5,.83333],[.83333,.5],[1,.33333]],o=function(){function e(e,t,n){var r,i;this.palette=e,r={treshold:.5,minDistance:.05,onChange:null},i=this,this.options=s.objMerge(r,n),this.defs=[],this.point=[],this.values=[],this.setPreset(t),this.inited=!0}return e.prototype.getVal=function(e){return this.values[e]},e.prototype.getVals=function(e){return s.objCopy(this.values)},e.prototype.setVals=function(e){return this.values=e,this.calcPoints()},e.prototype.setValsTransformed=function(e){var t,n,r,i,s;r=[];for(t=i=0,s=e.length;i<s;t=++i)n=e[t],r.push(this.getValueTransform(n[0],n[1]));return this.setVals(r)},e.prototype.getDef=function(e){return this.defs[e]},e.prototype.setDef=function(e,t){return this.defs[e]=t},e.prototype.getPoint=function(e){return this.point[e]},e.prototype.getSerialized=function(){var e,t,n,r,i,o;t="",o=this.values;for(e=r=0,i=o.length;r<i;e=++r)n=o[e],t+=s.myB64.encodeFloat(n[0]/2,2),t+=s.myB64.encodeFloat(n[1]/2,2);return t},e.prototype.setSerialized=function(e){var t,n,r,i;r=[];for(t=i=0;i<=4;t=++i)r[t]=[],n=e.substring(t*4,t*4+2),r[t][0]=s.myB64.decodeFloat(n,2,6)*2,n=e.substring(t*4+2,t*4+4),r[t][1]=s.myB64.decodeFloat(n,2,6)*2;return this.setVals(r)},e.prototype.setMainVal=function(e){var t;return t=this.valToPoint(e),this.moveMain(t.x,t.y)},e.prototype.setValueTransform=function(e,t){var n,r,i,s;return r=this.options.treshold,n=function(e){return e<1?e*(r+1)-1:(e-1)*(1-r)+r},i=n(e),s=n(t),[i,-s]},e.prototype.getValueTransform=function(e,t){var n,r,i,o;return r=this.options.treshold,n=function(e){return e<r?(e+1)/(r+1):(e-r)/(1-r)+1},i=s.round(n(e),5),o=s.round(n(-t),5),[i,o]},e.prototype.valToPoint=function(e){var t,r,i,s;return s=this.setValueTransform(e[0],e[1]),r=s[0],i=s[1],t=new n(null),t.setSqrXY(r,i,this.radius),t},e.prototype.pointToVal=function(e){var t,n,r;return r=e.getLimited().getSqrXY(this.radius),t=r[0],n=r[1],this.getValueTransform(t,n)},e.prototype.calcVals=function(){var e,t,n;n=[];for(e=t=0;t<=4;e=++t)n.push(this.values[e]=this.pointToVal(this.point[e]));return n},e.prototype.calcPoints=function(){var e,t,n,i,s;s=[];for(e=i=0;i<=4;e=++i)this.point[e]=this.valToPoint(this.values[e]),e===0?s.push(n=this.pointToLoc(this.point[0])):(t=this.pointToLoc(this.point[e]),s.push(this.setDef(e,r.getDef(n,t))));return s},e.prototype.pointToLoc=function(e){return r.createLoc(e.x,e.y)},e.prototype.locToPoint=function(e,t){return e.setXY(t.x,t.y)},e.prototype.moveMain=function(e,t,n){var i,s,o,u;this.point[0].setXY(e,t),this.point[0].doLimit(),o=this.pointToLoc(this.point[0]);for(i=u=1;u<=4;i=++u)n?(s=this.pointToLoc(this.point[i]),this.setDef(i,r.getDef(o,s))):(s=r.getLoc(o,this.getDef(i)),this.locToPoint(this.point[i],s));return this.calcVals(),this.onChange()},e.prototype.moveSec=function(e,t,n,i){var s,o,u,a,f,l,c,h;if(i)return this.point[e].setXY(t,n),this.point[e].doLimit(),l=this.pointToLoc(this.point[0]),f=this.pointToLoc(this.point[e]),this.setDef(e,r.getDef(l,f)),this.calcVals(),this.onChange();c=this.point[e].getCopy(),h=this.point[e].getCopy(),h.setXY(t,n),h.doLimit(),o=this.point[0].getDistance(c),u=this.point[0].getDistance(h),o<this.options.minDistance&&(o=this.options.minDistance),u<this.options.minDistance&&(u=this.options.minDistance),s=this.point[0].getAngle(h,c),a=o>0?u/o:1;if(u<1)return this.rotate(s,a)},e.prototype.rotate2=function(e,t){var n,i,s,o,u,a;u=this.point[0],s=this.pointToLoc(u),console.log("rotate:");for(n=a=1;a<=4;n=++a)o=this.point[n],o.setXY(o.x-u.x,o.y-u.y),o.setPolar(o.r*t,o.theta+e),o.setXY(o.x+u.x,o.y+u.y),i=this.pointToLoc(o),console.log(n,t,o.r,o.theta),this.setDef(n,r.getDef(s,i));return this.calcVals(),this.onChange()},e.prototype.rotate=function(e,t){var n,i,s,o,u,a,f;a=this.point[0].getCopy(),this.point[0].setXY(0,0),s=this.pointToLoc(this.point[0]);for(n=f=1;f<=4;n=++f)o=this.point[n],u=o.getCopy(),i=r.getLoc(s,this.getDef(n)),this.locToPoint(o,i),o.setPolar(o.r*t,o.theta+e),i=this.pointToLoc(o),this.setDef(n,r.getDef(s,i));return this.moveMain(a.x,a.y,!1)},e.prototype.setPreset=function(e){return t.presetList[e]!=null?this.setVals(s.objCopy(t.presetList[e].val)):this.setVals(s.objCopy(u)),this.onChange()},e.prototype.addSaturation=function(e){return this.moveMain(this.point[0].x+e,this.point[0].y)},e.prototype.addBright=function(e){return this.moveMain(this.point[0].x,this.point[0].y-e)},e.prototype.addContrast=function(e){return e/=100,this.rotate(0,e)},e.prototype.onChange=function(){if(this.inited)return this.palette.varsChanged()},e}(),o})}.call(this),function(){define("color.convert",["color.rgb.class","util"],function(e,t){var n,r;return n={protanope:{x:.7465,y:.2535,m:1.273463,yint:-0.073894},deuteranope:{x:1.4,y:-0.4,m:.968437,yint:.003331},tritanope:{x:.1748,y:0,m:.062921,yint:.292119}},r={convert:function(r,i){var s,o,u,a,f,l,c,h,p,d,v,m,g,y,b,w,E,S,x,T,N,C,k,L,A,O,M,_,D,P,H,B,j,F,I,q,R,U,z,W;return g={type:"none",amount:1},B=t.objMerge(g,i),z=B.type,f=B.amount,f>1&&(f=1),f<0&&(f=0),U=r.r,R=r.g,q=r.b,C=U,w=C,m=C,z==="webcolor"?(C=Math.round(U/51)*51,w=Math.round(R/51)*51,m=Math.round(q/51)*51,new e(C,w,m)):z==="gamma"?(O=f*3,C=255*Math.pow(U/255,O),w=255*Math.pow(R/255,O),m=255*Math.pow(q/255,O),new e(C>>0,w>>0,m>>0)):z==="gray"?(_=Math.round(r.getLum()*255),C=U*(1-f)+_*f,w=R*(1-f)+_*f,m=q*(1-f)+_*f,new e(C>>0,w>>0,m>>0)):z==="achromatope"?(C=U*.212656+R*.715158+q*.072186,C=U*(1-f)+C*f,w=R*(1-f)+C*f,m=q*(1-f)+C*f,new e(C>>0,w>>0,m>>0)):(z==="custom"?(p=B.x,d=B.y,h=B.m,v=B.yint):(M=n[B.type])?(p=M.x,d=M.y,h=M.m,v=M.yint):z="none",B.type==="none"?r:(U===0&&R===0&&q===0?new e(0,0,0):(I=Math.pow(U,2.2),F=Math.pow(R,2.2),j=Math.pow(q,2.2),s=I*.412424+F*.357579+j*.180464,o=I*.212656+F*.715158+j*.0721856,u=I*.0193324+F*.119193+j*.950444,l=s/(s+o+u),c=o/(s+o+u),D=(c-d)/(l-p),W=c-l*D,y=(v-W)/(D-h),b=D*y+W,s=y*o/b,u=(1-(y+b))*o/b,P=.312713*o/.329016,H=.358271*o/.329016,E=P-s,S=H-u,N=E*3.24071+S*-0.498571,T=E*-0.969258+S*.0415557,x=E*.0556352+S*1.05707,C=s*3.24071+o*-1.53726+u*-0.498571,w=s*-0.969258+o*1.87599+u*.0415557,m=s*.0556352+o*-0.203996+u*1.05707,A=((C<0?0:1)-C)/N,L=((w<0?0:1)-w)/T,k=((m<0?0:1)-m)/x,a=Math.max(A>1||A<0?0:A,L>1||L<0?0:L,k>1||k<0?0:k),C+=a*N,w+=a*T,m+=a*x,C=Math.pow(Math.max(0,C),1/2.2),w=Math.pow(Math.max(0,w),1/2.2),m=Math.pow(Math.max(0,m),1/2.2),C=U*(1-f)+C*f,w=R*(1-f)+w*f,m=q*(1-f)+m*f,new e(C>>0,w>>0,m>>0))))}},r})}.call(this),function() {
         define("ui.control.palette.class", ["app.events", "util", "color.oklch", "app.locale"], function(events, util, oklch, lang) {
     var PaletteControl;
 
@@ -1168,7 +1606,7 @@
             if (n === e) return t
         }
         return "mono"
-    }, d = {
+    },    d = {
         model: "mono",
         hue: 0,
         angle: 30,
@@ -1178,215 +1616,310 @@
         {
             id: "game_retro_pixel",
             category: "game",
+            profileMatch: ["game_arcade", "game_indie"],
             name: "👾 8-Bit Arcade (Press Start)",
             heading: "'Press Start 2P', 'VT323', 'Silkscreen', 'Courier New', monospace",
+            headingCyrillic: "'Rubik Pixels', 'Silkscreen', 'Courier New', monospace",
             body: "'VT323', 'Silkscreen', 'Courier New', monospace",
+            bodyCyrillic: "'Rubik Pixels', 'Courier New', monospace",
             weightHeading: "400",
             scale: "1.25",
             letterSpacing: "0.05em",
-            lineHeight: "1.6"
+            lineHeightHeading: "1.5",
+            lineHeight: "1.6",
+            cyrillic: false
         },
         {
             id: "game_scifi_cyber",
             category: "game",
+            profileMatch: ["cyberpunk", "game_scifi", "game_esports", "neon"],
             name: "🤖 Cyberpunk HUD (Orbitron)",
             heading: "'Orbitron', 'Audiowide', 'Michroma', 'Impact', sans-serif",
+            headingCyrillic: "'Russo One', 'Exo 2', 'Unbounded', 'Impact', sans-serif",
             body: "'Rajdhani', 'Exo 2', -apple-system, sans-serif",
+            bodyCyrillic: "'Exo 2', 'Raleway', -apple-system, sans-serif",
             weightHeading: "800",
             scale: "1.333",
             letterSpacing: "0.06em",
-            lineHeight: "1.45"
+            lineHeightHeading: "1.15",
+            lineHeight: "1.45",
+            cyrillic: false
         },
         {
             id: "game_dark_fantasy",
             category: "game",
+            profileMatch: ["dark_fantasy", "gothic", "game_horror"],
             name: "⚔️ Dark Fantasy RPG (Cinzel)",
             heading: "'Cinzel', 'Cinzel Decorative', 'MedievalSharp', 'Georgia', serif",
+            headingCyrillic: "'Cormorant', 'Cormorant Garamond', 'IM Fell English', Georgia, serif",
             body: "'Cormorant Garamond', 'Garamond', Georgia, serif",
+            bodyCyrillic: "'Cormorant Garamond', 'Garamond', Georgia, serif",
             weightHeading: "700",
             scale: "1.414",
             letterSpacing: "0.04em",
-            lineHeight: "1.6"
+            lineHeightHeading: "1.2",
+            lineHeight: "1.6",
+            cyrillic: false
         },
         {
             id: "game_tactical_fps",
             category: "game",
+            profileMatch: ["game_fps", "military"],
             name: "🎯 Tactical Military (Black Ops)",
             heading: "'Black Ops One', 'Share Tech Mono', 'Impact', monospace, sans-serif",
+            headingCyrillic: "'Oswald', 'Bebas Neue', 'Impact', sans-serif",
             body: "'Share Tech Mono', 'JetBrains Mono', 'Courier New', monospace",
+            bodyCyrillic: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
             weightHeading: "800",
             scale: "1.25",
             letterSpacing: "0.08em",
-            lineHeight: "1.5"
+            lineHeightHeading: "1.1",
+            lineHeight: "1.5",
+            cyrillic: false
         },
         {
             id: "game_esports_speed",
             category: "game",
+            profileMatch: ["game_esports", "esports"],
             name: "🏆 Esports Arena (Russo One)",
             heading: "'Russo One', 'Montserrat', 'Arial Black', sans-serif",
+            headingCyrillic: "'Russo One', 'Montserrat', 'Arial Black', sans-serif",
             body: "'Chakra Petch', 'Roboto', 'Arial', sans-serif",
+            bodyCyrillic: "'Roboto', 'Ubuntu', 'Arial', sans-serif",
             weightHeading: "900",
             scale: "1.35",
             letterSpacing: "-0.02em",
-            lineHeight: "1.35"
+            lineHeightHeading: "1.1",
+            lineHeight: "1.35",
+            cyrillic: true
         },
         {
             id: "game_cozy_casual",
             category: "game",
+            profileMatch: ["game_cozy", "casual", "indie"],
             name: "🍭 Cozy Casual (Fredoka)",
             heading: "'Fredoka', 'Bungee', 'Luckiest Guy', 'Century Gothic', cursive, sans-serif",
+            headingCyrillic: "'Nunito', 'Comfortaa', 'Rounded Mplus 1c', cursive, sans-serif",
             body: "'Nunito', 'Comfortaa', -apple-system, sans-serif",
+            bodyCyrillic: "'Nunito', 'Comfortaa', -apple-system, sans-serif",
             weightHeading: "700",
             scale: "1.3",
             letterSpacing: "0.02em",
-            lineHeight: "1.45"
+            lineHeightHeading: "1.3",
+            lineHeight: "1.45",
+            cyrillic: false
         },
         {
             id: "game_mecha_terminal",
             category: "game",
+            profileMatch: ["game_scifi", "terminal", "hacker"],
             name: "⚙️ Mecha Terminal (Tech Mono)",
             heading: "'Share Tech Mono', 'Space Mono', 'Consolas', monospace",
+            headingCyrillic: "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
             body: "'Share Tech Mono', 'Courier New', monospace",
+            bodyCyrillic: "'JetBrains Mono', 'Courier New', monospace",
             weightHeading: "700",
             scale: "1.2",
             letterSpacing: "0.1em",
-            lineHeight: "1.55"
+            lineHeightHeading: "1.35",
+            lineHeight: "1.55",
+            cyrillic: false
         },
         {
             id: "game_gothic_horror",
             category: "game",
+            profileMatch: ["game_horror", "dark", "gothic"],
             name: "💀 Survival Horror (Nosifer)",
             heading: "'Creepster', 'Nosifer', 'Playfair Display', Georgia, serif",
+            headingCyrillic: "'Cormorant', 'Playfair Display', Georgia, serif",
             body: "'Special Elite', 'Courier New', Georgia, serif",
+            bodyCyrillic: "'PT Serif', 'Georgia', serif",
             weightHeading: "700",
             scale: "1.414",
             letterSpacing: "0.05em",
-            lineHeight: "1.6"
+            lineHeightHeading: "1.2",
+            lineHeight: "1.6",
+            cyrillic: false
         },
         {
             id: "game_anime_jrpg",
             category: "game",
+            profileMatch: ["anime", "jrpg", "fantasy"],
             name: "⛩️ Anime / JRPG (Rounded)",
             heading: "'M PLUS Rounded 1c', 'Zen Tokyo Zoo', 'Century Gothic', sans-serif",
+            headingCyrillic: "'Nunito', 'Comfortaa', 'Century Gothic', sans-serif",
             body: "'M PLUS 1p', 'Noto Sans JP', sans-serif",
+            bodyCyrillic: "'PT Sans', 'Ubuntu', sans-serif",
             weightHeading: "800",
             scale: "1.333",
             letterSpacing: "0.01em",
-            lineHeight: "1.5"
+            lineHeightHeading: "1.25",
+            lineHeight: "1.5",
+            cyrillic: false
         },
 
         // ── UI & Web Category (5 Presets) ──
         {
             id: "modern_sans",
             category: "ui",
+            profileMatch: ["saas", "minimal", "dashboard", "enterprise"],
             name: "Modern Sans (SaaS)",
             heading: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+            headingCyrillic: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
             body: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+            bodyCyrillic: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
             weightHeading: "700",
             scale: "1.25",
             letterSpacing: "-0.02em",
-            lineHeight: "1.5"
+            lineHeightHeading: "1.2",
+            lineHeight: "1.5",
+            cyrillic: true
         },
         {
             id: "swiss_grotesk",
             category: "ui",
+            profileMatch: ["minimal", "bauhaus", "swiss"],
             name: "Swiss Grotesk (Clean)",
             heading: "'Helvetica Neue', Helvetica, 'Arial Black', Arial, sans-serif",
+            headingCyrillic: "'Helvetica Neue', Helvetica, 'Arial Black', Arial, sans-serif",
             body: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+            bodyCyrillic: "'Helvetica Neue', Helvetica, Arial, sans-serif",
             weightHeading: "800",
             scale: "1.414",
             letterSpacing: "-0.03em",
-            lineHeight: "1.4"
+            lineHeightHeading: "1.15",
+            lineHeight: "1.4",
+            cyrillic: true
         },
         {
             id: "humanist",
             category: "ui",
+            profileMatch: ["saas", "health", "education"],
             name: "Humanist (Warm UI)",
             heading: "'Trebuchet MS', 'Segoe UI', 'Lucida Grande', sans-serif",
+            headingCyrillic: "'PT Sans', 'Ubuntu', 'Segoe UI', sans-serif",
             body: "'Open Sans', 'Segoe UI', Arial, sans-serif",
+            bodyCyrillic: "'Open Sans', 'PT Sans', 'Segoe UI', sans-serif",
             weightHeading: "700",
             scale: "1.25",
             letterSpacing: "-0.01em",
-            lineHeight: "1.55"
+            lineHeightHeading: "1.2",
+            lineHeight: "1.55",
+            cyrillic: false
         },
         {
             id: "tech_mono",
             category: "ui",
+            profileMatch: ["developer", "terminal", "saas"],
             name: "Developer Monospace",
             heading: "'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace",
+            headingCyrillic: "'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace",
             body: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+            bodyCyrillic: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
             weightHeading: "700",
             scale: "1.2",
             letterSpacing: "-0.01em",
-            lineHeight: "1.65"
+            lineHeightHeading: "1.3",
+            lineHeight: "1.65",
+            cyrillic: true
         },
         {
             id: "minimal_system",
             category: "ui",
+            profileMatch: ["minimal", "saas", "app"],
             name: "Native System Compact",
             heading: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
+            headingCyrillic: "-apple-system, 'SF Pro Display', 'Segoe UI', sans-serif",
             body: "-apple-system, 'SF Pro Text', 'Segoe UI', sans-serif",
+            bodyCyrillic: "-apple-system, 'SF Pro Text', 'Segoe UI', sans-serif",
             weightHeading: "600",
             scale: "1.2",
             letterSpacing: "-0.015em",
-            lineHeight: "1.45"
+            lineHeightHeading: "1.2",
+            lineHeight: "1.45",
+            cyrillic: true
         },
 
         // ── Editorial & Brand Category (5 Presets) ──
         {
             id: "editorial_serif",
             category: "editorial",
+            profileMatch: ["editorial", "newspaper", "literary"],
             name: "Editorial Serif",
             heading: "Georgia, 'Playfair Display', 'Times New Roman', serif",
+            headingCyrillic: "'PT Serif', Georgia, 'Times New Roman', serif",
             body: "Georgia, 'Charter', 'Source Serif Pro', serif",
+            bodyCyrillic: "'PT Serif', Georgia, serif",
             weightHeading: "700",
             scale: "1.333",
             letterSpacing: "0",
-            lineHeight: "1.6"
+            lineHeightHeading: "1.2",
+            lineHeight: "1.6",
+            cyrillic: false
         },
         {
             id: "luxury_didot",
             category: "editorial",
+            profileMatch: ["luxury", "fashion", "premium", "elegant"],
             name: "Luxury / Didot",
             heading: "'Didot', 'Bodoni MT', 'Cinzel', Georgia, serif",
+            headingCyrillic: "'Cormorant', 'Playfair Display', Georgia, serif",
             body: "'Cormorant Garamond', 'Garamond', Georgia, serif",
+            bodyCyrillic: "'Cormorant Garamond', 'PT Serif Caption', Georgia, serif",
             weightHeading: "600",
             scale: "1.5",
             letterSpacing: "0.05em",
-            lineHeight: "1.7"
+            lineHeightHeading: "1.15",
+            lineHeight: "1.7",
+            cyrillic: false
         },
         {
             id: "playful_round",
             category: "editorial",
+            profileMatch: ["fun", "kids", "casual"],
             name: "Playful / Casual",
             heading: "'Comic Sans MS', 'Century Gothic', 'Quicksand', cursive, sans-serif",
+            headingCyrillic: "'Nunito', 'Comfortaa', 'Rounded Mplus 1c', cursive, sans-serif",
             body: "'Nunito', 'Segoe UI', Arial, sans-serif",
+            bodyCyrillic: "'Nunito', 'PT Sans', Arial, sans-serif",
             weightHeading: "700",
             scale: "1.25",
             letterSpacing: "0.01em",
-            lineHeight: "1.5"
+            lineHeightHeading: "1.25",
+            lineHeight: "1.5",
+            cyrillic: false
         },
         {
             id: "display_impact",
             category: "editorial",
+            profileMatch: ["advertising", "bold", "promo"],
             name: "Display Impact",
             heading: "Impact, 'Arial Black', sans-serif",
+            headingCyrillic: "'Impact', 'Arial Black', sans-serif",
             body: "Arial, 'Helvetica Neue', sans-serif",
+            bodyCyrillic: "Arial, 'Helvetica Neue', sans-serif",
             weightHeading: "900",
             scale: "1.414",
             letterSpacing: "0.02em",
-            lineHeight: "1.35"
+            lineHeightHeading: "1.05",
+            lineHeight: "1.35",
+            cyrillic: true
         },
         {
             id: "brutalist_poster",
             category: "editorial",
+            profileMatch: ["brutalism", "industrial", "modern"],
             name: "Brutalist Heavy Poster",
             heading: "'Arial Black', Impact, sans-serif",
+            headingCyrillic: "'Arial Black', Impact, sans-serif",
             body: "'Courier New', Courier, monospace",
+            bodyCyrillic: "'Courier New', Courier, monospace",
             weightHeading: "900",
             scale: "1.5",
             letterSpacing: "0.03em",
-            lineHeight: "1.3"
+            lineHeightHeading: "1.0",
+            lineHeight: "1.3",
+            cyrillic: true
         }
     ], p = function() {
         function i(e, n, r, i) {
@@ -1873,7 +2406,7 @@
             }
 
             if (prof.typoCategory && this.randomizeTypography) {
-                this.randomizeTypography(prof.typoCategory);
+                this.randomizeTypography(prof.typoCategory, prof.id, rng);
             }
 
             this.locked = false;
@@ -2272,11 +2805,104 @@
             return this.generateMode(mood);
         }, i.prototype.setHarmonyMode = function(mode) {
             return this.generateMode(mode);
+        }, i.prototype._extractCandidateColors = function(profileId, seed, options) {
+            // Silently generate a palette candidate without side effects (no UI updates)
+            options = options || {};
+            var prof = oklch.OKLCH_PROFILES[profileId];
+            if (!prof) return null;
+
+            var chaos = options.chaos !== undefined ? options.chaos : (this.chaos || 1.0);
+            var targetRatio = options.targetRatio || 4.5;
+            var rng = oklch.mulberry32(oklch.stringToSeed(seed));
+
+            var baseHue = prof.hues[Math.floor(rng() * prof.hues.length)];
+            var hueJitter = oklch.randomGaussian(rng, 0, 10 * chaos);
+            var finalHue = Math.round((baseHue + hueJitter + 360) % 360);
+
+            var curve = prof.curve;
+            var calcRgbs = function(gHue) {
+                var rgbs = [];
+                for (var s = 0; s < 5; s++) {
+                    var ptL = curve[s][0];
+                    var ptC = curve[s][1];
+                    var lJ = oklch.randomGaussian(rng, 0, 0.015 * chaos);
+                    var cJ = oklch.randomGaussian(rng, 0, 0.01 * chaos);
+                    var fL = Math.max(0.02, Math.min(0.99, ptL + lJ));
+                    var fC = Math.max(0.005, Math.min(0.35, ptC + cJ));
+                    rgbs[s] = oklch.oklchToSrgb(fL, fC, gHue);
+                }
+                var bgRgb = rgbs[4];
+                var textFit = oklch.fitContrast({ L: curve[3][0], C: curve[3][1], H: gHue }, bgRgb, targetRatio);
+                rgbs[3] = textFit.rgb;
+                return rgbs;
+            };
+
+            var pickedModel = prof.models[Math.floor(rng() * prof.models.length)];
+            var minA = prof.angle ? prof.angle[0] : 25;
+            var maxA = prof.angle ? prof.angle[1] : 35;
+            var midA = (minA + maxA) * 0.5;
+            var angle = Math.max(15, Math.min(75, Math.round(midA + oklch.randomGaussian(rng, 0, 4 * chaos))));
+
+            // Compute harmony hues
+            var modelObj = (typeof u !== "undefined" && u) ? u[pickedModel] : null;
+            var hueCompl = modelObj ? modelObj.getComplement(finalHue) : (finalHue + 180) % 360;
+            var hueSec1 = modelObj ? modelObj.getSec1(finalHue, angle) : (finalHue + angle) % 360;
+            var hueSec2 = modelObj ? modelObj.getSec2(finalHue, angle) : (finalHue - angle + 360) % 360;
+
+            return {
+                hue: finalHue,
+                model: pickedModel,
+                angle: angle,
+                pri: calcRgbs(finalHue),
+                sec1: hueSec1 != null ? calcRgbs(hueSec1) : null,
+                sec2: hueSec2 != null ? calcRgbs(hueSec2) : null,
+                compl: hueCompl != null ? calcRgbs(hueCompl) : null,
+                seed: seed,
+                profileId: profileId
+            };
         }, i.prototype.randomizeQuick = function() {
             var allProfiles = Object.keys(oklch.OKLCH_PROFILES);
-            var last = (this.lastProfiles && this.lastProfiles[0]) ? this.lastProfiles[0] : "";
-            var pool = allProfiles.filter(function(k) { return k !== last; });
+            var last2 = (this.lastProfiles && this.lastProfiles.length >= 2) ? this.lastProfiles.slice(0, 2) : (this.lastProfiles || []);
+
+            // Weighted pool: exclude last 2 profiles
+            var pool = allProfiles.filter(function(k) { return last2.indexOf(k) === -1; });
             if (!pool.length) pool = allProfiles;
+
+            var self = this;
+            var history = [];
+            try {
+                var hist = JSON.parse(localStorage.getItem("pal_history") || "[]");
+                for (var h = 0; h < Math.min(5, hist.length); h++) {
+                    history.push({ hue: hist[h].hue });
+                }
+            } catch(e) {}
+
+            var CANDIDATE_COUNT = 20;
+            var bestCandidate = null;
+            var bestScore = -1;
+            var chaos = this.chaos || 1.0;
+
+            for (var ci = 0; ci < CANDIDATE_COUNT; ci++) {
+                var candSeed = oklch.generateSeed() + "_" + ci;
+                var profId = pool[Math.floor(Math.random() * pool.length)];
+                var candidate = null;
+                try {
+                    candidate = this._extractCandidateColors(profId, candSeed, { chaos: chaos });
+                } catch(e) { continue; }
+                if (!candidate) continue;
+
+                var score = oklch.scorePaletteCandidate(candidate, oklch.OKLCH_PROFILES[profId], history, {});
+                if (score.totalScore > bestScore) {
+                    bestScore = score.totalScore;
+                    bestCandidate = candidate;
+                }
+            }
+
+            if (bestCandidate) {
+                return this.randomizeProfile(bestCandidate.profileId, { seed: bestCandidate.seed, chaos: chaos });
+            }
+
+            // Fallback: pick any profile
             var p = pool[Math.floor(Math.random() * pool.length)];
             return this.randomizeProfile(p, { seed: oklch.generateSeed() });
         }, i.prototype.randomizeWCAG = function(targetRatio) {
@@ -2492,8 +3118,110 @@
                 for (u = c = 0; c <= 4; u = ++c) r = this.getColorCode(o, u, l, n), i = this.getColorCode(o, u, "byLum", n), f["@col-" + s + "-" + u] = r, f["@col-" + s + "-lum-" + u] = i
             }
             return e.modifyVars(f)
+        }, i.prototype.getSemanticTokens = function() {
+            var priRgb = null, secRgb = null, complRgb = null;
+            if (this.col && this.col.pri && this.col.pri.rgb) {
+                priRgb = { r: this.col.pri.rgb.r, g: this.col.pri.rgb.g, b: this.col.pri.rgb.b };
+            }
+            if (this.col && this.col.sec1 && this.col.sec1.rgb) {
+                secRgb = { r: this.col.sec1.rgb.r, g: this.col.sec1.rgb.g, b: this.col.sec1.rgb.b };
+            }
+            if (this.col && this.col.compl && this.col.compl.rgb) {
+                complRgb = { r: this.col.compl.rgb.r, g: this.col.compl.rgb.g, b: this.col.compl.rgb.b };
+            }
+            if (!priRgb) {
+                if (this.colorTable && this.colorTable.byPalette && this.colorTable.byPalette.pri && this.colorTable.byPalette.pri[0]) {
+                    var c0 = this.colorTable.byPalette.pri[0];
+                    priRgb = { r: c0.rgb.r, g: c0.rgb.g, b: c0.rgb.b };
+                } else {
+                    priRgb = { r: 70, g: 130, b: 220 };
+                }
+            }
+            return oklch.generateSemanticTokens(priRgb, secRgb, complRgb);
+        }, i.prototype._showExportDialog = function(title, content) {
+            var $body = $(document.body);
+            var $overlay = $("<div>").css({
+                position: "fixed", inset: "0", background: "rgba(0,0,0,0.65)",
+                zIndex: 99999, display: "flex", alignItems: "center", justifyContent: "center"
+            });
+            var $box = $("<div>").css({
+                background: "#1e1e2e", borderRadius: "10px", padding: "20px",
+                maxWidth: "700px", width: "90%", maxHeight: "80vh",
+                display: "flex", flexDirection: "column", gap: "12px",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.5)", border: "1px solid #444",
+                color: "#cdd6f4", fontFamily: "JetBrains Mono, Fira Code, Consolas, monospace"
+            });
+            var $header = $("<div>").css({ display: "flex", alignItems: "center", justifyContent: "space-between" });
+            $header.append($("<strong>").text(title).css({ fontSize: "15px" }));
+            var $close = $("<button>").text("✕").css({
+                background: "none", border: "none", color: "#cdd6f4", cursor: "pointer", fontSize: "18px", lineHeight: "1"
+            });
+            $header.append($close);
+            $box.append($header);
+            var $textarea = $("<textarea>").val(content).css({
+                background: "#181825", border: "1px solid #555", borderRadius: "6px",
+                padding: "10px", color: "#cdd6f4", fontFamily: "inherit", fontSize: "11.5px",
+                resize: "none", height: "320px", width: "100%", boxSizing: "border-box",
+                lineHeight: "1.6", overflowY: "auto", whiteSpace: "pre"
+            }).prop("readonly", true);
+            $box.append($textarea);
+            var $actions = $("<div>").css({ display: "flex", gap: "8px" });
+            var $copy = $("<button>").text("📋 Copy All").css({
+                background: "#45475a", border: "none", borderRadius: "6px", color: "#cdd6f4",
+                padding: "8px 16px", cursor: "pointer", fontFamily: "inherit", fontSize: "13px"
+            });
+            $copy.on("click", function() {
+                try {
+                    navigator.clipboard.writeText($textarea.val());
+                    $copy.text("✅ Copied!");
+                    setTimeout(function() { $copy.text("📋 Copy All"); }, 2000);
+                } catch(e) {
+                    $textarea[0].select();
+                    document.execCommand("copy");
+                    $copy.text("✅ Copied!");
+                    setTimeout(function() { $copy.text("📋 Copy All"); }, 2000);
+                }
+            });
+            $actions.append($copy);
+            $box.append($actions);
+            $overlay.append($box);
+            $body.append($overlay);
+            var closeDialog = function() { $overlay.remove(); };
+            $close.on("click", closeDialog);
+            $overlay.on("click", function(ev) { if (ev.target === $overlay[0]) closeDialog(); });
+            $(document).on("keydown.exportdlg", function(ev) {
+                if (ev.keyCode === 27) { closeDialog(); $(document).off("keydown.exportdlg"); }
+            });
+            $textarea[0].focus();
+            $textarea[0].select();
         }, i.prototype["export"] = function(t) {
             var i, s, o, u;
+
+            // Handle token-based exports with inline dialog
+            if (t === "css" || t === "tailwind" || t === "dtcg" || t === "figma") {
+                var tokens = this.getSemanticTokens();
+                var typo = this.getTypography();
+                var content, title;
+                if (t === "css") {
+                    title = "CSS Variables (Semantic + Tonal Scales)";
+                    content = oklch.formatCssVariables(tokens, typo);
+                } else if (t === "tailwind") {
+                    title = "Tailwind CSS Config";
+                    content = oklch.formatTailwindConfig(tokens, typo);
+                } else if (t === "dtcg") {
+                    title = "Design Tokens (DTCG JSON)";
+                    content = oklch.formatDtcgTokens(tokens, typo);
+                } else if (t === "figma") {
+                    title = "Figma Variables (JSON)";
+                    content = oklch.formatFigmaTokens(tokens, typo);
+                }
+                if (content) {
+                    this._showExportDialog(title, content);
+                    return;
+                }
+            }
+
+            // Legacy server-based export
             return u = this, t === "html" ? s = [1, 2, 0, 3, 4] : s = [0, 1, 2, 3, 4], i = function(e, t, n) {
                 var i, o, a, f, l;
                 f = '"' + t + '":{"ttl":"' + n + '","col":[';
@@ -2527,52 +3255,83 @@
             this.typography = typo;
             t.trigger("palette/typography/changed", this.typography);
             return this.typography;
-        }, i.prototype.generateWildTypography = function(preferredCategory) {
-            var headingList = [
-                { name: "Press Start 2P", font: "'Press Start 2P', 'VT323', monospace", weights: ["400"] },
-                { name: "Orbitron", font: "'Orbitron', 'Impact', sans-serif", weights: ["700", "800", "900"] },
-                { name: "Cinzel", font: "'Cinzel', 'Georgia', serif", weights: ["700", "800"] },
-                { name: "Black Ops One", font: "'Black Ops One', 'Impact', monospace, sans-serif", weights: ["800"] },
-                { name: "Russo One", font: "'Russo One', 'Impact', sans-serif", weights: ["900"] },
-                { name: "Fredoka", font: "'Fredoka', 'Century Gothic', cursive, sans-serif", weights: ["600", "700"] },
-                { name: "Share Tech Mono", font: "'Share Tech Mono', 'Courier New', monospace", weights: ["700"] },
-                { name: "VT323", font: "'VT323', monospace", weights: ["400"] },
-                { name: "Nosifer Horror", font: "'Nosifer', 'Creepster', Georgia, serif", weights: ["700"] },
-                { name: "M PLUS Rounded", font: "'M PLUS Rounded 1c', 'Century Gothic', sans-serif", weights: ["700", "800"] },
-                { name: "Impact", font: "Impact, 'Arial Black', sans-serif", weights: ["900"] },
-                { name: "Georgia", font: "Georgia, 'Times New Roman', serif", weights: ["700"] },
-                { name: "Helvetica Neue", font: "'Helvetica Neue', Arial, sans-serif", weights: ["700", "800"] },
-                { name: "Playfair Display", font: "'Playfair Display', Georgia, serif", weights: ["700", "800"] },
-                { name: "Trebuchet MS", font: "'Trebuchet MS', 'Segoe UI', sans-serif", weights: ["700"] },
-                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace", weights: ["700"] },
-                { name: "Didot", font: "Didot, 'Bodoni MT', serif", weights: ["600", "700"] },
-                { name: "Century Gothic", font: "'Century Gothic', sans-serif", weights: ["700"] }
+        }, i.prototype.generateWildTypography = function(preferredCategory, rng) {
+            rng = rng || Math.random;
+
+            // Detect Cyrillic context (app language = 'ru' or 'uk')
+            var needsCyrillic = (typeof window !== "undefined" && window._Paletton && window._Paletton.locale &&
+                (window._Paletton.locale === "ru" || window._Paletton.locale === "uk")) ? true : false;
+
+            // Only include headings with Cyrillic support when needed
+            var headingList = needsCyrillic ? [
+                { name: "Russo One", font: "'Russo One', 'Impact', sans-serif", weights: ["900"], cyrillic: true },
+                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace", weights: ["700"], cyrillic: true },
+                { name: "Nunito", font: "'Nunito', 'Comfortaa', -apple-system, sans-serif", weights: ["700", "800"], cyrillic: true },
+                { name: "Roboto", font: "Roboto, 'Segoe UI', sans-serif", weights: ["700", "900"], cyrillic: true },
+                { name: "Ubuntu", font: "'Ubuntu', 'Segoe UI', sans-serif", weights: ["700"], cyrillic: true },
+                { name: "PT Sans", font: "'PT Sans', 'Segoe UI', sans-serif", weights: ["700"], cyrillic: true },
+                { name: "Cormorant", font: "'Cormorant', 'Cormorant Garamond', Georgia, serif", weights: ["600", "700"], cyrillic: true },
+                { name: "Exo 2", font: "'Exo 2', Roboto, sans-serif", weights: ["700", "800"], cyrillic: true },
+                { name: "Montserrat", font: "Montserrat, 'Segoe UI', sans-serif", weights: ["700", "800", "900"], cyrillic: true },
+                { name: "Impact", font: "Impact, 'Arial Black', sans-serif", weights: ["900"], cyrillic: true },
+                { name: "Arial Black", font: "'Arial Black', Impact, sans-serif", weights: ["900"], cyrillic: true },
+                { name: "Georgia", font: "Georgia, 'Times New Roman', serif", weights: ["700"], cyrillic: true }
+            ] : [
+                { name: "Press Start 2P", font: "'Press Start 2P', 'VT323', monospace", weights: ["400"], cyrillic: false },
+                { name: "Orbitron", font: "'Orbitron', 'Impact', sans-serif", weights: ["700", "800", "900"], cyrillic: false },
+                { name: "Cinzel", font: "'Cinzel', 'Georgia', serif", weights: ["700", "800"], cyrillic: false },
+                { name: "Black Ops One", font: "'Black Ops One', 'Impact', monospace, sans-serif", weights: ["800"], cyrillic: false },
+                { name: "Russo One", font: "'Russo One', 'Impact', sans-serif", weights: ["900"], cyrillic: true },
+                { name: "Fredoka", font: "'Fredoka', 'Century Gothic', cursive, sans-serif", weights: ["600", "700"], cyrillic: false },
+                { name: "Share Tech Mono", font: "'Share Tech Mono', 'Courier New', monospace", weights: ["700"], cyrillic: false },
+                { name: "VT323", font: "'VT323', monospace", weights: ["400"], cyrillic: false },
+                { name: "Nosifer", font: "'Nosifer', 'Creepster', Georgia, serif", weights: ["700"], cyrillic: false },
+                { name: "M PLUS Rounded 1c", font: "'M PLUS Rounded 1c', 'Century Gothic', sans-serif", weights: ["700", "800"], cyrillic: false },
+                { name: "Impact", font: "Impact, 'Arial Black', sans-serif", weights: ["900"], cyrillic: true },
+                { name: "Georgia", font: "Georgia, 'Times New Roman', serif", weights: ["700"], cyrillic: true },
+                { name: "Helvetica Neue", font: "'Helvetica Neue', Arial, sans-serif", weights: ["700", "800"], cyrillic: true },
+                { name: "Playfair Display", font: "'Playfair Display', Georgia, serif", weights: ["700", "800"], cyrillic: false },
+                { name: "Trebuchet MS", font: "'Trebuchet MS', 'Segoe UI', sans-serif", weights: ["700"], cyrillic: true },
+                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace", weights: ["700"], cyrillic: true },
+                { name: "Cormorant", font: "'Cormorant', 'Cormorant Garamond', Georgia, serif", weights: ["600", "700"], cyrillic: true },
+                { name: "Montserrat", font: "Montserrat, 'Segoe UI', sans-serif", weights: ["700", "800"], cyrillic: true },
+                { name: "Exo 2", font: "'Exo 2', Roboto, sans-serif", weights: ["700", "800"], cyrillic: true }
             ];
 
-            var bodyList = [
-                { name: "Rajdhani", font: "'Rajdhani', -apple-system, sans-serif" },
-                { name: "VT323", font: "'VT323', monospace" },
-                { name: "Share Tech Mono", font: "'Share Tech Mono', monospace" },
-                { name: "System Sans", font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" },
-                { name: "Nunito", font: "'Nunito', -apple-system, sans-serif" },
-                { name: "Cormorant", font: "'Cormorant Garamond', Georgia, serif" },
-                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace" },
-                { name: "Open Sans", font: "'Open Sans', 'Segoe UI', Arial, sans-serif" },
-                { name: "Charter Serif", font: "'Charter', Georgia, serif" },
-                { name: "Helvetica", font: "'Helvetica Neue', Helvetica, Arial, sans-serif" },
-                { name: "Roboto", font: "Roboto, 'Segoe UI', sans-serif" }
+            var bodyList = needsCyrillic ? [
+                { name: "System Sans", font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", cyrillic: true },
+                { name: "Roboto", font: "Roboto, 'Segoe UI', sans-serif", cyrillic: true },
+                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace", cyrillic: true },
+                { name: "Nunito", font: "'Nunito', -apple-system, sans-serif", cyrillic: true },
+                { name: "PT Sans", font: "'PT Sans', 'Segoe UI', sans-serif", cyrillic: true },
+                { name: "Cormorant Garamond", font: "'Cormorant Garamond', Georgia, serif", cyrillic: true }
+            ] : [
+                { name: "Rajdhani", font: "'Rajdhani', -apple-system, sans-serif", cyrillic: false },
+                { name: "VT323", font: "'VT323', monospace", cyrillic: false },
+                { name: "Share Tech Mono", font: "'Share Tech Mono', monospace", cyrillic: false },
+                { name: "System Sans", font: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", cyrillic: true },
+                { name: "Nunito", font: "'Nunito', -apple-system, sans-serif", cyrillic: true },
+                { name: "Cormorant Garamond", font: "'Cormorant Garamond', Georgia, serif", cyrillic: true },
+                { name: "JetBrains Mono", font: "'JetBrains Mono', Consolas, monospace", cyrillic: true },
+                { name: "Open Sans", font: "'Open Sans', 'Segoe UI', Arial, sans-serif", cyrillic: true },
+                { name: "Charter Serif", font: "'Charter', Georgia, serif", cyrillic: true },
+                { name: "Helvetica Neue", font: "'Helvetica Neue', Helvetica, Arial, sans-serif", cyrillic: true },
+                { name: "Roboto", font: "Roboto, 'Segoe UI', sans-serif", cyrillic: true }
             ];
 
             var scales = ["1.2", "1.25", "1.3", "1.333", "1.414", "1.5", "1.618"];
-            var letterSpacings = ["-0.03em", "-0.01em", "0", "0.02em", "0.05em", "0.08em"];
-            var lineHeights = ["1.35", "1.4", "1.45", "1.5", "1.55", "1.6", "1.65"];
+            // Heading-specific letter-spacing and line-heights (tight for headings)
+            var headingLetterSpacings = ["-0.04em", "-0.03em", "-0.02em", "-0.01em", "0", "0.02em", "0.05em", "0.08em"];
+            var headingLineHeights = ["1.0", "1.1", "1.15", "1.2", "1.25", "1.3"];
+            var bodyLineHeights = ["1.45", "1.5", "1.55", "1.6", "1.65"];
 
-            var pickedH = headingList[Math.floor(Math.random() * headingList.length)];
-            var pickedB = bodyList[Math.floor(Math.random() * bodyList.length)];
-            var weightH = pickedH.weights[Math.floor(Math.random() * pickedH.weights.length)];
-            var scale = scales[Math.floor(Math.random() * scales.length)];
-            var ls = letterSpacings[Math.floor(Math.random() * letterSpacings.length)];
-            var lh = lineHeights[Math.floor(Math.random() * lineHeights.length)];
+            var pickedH = headingList[Math.floor(rng() * headingList.length)];
+            var pickedB = bodyList[Math.floor(rng() * bodyList.length)];
+            var weightH = pickedH.weights[Math.floor(rng() * pickedH.weights.length)];
+            var scale = scales[Math.floor(rng() * scales.length)];
+            var ls = headingLetterSpacings[Math.floor(rng() * headingLetterSpacings.length)];
+            var lhH = headingLineHeights[Math.floor(rng() * headingLineHeights.length)];
+            var lhB = bodyLineHeights[Math.floor(rng() * bodyLineHeights.length)];
 
             return {
                 id: "wild_" + Math.random().toString(36).substr(2, 6),
@@ -2583,16 +3342,60 @@
                 weightHeading: weightH,
                 scale: scale,
                 letterSpacing: ls,
-                lineHeight: lh
+                lineHeightHeading: lhH,
+                lineHeight: lhB,
+                cyrillic: pickedH.cyrillic && pickedB.cyrillic
             };
-        }, i.prototype.randomizeTypography = function(type) {
+        }, i.prototype.resolveTypography = function(typo) {
+            // Apply Cyrillic fallbacks if context is Cyrillic and pair doesn't support it
+            if (!typo) return typo;
+            var needsCyrillic = (typeof window !== "undefined" && window._Paletton && window._Paletton.locale &&
+                (window._Paletton.locale === "ru" || window._Paletton.locale === "uk")) ? true : false;
+            if (!needsCyrillic || typo.cyrillic) return typo;
+            // Clone and replace with Cyrillic alternatives
+            var resolved = {};
+            for (var k in typo) { if (typo.hasOwnProperty(k)) resolved[k] = typo[k]; }
+            if (typo.headingCyrillic) resolved.heading = typo.headingCyrillic;
+            if (typo.bodyCyrillic) resolved.body = typo.bodyCyrillic;
+            resolved._cyrillicResolved = true;
+            return resolved;
+        }, i.prototype.randomizeTypography = function(type, profileId, rng) {
             type = (type || "").toLowerCase();
+            rng = rng || Math.random;
             var curId = this.typography ? this.typography.id : "";
+            var self = this;
+
+            var needsCyrillic = (typeof window !== "undefined" && window._Paletton && window._Paletton.locale &&
+                (window._Paletton.locale === "ru" || window._Paletton.locale === "uk")) ? true : false;
 
             if (type === "wild") {
-                return this.setTypography(this.generateWildTypography());
+                var wild = this.generateWildTypography(null, rng);
+                return this.setTypography(wild);
             }
 
+            // Try profile-matched pairs first (strong coupling)
+            if (profileId && type !== "wild") {
+                var profileMatched = TYPOGRAPHY_PAIRS.filter(function(p) {
+                    if (!p.profileMatch) return false;
+                    for (var m = 0; m < p.profileMatch.length; m++) {
+                        if (p.profileMatch[m] === profileId || profileId.indexOf(p.profileMatch[m]) !== -1) return true;
+                    }
+                    return false;
+                });
+                // Filter Cyrillic-incompatible pairs when needed
+                if (needsCyrillic) {
+                    var cyrillicMatched = profileMatched.filter(function(p) { return p.cyrillic || p.headingCyrillic; });
+                    if (cyrillicMatched.length > 0) profileMatched = cyrillicMatched;
+                }
+                if (profileMatched.length > 0 && rng() < 0.70) {
+                    var available = profileMatched.filter(function(p) { return p.id !== curId; });
+                    if (!available.length) available = profileMatched;
+                    var picked = available[Math.floor(rng() * available.length)];
+                    return this.setTypography(this.resolveTypography(picked));
+                }
+            }
+
+            // Category-filtered pool fallback
             var pool = TYPOGRAPHY_PAIRS;
             if (type === "game" || type === "gaming") {
                 pool = TYPOGRAPHY_PAIRS.filter(function(p) { return p.category === "game"; });
@@ -2602,20 +3405,29 @@
                 pool = TYPOGRAPHY_PAIRS.filter(function(p) { return p.category === "editorial"; });
             }
 
+            // Filter Cyrillic-incompatible when needed
+            if (needsCyrillic) {
+                var cyrillicPool = pool.filter(function(p) { return p.cyrillic || p.headingCyrillic; });
+                if (cyrillicPool.length > 0) pool = cyrillicPool;
+            }
+
+            // 30% chance for wild when no specific profile
             if (!type || type === "all") {
-                if (Math.random() < 0.35) {
-                    return this.setTypography(this.generateWildTypography());
+                if (rng() < 0.30) {
+                    var wildFallback = this.generateWildTypography(null, rng);
+                    return this.setTypography(wildFallback);
                 }
             }
 
-            var available = pool.filter(function(p) { return p.id !== curId; });
-            if (!available.length) available = pool;
-            var picked = available[Math.floor(Math.random() * available.length)];
-            return this.setTypography(picked);
+            var available2 = pool.filter(function(p) { return p.id !== curId; });
+            if (!available2.length) available2 = pool;
+            var picked2 = available2[Math.floor(rng() * available2.length)];
+            return this.setTypography(this.resolveTypography(picked2));
         }, i
     }(), p
 });
-    }.call(this),function(){define("ui.control.button.class", ["app.events", "util", "ui.control.dialog.class"], function(e, t, n) {
+
+define("ui.control.button.class", ["app.events", "util", "ui.control.dialog.class"], function(e, t, n) {
     var r;
     return r = function() {
         function e(e, n) {
