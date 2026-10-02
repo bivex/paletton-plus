@@ -11,7 +11,7 @@ define("ui.control.tonal.strip", ["app.events", "color.oklch", "util"], function
         g = g < 0.04045 ? g/12.92 : Math.pow((g+0.055)/1.055, 2.4);
         b = b < 0.04045 ? b/12.92 : Math.pow((b+0.055)/1.055, 2.4);
         var L = 0.2126*r + 0.7152*g + 0.0722*b;
-        return L > 0.179 ? "#1a1a1a" : "#f5f5f5";
+        return L > 0.179 ? "#000000" : "#ffffff";
     }
 
     function hexFromScale(scale, stepIdx) {

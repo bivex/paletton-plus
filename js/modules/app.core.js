@@ -10,17 +10,11 @@ define("app.core", ["app.ini", "app.events", "app.history", "app.settings", "app
                 s = a.split("&");
                 for (h = 0, p = s.length; h < p; h++) n = s[h], d = n.split("="), o = d[0], c = d[1], o === "lang" && (u = c)
             }
-            return u || (u = r.get("LNG")), f(u) ? (e.lang.active = u, this.initPh2()) : $.ajax({
-                url: "http://ajaxhttpheaders.appspot.com",
-                dataType: "jsonp",
-                success: function(t) {
-                    var n;
-                    return u = (n = t["Accept-Language"].substring(0, 2)) != null ? n.toLowerCase() : void 0, f(u) ? e.lang.active = u : e.lang.active = e.lang.def || "en", l.initPh2()
-                },
-                error: function() {
-                    return e.lang.active = e.lang.def || "en", l.initPh2()
-                }
-            })
+            if (!u) {
+                var navLang = (navigator.language || navigator.userLanguage || "").substring(0, 2).toLowerCase();
+                if (f(navLang)) u = navLang;
+            }
+            return u || (u = r.get("LNG")), f(u) ? (e.lang.active = u, this.initPh2()) : (e.lang.active = e.lang.def || "en", this.initPh2());
         },
         initPh2: function() {
             var t, n;

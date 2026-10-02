@@ -3,7 +3,7 @@
 <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>Color Scheme Designer</title>
 
@@ -19,13 +19,29 @@
     <link rel="stylesheet" type="text/css" href="css/css/default2.min.css">
     <link rel="stylesheet" type="text/css" href="css/css/responsive.css">
     <style>
+        .skip-link {
+            position: absolute;
+            top: -999px;
+            left: 10px;
+            background: #111;
+            color: #fff;
+            padding: 8px 16px;
+            z-index: 100000;
+            text-decoration: underline;
+            font-weight: 700;
+            border-radius: 4px;
+            border: 2px solid #38bdf8;
+        }
+        .skip-link:focus {
+            top: 10px;
+        }
         #header .logo {
             width: auto;
             padding-left: 72px;
             line-height: 60px;
             font-size: 24px;
             font-weight: 700;
-            color: #888;
+            color: #f8fafc;
             letter-spacing: -0.5px;
             white-space: nowrap;
             user-select: none;
@@ -48,11 +64,13 @@
 
 <body>
 
+<a href="#content" class="skip-link">Skip to main content</a>
+
 <div id="preload">
-    <img src="img/wheel-over.png" width="0" height="0"/>
+    <img src="img/wheel-over.png" width="0" height="0" alt="" aria-hidden="true"/>
 </div>
 <div id="app">
-    <div id="header">
+    <header id="header" role="banner">
 
         <div class="inner">
             <div class="logo">Color Scheme Designer</div>
@@ -61,9 +79,9 @@
             </div>
         </div>
 
-    </div><!-- /header -->
+    </header><!-- /header -->
 
-    <div id="content">
+    <main id="content" role="main">
 
         <!-- Onload tests -->
 
@@ -92,7 +110,7 @@
 
         <!-- /tests -->
 
-    </div><!-- /content -->
+    </main><!-- /content -->
 
 </div> <!-- /app -->
 

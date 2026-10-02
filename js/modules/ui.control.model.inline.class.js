@@ -20,15 +20,28 @@ define("ui.control.model.inline.class", ["app.events", "app.locale", "util", "ui
             }), this.$e = $("<DIV>", {
                 "class": this.options.className
             }), this.$parent.append(this.$e), l = ["mono", "analog", "triad", "tetrad", "free"];
-            for (u = 0, f = l.length; u < f; u++) s = l[u], n = $("<A>", {
-                href: "#",
-                "class": "model model-" + s
-            }), this.$e.append(n), r = $("<SPAN>", {
-                "class": "ico ico-model ico-model-" + s
-            }), n.append(r), n.data("id", s), n.click(function(e) {
-                var t;
-                return e.preventDefault(), s = $(this).data("id"), s === "free" ? (t = o.palette.hueCnt, o.palette.setModelFree(t)) : o.palette.setModel(s), o.setByPalette()
-            });
+            for (u = 0, f = l.length; u < f; u++) {
+                s = l[u];
+                var modelTitle = t("model.list." + s + ".title") || t("model.list." + s + ".short") || s;
+                n = $("<A>", {
+                    href: "#",
+                    "class": "model model-" + s,
+                    title: modelTitle,
+                    "aria-label": modelTitle,
+                    role: "button"
+                });
+                this.$e.append(n);
+                r = $("<SPAN>", {
+                    "class": "ico ico-model ico-model-" + s,
+                    "aria-hidden": "true"
+                });
+                n.append(r);
+                n.data("id", s);
+                n.click(function(e) {
+                    var t;
+                    return e.preventDefault(), s = $(this).data("id"), s === "free" ? (t = o.palette.hueCnt, o.palette.setModelFree(t)) : o.palette.setModel(s), o.setByPalette()
+                });
+            }
             return r = $("<DIV>", {
                 "class": "info"
             }), this.$e.append(r), this.$desc = $("<DIV>", {

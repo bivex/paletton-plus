@@ -15,7 +15,9 @@ define("ui.control.button.class", ["app.events", "util", "ui.control.dialog.clas
                 "class": "control control-button " + this.options.className
             }), this.$parent.append(this.$e), this.$button = $("<A>", {
                 "class": "button",
-                href: "#"
+                href: "#",
+                role: "button",
+                "aria-label": this.options.label || "Action"
             }), this.$e.append(this.$button), this.$label = $("<SPAN>", {
                 "class": "label"
             }), this.$label.text(this.options.label), this.$button.append(this.$label), this.options.asUIButton ? r = this.$button.button() : r = this.$button, r.click(function(e) {
@@ -26,6 +28,8 @@ define("ui.control.button.class", ["app.events", "util", "ui.control.dialog.clas
             }), this.disable(this.options.disabled)
         }
         return e.prototype.setHtml = function(e) {
+            var plainText = $("<div>").html(e).text().trim();
+            if (plainText) this.$button.attr("aria-label", plainText);
             return this.$button.html(e)
         }, e.prototype.disable = function(e) {
             return this.disabled = !!e, this.$e.toggleClass("disabled", this.disabled)

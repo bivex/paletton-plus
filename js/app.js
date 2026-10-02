@@ -3641,7 +3641,9 @@
                         "class": "control control-button " + this.options.className
                     }), this.$parent.append(this.$e), this.$button = $("<A>", {
                         "class": "button",
-                        href: "#"
+                        href: "#",
+                        role: "button",
+                        "aria-label": this.options.label || "Action"
                     }), this.$e.append(this.$button), this.$label = $("<SPAN>", {
                         "class": "label"
                     }), this.$label.text(this.options.label), this.$button.append(this.$label), this.options.asUIButton ? r = this.$button.button() : r = this.$button, r.click(function(e) {
@@ -3652,12 +3654,14 @@
                     }), this.disable(this.options.disabled)
                 }
                 return e.prototype.setHtml = function(e) {
+                    var plainText = $("<div>").html(e).text().trim();
+                    if (plainText) this.$button.attr("aria-label", plainText);
                     return this.$button.html(e)
                 }, e.prototype.disable = function(e) {
                     return this.disabled = !!e, this.$e.toggleClass("disabled", this.disabled)
                 }, e
             }(), r
-        })
+        });
     }.call(this),
     function() {
         define("ui.control.checkbox.class", ["app.events", "util"], function(e, t) {
@@ -3673,10 +3677,15 @@
                         onClick: null
                     };
                     if (!this.$parent) return;
-                    o = this, this.options = t.objMerge(s, n), this.checked = this.options.checked, this.disabled = this.options.disabled, this.$e = $("<A>", {
-                        "class": "control control-checkbox " + this.options.className
+                    o = this, this.options = t.objMerge(s, n), this.checked = this.options.checked, this.disabled = this.options.disabled, this.$e = $("<SPAN>", {
+                        "class": "control control-checkbox " + this.options.className,
+                        role: "checkbox",
+                        tabindex: 0,
+                        "aria-checked": this.checked ? "true" : "false",
+                        "aria-label": this.options.label || "Checkbox"
                     }), this.$parent.append(this.$e), r = $("<SPAN>", {
-                        "class": "ico ico-checkbox"
+                        "class": "ico ico-checkbox",
+                        "aria-hidden": "true"
                     }), this.$e.append(r), i = $("<SPAN>", {
                         "class": "label"
                     }), this.$e.append(i), i.html(this.options.label), this.$e.click(function(e) {
@@ -3684,17 +3693,26 @@
                         e.preventDefault();
                         if (o.disabled) return;
                         return o.toggle(), typeof(t = o.options).onClick == "function" ? t.onClick(o.checked) : void 0
+                    }).keydown(function(e) {
+                        var t;
+                        if (e.keyCode === 13 || e.keyCode === 32) {
+                            e.preventDefault();
+                            if (!o.disabled) {
+                                o.toggle();
+                                if (typeof(t = o.options).onClick == "function") t.onClick(o.checked);
+                            }
+                        }
                     }), this.check(this.checked)
                 }
                 return e.prototype.check = function(e) {
-                    return this.checked = !!e, this.$e.toggleClass("checked", this.checked)
+                    return this.checked = !!e, this.$e.attr("aria-checked", this.checked ? "true" : "false"), this.$e.toggleClass("checked", this.checked)
                 }, e.prototype.toggle = function() {
                     return this.check(!this.checked)
                 }, e.prototype.disable = function(e) {
                     return this.disabled = !!e, this.$e.toggleClass("disabled", this.disabled)
                 }, e
             }(), n
-        })
+        });
     }.call(this),
     function() {
         define("ui.control.menu.class", ["app.events", "util", "ui.control.button.class"], function(e, t, n) {
@@ -3790,15 +3808,28 @@
                     }), this.$e = $("<DIV>", {
                         "class": this.options.className
                     }), this.$parent.append(this.$e), l = ["mono", "analog", "triad", "tetrad", "free"];
-                    for (u = 0, f = l.length; u < f; u++) s = l[u], n = $("<A>", {
-                        href: "#",
-                        "class": "model model-" + s
-                    }), this.$e.append(n), r = $("<SPAN>", {
-                        "class": "ico ico-model ico-model-" + s
-                    }), n.append(r), n.data("id", s), n.click(function(e) {
-                        var t;
-                        return e.preventDefault(), s = $(this).data("id"), s === "free" ? (t = o.palette.hueCnt, o.palette.setModelFree(t)) : o.palette.setModel(s), o.setByPalette()
-                    });
+                    for (u = 0, f = l.length; u < f; u++) {
+                        s = l[u];
+                        var modelTitle = t("model.list." + s + ".title") || t("model.list." + s + ".short") || s;
+                        n = $("<A>", {
+                            href: "#",
+                            "class": "model model-" + s,
+                            title: modelTitle,
+                            "aria-label": modelTitle,
+                            role: "button"
+                        });
+                        this.$e.append(n);
+                        r = $("<SPAN>", {
+                            "class": "ico ico-model ico-model-" + s,
+                            "aria-hidden": "true"
+                        });
+                        n.append(r);
+                        n.data("id", s);
+                        n.click(function(e) {
+                            var t;
+                            return e.preventDefault(), s = $(this).data("id"), s === "free" ? (t = o.palette.hueCnt, o.palette.setModelFree(t)) : o.palette.setModel(s), o.setByPalette()
+                        });
+                    }
                     return r = $("<DIV>", {
                         "class": "info"
                     }), this.$e.append(r), this.$desc = $("<DIV>", {
@@ -3840,7 +3871,7 @@
                     return this.$e.toggleClass("compl", n), this.$e.find(".model.selected").removeClass("selected"), n && (o = u[o]), this.$e.find(".model-" + o).addClass("selected")
                 }, o
             }(), o
-        })
+        });
     }.call(this),
     function() {
         define("geometry.plane.class", [], function() {
@@ -6950,148 +6981,148 @@
     function() {
         define("ui.control.tonal.strip", ["app.events", "color.oklch", "util"], function(events, oklch, util) {
 
-    var STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+            var STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
 
-    // Luminance for white/black text contrast heuristic
-    function textColor(hex) {
-        var r = parseInt(hex.slice(0,2),16)/255,
-            g = parseInt(hex.slice(2,4),16)/255,
-            b = parseInt(hex.slice(4,6),16)/255;
-        r = r < 0.04045 ? r/12.92 : Math.pow((r+0.055)/1.055, 2.4);
-        g = g < 0.04045 ? g/12.92 : Math.pow((g+0.055)/1.055, 2.4);
-        b = b < 0.04045 ? b/12.92 : Math.pow((b+0.055)/1.055, 2.4);
-        var L = 0.2126*r + 0.7152*g + 0.0722*b;
-        return L > 0.179 ? "#1a1a1a" : "#f5f5f5";
-    }
+            // Luminance for white/black text contrast heuristic
+            function textColor(hex) {
+                var r = parseInt(hex.slice(0,2),16)/255,
+                    g = parseInt(hex.slice(2,4),16)/255,
+                    b = parseInt(hex.slice(4,6),16)/255;
+                r = r < 0.04045 ? r/12.92 : Math.pow((r+0.055)/1.055, 2.4);
+                g = g < 0.04045 ? g/12.92 : Math.pow((g+0.055)/1.055, 2.4);
+                b = b < 0.04045 ? b/12.92 : Math.pow((b+0.055)/1.055, 2.4);
+                var L = 0.2126*r + 0.7152*g + 0.0722*b;
+                return L > 0.179 ? "#000000" : "#ffffff";
+            }
 
-    function hexFromScale(scale, stepIdx) {
-        var s = scale[stepIdx];
-        if (!s) return "888888";
-        var r = Math.round(Math.max(0,Math.min(1,s.r))*255),
-            g = Math.round(Math.max(0,Math.min(1,s.g))*255),
-            b = Math.round(Math.max(0,Math.min(1,s.b))*255);
-        return (r<16?"0":"")+r.toString(16)+(g<16?"0":"")+g.toString(16)+(b<16?"0":"")+b.toString(16);
-    }
+            function hexFromScale(scale, stepIdx) {
+                var s = scale[stepIdx];
+                if (!s) return "888888";
+                var r = Math.round(Math.max(0,Math.min(1,s.r))*255),
+                    g = Math.round(Math.max(0,Math.min(1,s.g))*255),
+                    b = Math.round(Math.max(0,Math.min(1,s.b))*255);
+                return (r<16?"0":"")+r.toString(16)+(g<16?"0":"")+g.toString(16)+(b<16?"0":"")+b.toString(16);
+            }
 
-    // Copy text to clipboard
-    function copyToClipboard(text) {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).catch(function(){});
-        } else {
-            var ta = document.createElement("textarea");
-            ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
-            document.body.appendChild(ta); ta.select();
-            try { document.execCommand("copy"); } catch(e) {}
-            document.body.removeChild(ta);
-        }
-    }
+            // Copy text to clipboard
+            function copyToClipboard(text) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).catch(function(){});
+                } else {
+                    var ta = document.createElement("textarea");
+                    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+                    document.body.appendChild(ta); ta.select();
+                    try { document.execCommand("copy"); } catch(e) {}
+                    document.body.removeChild(ta);
+                }
+            }
 
-    // GROUP_LABELS
-    var GROUP_LABELS = { pri: "Primary", sec1: "Secondary 1", sec2: "Secondary 2", compl: "Complement" };
+            // GROUP_LABELS
+            var GROUP_LABELS = { pri: "Primary", sec1: "Secondary 1", sec2: "Secondary 2", compl: "Complement" };
 
-    function TonalStrip(palette, $container) {
-        this.palette = palette;
-        this.$container = $container;
-        this.$e = null;
-        this._copyToast = null;
-        this._init();
-    }
+            function TonalStrip(palette, $container) {
+                this.palette = palette;
+                this.$container = $container;
+                this.$e = null;
+                this._copyToast = null;
+                this._init();
+            }
 
-    TonalStrip.prototype._init = function() {
-        var self = this;
-        this.$e = $("<div>", { "class": "tonal-strip" });
-        this.$container.append(this.$e);
+            TonalStrip.prototype._init = function() {
+                var self = this;
+                this.$e = $("<div>", { "class": "tonal-strip" });
+                this.$container.append(this.$e);
 
-        // Toast element
-        this._$toast = $("<div>", { "class": "tonal-strip-toast" }).text("Copied!");
-        this.$container.append(this._$toast);
+                // Toast element
+                this._$toast = $("<div>", { "class": "tonal-strip-toast" }).text("Copied!");
+                this.$container.append(this._$toast);
 
-        events.register("palette/colors/changed", function() { self.render(); });
-        events.register("palette/model/changed",  function() { self.render(); });
-        events.register("palette/copyformat/changed", function() { self.render(); });
-        this.render();
-    };
+                events.register("palette/colors/changed", function() { self.render(); });
+                events.register("palette/model/changed",  function() { self.render(); });
+                events.register("palette/copyformat/changed", function() { self.render(); });
+                this.render();
+            };
 
-    TonalStrip.prototype.render = function() {
-        var self = this;
-        var palette = this.palette;
-        var scales;
-        try {
-            scales = palette.getTonalScales();
-        } catch(e) { return; }
-        if (!scales || !scales.pri) return;
+            TonalStrip.prototype.render = function() {
+                var self = this;
+                var palette = this.palette;
+                var scales;
+                try {
+                    scales = palette.getTonalScales();
+                } catch(e) { return; }
+                if (!scales || !scales.pri) return;
 
-        this.$e.empty();
+                this.$e.empty();
 
-        var groups = ["pri"];
-        if (palette.hasSecs())  { groups.push("sec1"); groups.push("sec2"); }
-        if (palette.hasCompl()) { groups.push("compl"); }
+                var groups = ["pri"];
+                if (palette.hasSecs())  { groups.push("sec1"); groups.push("sec2"); }
+                if (palette.hasCompl()) { groups.push("compl"); }
 
-        var curFmt = (window._palGetCopyFormat && window._palGetCopyFormat()) || "hex";
+                var curFmt = (window._palGetCopyFormat && window._palGetCopyFormat()) || "hex";
 
-        $.each(groups, function(gi, grp) {
-            var scale = scales[grp];
-            if (!scale) return;
+                $.each(groups, function(gi, grp) {
+                    var scale = scales[grp];
+                    if (!scale) return;
 
-            var $row = $("<div>", { "class": "tonal-strip-row" });
+                    var $row = $("<div>", { "class": "tonal-strip-row" });
 
-            // Label
-            var $label = $("<span>", { "class": "tonal-strip-label" }).text(GROUP_LABELS[grp] || grp);
-            $row.append($label);
+                    // Label
+                    var $label = $("<span>", { "class": "tonal-strip-label" }).text(GROUP_LABELS[grp] || grp);
+                    $row.append($label);
 
-            // Swatches
-            var $swatches = $("<div>", { "class": "tonal-strip-swatches" });
+                    // Swatches
+                    var $swatches = $("<div>", { "class": "tonal-strip-swatches" });
 
-            $.each(STEPS, function(si, step) {
-                var hex = hexFromScale(scale, si);
-                var formatted = oklch.formatHexColor(hex, curFmt);
-                var tc  = textColor(hex);
-                var $sw = $("<div>", {
-                    "class": "tonal-swatch",
-                    "title": step + " — " + formatted + " (Click to copy " + curFmt.toUpperCase() + ")"
-                }).css({ background: "#" + hex });
+                    $.each(STEPS, function(si, step) {
+                        var hex = hexFromScale(scale, si);
+                        var formatted = oklch.formatHexColor(hex, curFmt);
+                        var tc  = textColor(hex);
+                        var $sw = $("<div>", {
+                            "class": "tonal-swatch",
+                            "title": step + " — " + formatted + " (Click to copy " + curFmt.toUpperCase() + ")"
+                        }).css({ background: "#" + hex });
 
-                var $stepLabel = $("<span>", { "class": "tonal-swatch-step" }).text(step).css("color", tc);
-                var $hexLabel  = $("<span>", { "class": "tonal-swatch-hex"  }).text("#" + hex).css("color", tc);
+                        var $stepLabel = $("<span>", { "class": "tonal-swatch-step" }).text(step).css("color", tc);
+                        var $hexLabel  = $("<span>", { "class": "tonal-swatch-hex"  }).text("#" + hex).css("color", tc);
 
-                $sw.append($stepLabel).append($hexLabel);
+                        $sw.append($stepLabel).append($hexLabel);
 
-                $sw.on("click", (function(h, s, fmtVal) {
-                    return function(ev) {
-                        var latestFmt = (window._palGetCopyFormat && window._palGetCopyFormat()) || "hex";
-                        var copyVal = oklch.formatHexColor(h, latestFmt);
-                        copyToClipboard(copyVal);
-                        if (window._palShowToast) {
-                            window._palShowToast("Copied: " + copyVal);
-                        } else {
-                            self._showToast(copyVal, ev);
-                        }
-                        $sw.addClass("swatch-copied-flash");
-                        setTimeout(function() {
-                            $sw.removeClass("swatch-copied-flash");
-                        }, 300);
-                    };
-                })(hex, step, formatted));
+                        $sw.on("click", (function(h, s, fmtVal) {
+                            return function(ev) {
+                                var latestFmt = (window._palGetCopyFormat && window._palGetCopyFormat()) || "hex";
+                                var copyVal = oklch.formatHexColor(h, latestFmt);
+                                copyToClipboard(copyVal);
+                                if (window._palShowToast) {
+                                    window._palShowToast("Copied: " + copyVal);
+                                } else {
+                                    self._showToast(copyVal, ev);
+                                }
+                                $sw.addClass("swatch-copied-flash");
+                                setTimeout(function() {
+                                    $sw.removeClass("swatch-copied-flash");
+                                }, 300);
+                            };
+                        })(hex, step, formatted));
 
-                $swatches.append($sw);
-            });
+                        $swatches.append($sw);
+                    });
 
-            $row.append($swatches);
-            self.$e.append($row);
+                    $row.append($swatches);
+                    self.$e.append($row);
+                });
+            };
+
+            TonalStrip.prototype._showToast = function(text, ev) {
+                var self = this;
+                this._$toast.text("Copied " + text).addClass("visible");
+                clearTimeout(this._copyTimer);
+                this._copyTimer = setTimeout(function() {
+                    self._$toast.removeClass("visible");
+                }, 1400);
+            };
+
+            return TonalStrip;
         });
-    };
-
-    TonalStrip.prototype._showToast = function(text, ev) {
-        var self = this;
-        this._$toast.text("Copied " + text).addClass("visible");
-        clearTimeout(this._copyTimer);
-        this._copyTimer = setTimeout(function() {
-            self._$toast.removeClass("visible");
-        }, 1400);
-    };
-
-    return TonalStrip;
-});
     }.call(this), function() {
         define("ui.default.class", ["app.ini", "app.events", "app.history", "app.locale", "util", "ui.control.model.inline.class", "ui.control.adjuster.class", "ui.control.randomizer.class", "ui.control.button.class", "ui.control.btnedit.class", "ui.control.menu.class", "ui.control.wheel.class", "ui.control.presets.class", "ui.control.palette.class", "ui.control.share.class", "ui.control.preview.class", "ui.control.colorlist.class", "ui.control.examples.class", "ui.control.convert.class", "ui.control.locale.class", "ui.control.tonal.strip"], function(e, t, n, r, i, s, o, u, a, f, l, c, h, p, d, v, m, g, y, b, TonalStrip) {
     var w;
@@ -7368,17 +7399,11 @@
                         s = a.split("&");
                         for (h = 0, p = s.length; h < p; h++) n = s[h], d = n.split("="), o = d[0], c = d[1], o === "lang" && (u = c)
                     }
-                    return u || (u = r.get("LNG")), f(u) ? (e.lang.active = u, this.initPh2()) : $.ajax({
-                        url: "http://ajaxhttpheaders.appspot.com",
-                        dataType: "jsonp",
-                        success: function(t) {
-                            var n;
-                            return u = (n = t["Accept-Language"].substring(0, 2)) != null ? n.toLowerCase() : void 0, f(u) ? e.lang.active = u : e.lang.active = e.lang.def || "en", l.initPh2()
-                        },
-                        error: function() {
-                            return e.lang.active = e.lang.def || "en", l.initPh2()
-                        }
-                    })
+                    if (!u) {
+                        var navLang = (navigator.language || navigator.userLanguage || "").substring(0, 2).toLowerCase();
+                        if (f(navLang)) u = navLang;
+                    }
+                    return u || (u = r.get("LNG")), f(u) ? (e.lang.active = u, this.initPh2()) : (e.lang.active = e.lang.def || "en", this.initPh2());
                 },
                 initPh2: function() {
                     var t, n;
@@ -7405,7 +7430,7 @@
                     }, n.init(), o.init(s)
                 }
             }, l
-        })
+        });
     }.call(this),
     function() {
         var e;
