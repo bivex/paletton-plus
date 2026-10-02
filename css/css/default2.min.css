@@ -95,19 +95,32 @@
     top: 100px;
     left: 0;
     right: 0;
+    bottom: 0;
+    z-index: 5;
   }
   #content #panebox-r .pane-preview .pane-content-preview {
     position: absolute;
     top: 0;
     left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
-    height: 500px;
+    height: 100%;
   }
   #content #panebox-r .pane-examples {
     top: 115px;
+    z-index: 50;
   }
   #content #panebox-r .pane-colorlist {
     top: 115px;
+    z-index: 50;
+  }
+  #content #panebox-r .pane-examples .pane-tab,
+  #content #panebox-r .pane-colorlist .pane-tab,
+  #content #panebox-r .pane-preview .pane-tab {
+    z-index: 100 !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
   }
 }
 
@@ -117,9 +130,6 @@
     max-width: calc(100vw - 40px);
     height: 840px;
   }
-  #content #panebox-r .pane-preview .pane-content-preview {
-    height: 560px;
-  }
 }
 
 @media screen and (min-width: 1800px) {
@@ -127,9 +137,6 @@
     width: 1820px;
     max-width: calc(100vw - 48px);
     height: 880px;
-  }
-  #content #panebox-r .pane-preview .pane-content-preview {
-    height: 600px;
   }
 }
 

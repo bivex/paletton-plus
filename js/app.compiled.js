@@ -3600,9 +3600,10 @@ define("ui.control.colorlist.table.tonal", ["app.events", "app.locale", "util", 
                     }).html('<a href="#" class="subitem-' + l + '">→  ' + n("colorList." + f + ".sub." + l + ".title") + "</a>"), s.addClass("subitem"), s.data("event", h.event), a.append(s)
                 }
             }
-            return u.find("li.item>a").click(function(e) {
+            u.find("li.item>a").click(function(e) {
                 return e.preventDefault(), i = $(this).parents("li.item"), f = i.data("list"), u.find("li.item.sel").removeClass("sel"), i.addClass("sel"), d.setList(f)
-            }), u.find("li.subitem>a").click(function(n) {
+            });
+            u.find("li.subitem>a").click(function(n) {
                 var r;
                 return n.preventDefault(), r = $(this).parent().data("event"), t.trigger(r), t.trigger("ga/view", {
                     view: e.GA.view.coltable + "/" + r
@@ -3628,7 +3629,8 @@ define("ui.control.colorlist.table.tonal", ["app.events", "app.locale", "util", 
                     at: "center center",
                     of: window
                 }
-            }), this.open = !0
+            });
+            this.open = !0;
         }, i.prototype.setList = function(r) {
             var i, o;
             o = this, r && (this.selected = r);
@@ -3981,13 +3983,16 @@ define("ui.control.colorlist.table.tonal", ["app.events", "app.locale", "util", 
                     for (f in p) c = p[f], i = $("<LI>").html('<a href="#" class="subitem-' + f + '">→  ' + r("examples." + a + ".sub." + f + ".title") + "</a>"), i.addClass("subitem selectable"), i.data("id", f), o.append(i), f === this.selected && (i.addClass("sel"), n.addClass("sel"))
                 }
             }
-            return s.find("li.item>a").click(function(e) {
+            s.find("li.item>a").click(function(e) {
                 return e.preventDefault(), s.find("li.item.sel").removeClass("sel"), $(this).parents("li.item").addClass("sel")
-            }), s.find("li.subitem>a").click(function(e) {
+            });
+            s.find("li.subitem>a").click(function(e) {
                 return e.preventDefault(), s.find("li.subitem.sel").removeClass("sel"), n = $(this).parents("li.subitem"), n.addClass("sel"), s.find("li.item.sel").removeClass("sel"), $(this).parents("li.item").addClass("sel"), a = n.data("id"), h.setList(a)
-            }), this.$tools = $("<DIV>", {
+            });
+            this.$tools = $("<DIV>", {
                 "class": "list-tools"
-            }), e.append(this.$tools);
+            });
+            e.append(this.$tools);
             var winW = $(window).width();
             var winH = $(window).height();
             var dlgW = Math.min(1600, Math.max(1060, Math.floor(winW * 0.94)));
@@ -4009,7 +4014,8 @@ define("ui.control.colorlist.table.tonal", ["app.events", "app.locale", "util", 
                     at: "center center",
                     of: window
                 }
-            }), this.open = !0
+            });
+            this.open = !0;
         }, s.prototype.setList = function(i) {
             var s, u, a, p, d, m, g, r_ctrl, y;
             return i && (this.selected = i), u = v(this.selected), u || (this.selected = this.options["default"], u = v(this.selected)), a = u.data.url, this.$iframe.attr("src") === a ? this.$iframe[0].contentWindow.location.reload(!0) : this.$iframe.attr("src", a), (d = this.loader) != null && typeof d.done == "function" && d.done(), this.loader = new h(this.$iframe), n.set("EXA", this.selected), (m = this.converter) != null && m.remove(), (g = this.adjuster) != null && g.close(), (r_ctrl = this.randomizer) != null && r_ctrl.close(), this.$tools.empty(), p = this, u.data.addConvert && (this.converter = new c(this.$tools, {

@@ -102,9 +102,10 @@ define("ui.control.colorlist.class", ["app.ini", "app.events", "app.locale", "ut
                     }).html('<a href="#" class="subitem-' + l + '">→  ' + n("colorList." + f + ".sub." + l + ".title") + "</a>"), s.addClass("subitem"), s.data("event", h.event), a.append(s)
                 }
             }
-            return u.find("li.item>a").click(function(e) {
+            u.find("li.item>a").click(function(e) {
                 return e.preventDefault(), i = $(this).parents("li.item"), f = i.data("list"), u.find("li.item.sel").removeClass("sel"), i.addClass("sel"), d.setList(f)
-            }), u.find("li.subitem>a").click(function(n) {
+            });
+            u.find("li.subitem>a").click(function(n) {
                 var r;
                 return n.preventDefault(), r = $(this).parent().data("event"), t.trigger(r), t.trigger("ga/view", {
                     view: e.GA.view.coltable + "/" + r
@@ -130,7 +131,8 @@ define("ui.control.colorlist.class", ["app.ini", "app.events", "app.locale", "ut
                     at: "center center",
                     of: window
                 }
-            }), this.open = !0
+            });
+            this.open = !0;
         }, i.prototype.setList = function(r) {
             var i, o;
             o = this, r && (this.selected = r);
